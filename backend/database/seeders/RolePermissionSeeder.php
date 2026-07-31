@@ -1,0 +1,167 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+
+/**
+ * The platform's authorisation matrix.
+ *
+ * Permissions are grouped by domain and named `<group>.<verb>`. Roles are
+ * assigned permission sets rather than hard-coded checks, so an administrator
+ * can retune a role in the console without a deploy — with the deliberate
+ * exception of `super_admin`, which bypasses every gate.
+ */
+class RolePermissionSeeder extends Seeder
+{
+    /** @var array<string, list<string>> */
+    private const PERMISSIONS = [
+        'users' => ['users.view', 'users.create', 'users.update', 'users.delete', 'users.impersonate'],
+        'roles' => ['roles.manage'],
+        'stations' => ['stations.view', 'stations.create', 'stations.update', 'stations.delete', 'stations.verify'],
+        'prices' => ['prices.view', 'prices.update', 'prices.moderate', 'prices.import'],
+        'vehicles' => ['vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete'],
+        'fleet' => ['fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers'],
+        'drivers' => ['drivers.view', 'drivers.manage'],
+        'expenses' => ['expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete'],
+        'maintenance' => ['maintenance.view', 'maintenance.manage'],
+        'fraud' => ['fraud.view', 'fraud.resolve'],
+        'reports' => ['reports.view', 'reports.platform', 'station.reports'],
+        'analytics' => ['analytics.view', 'analytics.platform'],
+        'ai' => ['ai.use', 'ai.manage'],
+        'audit' => ['audit.view'],
+        'settings' => ['settings.manage'],
+    ];
+
+    /** @var array<string, array{label: string, level: int, permissions: list<string>|string}> */
+    private const ROLES = [
+        'super_admin' => [
+            'label' => 'Super Administrator',
+            'level' => 1,
+            'permissions' => '*',
+        ],
+        'system_admin' => [
+            'label' => 'System Administrator',
+            'level' => 2,
+            // Everything except the ability to mint other administrators.
+            'permissions' => 'all_except:users.impersonate,roles.manage',
+        ],
+        'station_admin' => [
+            'label' => 'Gas Station Administrator',
+            'level' => 3,
+            'permissions' => [
+                'stations.view', 'stations.update', 'prices.view', 'prices.update',
+                'station.reports', 'analytics.view', 'ai.use',
+            ],
+        ],
+        'fleet_manager' => [
+            'label' => 'Fleet Manager',
+            'level' => 4,
+            'permissions' => [
+                'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
+                'fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers',
+                'drivers.view', 'drivers.manage',
+                'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
+                'maintenance.view', 'maintenance.manage',
+                'fraud.view', 'fraud.resolve',
+                'reports.view', 'analytics.view', 'prices.view', 'stations.view', 'ai.use',
+            ],
+        ],
+        'company_manager' => [
+            'label' => 'Company Manager',
+            'level' => 4,
+            'permissions' => [
+                'users.view', 'vehicles.view', 'vehicles.create', 'vehicles.update',
+                'fleet.view', 'fleet.manage', 'fleet.reports',
+                'drivers.view', 'drivers.manage',
+                'expenses.view', 'expenses.create', 'expenses.update',
+                'maintenance.view', 'maintenance.manage',
+                'fraud.view', 'reports.view', 'analytics.view',
+                'prices.view', 'stations.view', 'ai.use',
+            ],
+        ],
+        'driver' => [
+            'label' => 'Driver',
+            'level' => 6,
+            'permissions' => [
+                'vehicles.view', 'expenses.view', 'expenses.create',
+                'maintenance.view', 'prices.view', 'stations.view', 'ai.use',
+            ],
+        ],
+        'user' => [
+            'label' => 'Registered User',
+            'level' => 7,
+            'permissions' => [
+                'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
+                'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
+                'maintenance.view', 'maintenance.manage',
+                'prices.view', 'stations.view', 'reports.view', 'analytics.view', 'ai.use',
+            ],
+        ],
+        'guest' => [
+            'label' => 'Guest User',
+            'level' => 9,
+            'permissions' => ['prices.view', 'stations.view'],
+        ],
+    ];
+
+    public function run(): void
+    {
+        Artisan::call('cache:clear');
+
+        $all = [];
+
+        foreach (self::PERMISSIONS as $group => $names) {
+            foreach ($names as $name) {
+                Permission::updateOrCreate(
+                    ['name' => $name, 'guard_name' => 'api'],
+                    ['group_name' => $group],
+                );
+
+                $all[] = $name;
+            }
+        }
+
+        foreach (self::ROLES as $name => $definition) {
+            $role = Role::updateOrCreate(
+                ['name' => $name, 'guard_name' => 'api'],
+                ['label' => $definition['label'], 'level' => $definition['level']],
+            );
+
+            $role->syncPermissions($this->resolve($definition['permissions'], $all));
+        }
+
+        app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
+
+        $this->command?->info(sprintf(
+            'Seeded %d permissions across %d roles.',
+            count($all),
+            count(self::ROLES),
+        ));
+    }
+
+    /**
+     * @param  list<string>|string  $spec
+     * @param  list<string>  $all
+     * @return list<string>
+     */
+    private function resolve(array|string $spec, array $all): array
+    {
+        if ($spec === '*') {
+            return $all;
+        }
+
+        if (is_string($spec) && str_starts_with($spec, 'all_except:')) {
+            $excluded = explode(',', substr($spec, strlen('all_except:')));
+
+            return array_values(array_diff($all, $excluded));
+        }
+
+        return (array) $spec;
+    }
+}

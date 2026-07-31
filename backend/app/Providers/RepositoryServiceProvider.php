@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Providers;
+
+use App\Domain\Pricing\Repositories\PriceRepository;
+use App\Domain\Station\Repositories\GasStationRepository;
+use App\Domain\User\Repositories\UserRepository;
+use App\Domain\Vehicle\Repositories\VehicleRepository;
+use App\Support\Contracts\RepositoryInterface;
+use Illuminate\Support\ServiceProvider;
+
+/**
+ * Repositories are singletons: they are stateless and their construction is
+ * not free (each resolves a model class and its filter allow-lists).
+ */
+class RepositoryServiceProvider extends ServiceProvider
+{
+    /** @var array<class-string<RepositoryInterface>> */
+    private const REPOSITORIES = [
+        UserRepository::class,
+        VehicleRepository::class,
+        GasStationRepository::class,
+        PriceRepository::class,
+    ];
+
+    public function register(): void
+    {
+        foreach (self::REPOSITORIES as $repository) {
+            $this->app->singleton($repository);
+        }
+    }
+
+    public function provides(): array
+    {
+        return self::REPOSITORIES;
+    }
+}

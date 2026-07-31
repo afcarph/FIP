@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+    paths:
+        - app
+        - database/seeders
+        - routes
+
+    ignoreErrors:
+        # Eloquent's dynamic relations defeat static analysis in a few spots.
+        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder#'
+        - '#Access to an undefined property Illuminate\\Database\\Eloquent\\Model::#'
+
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false

@@ -1,0 +1,62 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class VehicleResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'nickname' => $this->nickname,
+            'display_name' => $this->display_name,
+            'plate_number' => $this->plate_number,
+            'vehicle_type' => $this->vehicle_type,
+            'year' => $this->year,
+            'color' => $this->color,
+            'transmission' => $this->transmission,
+            'make' => $this->whenLoaded('make', fn () => $this->make?->name),
+            'model' => $this->whenLoaded('model', fn () => $this->model?->name),
+            'fuel_type' => $this->whenLoaded('fuelType', fn () => [
+                'id' => $this->fuelType?->id,
+                'name' => $this->fuelType?->name,
+                'code' => $this->fuelType?->code,
+                'color_hex' => $this->fuelType?->color_hex,
+            ]),
+            'fleet' => $this->whenLoaded('fleet', fn () => $this->fleet ? ['id' => $this->fleet->id, 'name' => $this->fleet->name] : null),
+            'tank_capacity' => $this->tank_capacity,
+            'current_odometer' => $this->current_odometer,
+            'efficiency' => [
+                'baseline_km_per_litre' => $this->baseline_km_per_litre,
+                'avg_km_per_litre' => $this->avg_km_per_litre,
+                'deviation_pct' => $this->efficiencyDeviationPct(),
+                'estimated_range_km' => $this->estimatedRangeKm(),
+            ],
+            'documents' => [
+                'registration_expiry' => $this->registration_expiry?->toDateString(),
+                'insurance_provider' => $this->insurance_provider,
+                'insurance_expiry' => $this->insurance_expiry?->toDateString(),
+                'registration_expires_in_days' => $this->registration_expiry?->diffInDays(now(), false) * -1,
+                'insurance_expires_in_days' => $this->insurance_expiry?->diffInDays(now(), false) * -1,
+            ],
+            'assigned_driver' => $this->whenLoaded('currentAssignment', fn () => $this->currentAssignment?->driver
+                ? ['id' => $this->currentAssignment->driver->id, 'name' => $this->currentAssignment->driver->full_name]
+                : null),
+            'maintenance' => $this->whenLoaded('maintenanceSchedules', fn () => $this->maintenanceSchedules
+                ->whereIn('status', ['due_soon', 'overdue'])
+                ->map(static fn ($s) => [
+                    'service' => $s->type?->name,
+                    'status' => $s->status,
+                    'due_at' => $s->due_at?->toDateString(),
+                ])->values()),
+            'status' => $this->status,
+            'photo_path' => $this->photo_path,
+            'created_at' => $this->created_at?->toIso8601String(),
+        ];
+    }
+}

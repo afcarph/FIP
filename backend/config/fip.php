@@ -1,0 +1,118 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+|---------------------------------------------------------------------------
+| Fuel Intelligence Platform — domain configuration
+|---------------------------------------------------------------------------
+| Business rules that operations may want to tune without a code change.
+| Anything here can be overridden per-environment through .env, and the
+| admin console persists overrides into the `settings` table which the
+| SettingsRepository merges on top of these defaults at runtime.
+*/
+
+return [
+
+    'pricing' => [
+        // A crowd report from a user whose trust score is at or above this
+        // value is published immediately instead of queuing for moderation.
+        'crowd_auto_approve_trust' => (float) env('FIP_CROWD_AUTO_APPROVE_TRUST', 0.80),
+
+        // Reject any submission deviating more than this fraction from the
+        // prevailing city median for the same fuel type.
+        'max_price_deviation_pct' => (float) env('FIP_MAX_PRICE_DEVIATION', 0.15),
+
+        // A report must be geotagged within this radius of the station.
+        'max_report_distance_m' => (int) env('FIP_MAX_REPORT_DISTANCE_M', 500),
+
+        // Prices older than this are shown as "stale" in the UI.
+        'stale_after_hours' => (int) env('FIP_PRICE_STALE_HOURS', 72),
+
+        // Two matching independent reports promote a pending price to live.
+        'corroborations_required' => (int) env('FIP_CORROBORATIONS', 2),
+
+        'default_radius_km' => 5.0,
+        'max_radius_km' => 50.0,
+    ],
+
+    'forecast' => [
+        'horizon_weeks' => (int) env('FIP_FORECAST_HORIZON_WEEKS', 4),
+        'min_confidence' => (float) env('FIP_MIN_FORECAST_CONFIDENCE', 0.60),
+        // DOE adjustments take effect 06:00 every Tuesday.
+        'effective_day_of_week' => 2,
+        'effective_time' => '06:00',
+        'cache_ttl' => 3600,
+    ],
+
+    'fraud' => [
+        // Litres above tank capacity × (1 + tolerance) ⇒ overfill alert.
+        'overfill_tolerance_pct' => (float) env('FIP_OVERFILL_TOLERANCE', 0.05),
+        // Efficiency this many sigma from the vehicle baseline ⇒ alert.
+        'efficiency_sigma_threshold' => (float) env('FIP_EFFICIENCY_SIGMA', 3.0),
+        // Two fill-ups closer than this are suspicious.
+        'min_minutes_between_fills' => (int) env('FIP_MIN_MINUTES_BETWEEN_FILLS', 30),
+        'score_threshold' => (float) env('FIP_FRAUD_SCORE_THRESHOLD', 0.65),
+        'severity_bands' => ['low' => 0.65, 'medium' => 0.75, 'high' => 0.85, 'critical' => 0.95],
+    ],
+
+    'maintenance' => [
+        'due_soon_days' => (int) env('FIP_MAINTENANCE_DUE_SOON_DAYS', 14),
+        'due_soon_km' => (int) env('FIP_MAINTENANCE_DUE_SOON_KM', 500),
+        'document_reminder_days' => [60, 30, 14, 7, 1],
+    ],
+
+    'expenses' => [
+        // Fill-ups older than this cannot be edited by a driver.
+        'edit_window_hours' => (int) env('FIP_EXPENSE_EDIT_WINDOW', 48),
+        'currency' => 'PHP',
+        'currency_symbol' => '₱',
+    ],
+
+    'ocr' => [
+        'min_confidence' => (float) env('FIP_OCR_MIN_CONFIDENCE', 0.75),
+        'auto_submit_confidence' => (float) env('FIP_OCR_AUTO_SUBMIT_CONFIDENCE', 0.90),
+        'max_image_mb' => 8,
+        'allowed_mimes' => ['image/jpeg', 'image/png', 'image/webp', 'image/heic'],
+    ],
+
+    'routing' => [
+        'max_waypoints' => 8,
+        'max_detour_km' => 10.0,
+        'alternatives' => 3,
+    ],
+
+    'reports' => [
+        'max_rows_sync' => 5_000,   // beyond this the export is queued
+        'retention_days' => 30,
+        'formats' => ['pdf', 'xlsx', 'csv', 'json'],
+    ],
+
+    'rate_limits' => [
+        'auth' => env('FIP_RL_AUTH', '10,1'),          // requests, minutes
+        'public' => env('FIP_RL_PUBLIC', '60,1'),
+        'authenticated' => env('FIP_RL_AUTH_USER', '120,1'),
+        'ai' => env('FIP_RL_AI', '20,1'),
+        'ocr' => env('FIP_RL_OCR', '10,1'),
+        'reports' => env('FIP_RL_REPORTS', '10,5'),
+    ],
+
+    'security' => [
+        'max_failed_logins' => (int) env('FIP_MAX_FAILED_LOGINS', 5),
+        'lockout_minutes' => (int) env('FIP_LOCKOUT_MINUTES', 15),
+        'password_min_length' => 12,
+        'mfa_window' => 1,
+        'audit_retention_days' => 365,
+    ],
+
+    'roles' => [
+        'super_admin' => 'super_admin',
+        'system_admin' => 'system_admin',
+        'station_admin' => 'station_admin',
+        'fleet_manager' => 'fleet_manager',
+        'company_manager' => 'company_manager',
+        'driver' => 'driver',
+        'user' => 'user',
+        'guest' => 'guest',
+    ],
+];
