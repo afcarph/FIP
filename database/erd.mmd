@@ -1,0 +1,88 @@
+%% Fuel Intelligence Platform — Entity Relationship Diagram (Mermaid)
+%% Render: https://mermaid.live  or  `mmdc -i erd.mmd -o erd.svg`
+erDiagram
+    REGIONS      ||--o{ PROVINCES        : contains
+    PROVINCES    ||--o{ CITIES           : contains
+    CITIES       ||--o{ GAS_STATIONS     : hosts
+    CITIES       ||--o{ COMPANIES        : "based in"
+    CITIES       ||--o{ USERS            : "home city"
+
+    COMPANIES    ||--o{ USERS            : employs
+    COMPANIES    ||--o{ FLEETS           : owns
+    COMPANIES    ||--o{ DRIVERS          : employs
+    COMPANIES    ||--o{ VEHICLES         : owns
+    COMPANIES    ||--o{ GAS_STATIONS     : operates
+
+    USERS        ||--o| USER_PREFERENCES : configures
+    USERS        ||--o{ USER_DEVICES     : registers
+    USERS        ||--o{ OAUTH_ACCOUNTS   : links
+    USERS        ||--o{ VEHICLES         : owns
+    USERS        ||--o{ FUEL_PURCHASES   : logs
+    USERS        ||--o{ PRICE_REPORTS    : submits
+    USERS        ||--o{ OCR_SCANS        : uploads
+    USERS        ||--o{ PRICE_ALERTS     : sets
+    USERS        ||--o{ NOTIFICATIONS    : receives
+    USERS        ||--o{ AI_CHAT_SESSIONS : starts
+    USERS        ||--o{ ROUTE_PLANS      : plans
+    USERS        ||--o{ REPORT_RUNS      : requests
+    USERS        ||--o{ AUDIT_LOGS       : generates
+    USERS        }o--o{ ROLES            : "model_has_roles"
+    ROLES        }o--o{ PERMISSIONS      : "role_has_permissions"
+
+    FLEETS       ||--o{ VEHICLES         : groups
+    FLEETS       ||--o{ DRIVERS          : staffs
+    FLEETS       ||--o{ TRIPS            : dispatches
+
+    VEHICLE_MAKES  ||--o{ VEHICLE_MODELS : offers
+    VEHICLE_MAKES  ||--o{ VEHICLES       : "manufactured by"
+    VEHICLE_MODELS ||--o{ VEHICLES       : "instance of"
+
+    VEHICLES     ||--o{ VEHICLE_ASSIGNMENTS : "assigned via"
+    DRIVERS      ||--o{ VEHICLE_ASSIGNMENTS : "assigned via"
+    VEHICLES     ||--o{ ODOMETER_READINGS   : records
+    VEHICLES     ||--o{ VEHICLE_DOCUMENTS   : holds
+    VEHICLES     ||--o{ FUEL_PURCHASES      : consumes
+    VEHICLES     ||--o{ TRIPS               : performs
+    VEHICLES     ||--o{ MAINTENANCE_RECORDS   : services
+    VEHICLES     ||--o{ MAINTENANCE_SCHEDULES : "is scheduled for"
+
+    MAINTENANCE_TYPES ||--o{ MAINTENANCE_RECORDS   : classifies
+    MAINTENANCE_TYPES ||--o{ MAINTENANCE_SCHEDULES : classifies
+
+    BRANDS       ||--o{ GAS_STATIONS     : brands
+    GAS_STATIONS ||--o{ STATION_PRICES   : quotes
+    GAS_STATIONS ||--o{ STATION_HOURS    : "opens on"
+    GAS_STATIONS ||--o{ STATION_PHOTOS   : shows
+    GAS_STATIONS ||--o{ STATION_RATINGS  : rated_by
+    GAS_STATIONS }o--o{ AMENITIES        : "station_amenity"
+    GAS_STATIONS }o--o{ PAYMENT_METHODS  : "station_payment_method"
+    GAS_STATIONS ||--o{ PRICE_REPORTS    : "reported for"
+    GAS_STATIONS ||--o{ OCR_SCANS        : "scanned at"
+    GAS_STATIONS ||--o{ FUEL_PURCHASES   : "sells at"
+    GAS_STATIONS ||--o{ FUEL_PRICE_HISTORY : archives
+
+    FUEL_TYPES   ||--o{ STATION_PRICES     : priced_as
+    FUEL_TYPES   ||--o{ FUEL_PRICE_HISTORY : priced_as
+    FUEL_TYPES   ||--o{ PRICE_ADVISORIES   : adjusts
+    FUEL_TYPES   ||--o{ PRICE_FORECASTS    : forecast_for
+    FUEL_TYPES   ||--o{ VEHICLES           : powers
+    FUEL_TYPES   ||--o{ FUEL_PURCHASES     : dispensed_as
+    FUEL_TYPES   ||--o{ PRICE_ALERTS       : watched_as
+
+    REGIONS      ||--o{ PRICE_ADVISORIES : "applies to"
+    REGIONS      ||--o{ PRICE_FORECASTS  : "applies to"
+
+    PRICE_REPORTS ||--o{ PRICE_REPORT_VOTES : "voted on"
+
+    AI_MODELS    ||--o{ PRICE_FORECASTS  : produces
+    AI_MODELS    ||--o{ AI_PREDICTIONS   : produces
+    AI_CHAT_SESSIONS ||--o{ AI_CHAT_MESSAGES : contains
+
+    FUEL_PURCHASES ||--o{ FRAUD_ALERTS   : triggers
+    DRIVERS        ||--o{ FRAUD_ALERTS   : "implicated in"
+
+    TRIPS        ||--o| ROUTE_PLANS      : "planned by"
+
+    REPORT_DEFINITIONS ||--o{ REPORT_RUNS : "instantiated as"
+    NOTIFICATION_TEMPLATES ||--o{ NOTIFICATIONS : renders
+    MARKET_INDICATORS ||--o{ PRICE_FORECASTS : "feeds (logical)"

@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+vendor/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pnp/
+.pnp.js
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/testing/*.key
+
+# Build output
+.next/
+out/
+dist/
+build/
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+public/hot
+public/storage
+bootstrap/cache/*.php
+
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/ios/Pods/
+mobile/android/.gradle/
+*.iml
+
+# AI artefacts
+ai-service/models/*.pkl
+ai-service/models/*.json
+ai-service/models/*.joblib
+!ai-service/models/.gitkeep
+
+# Tooling
+.DS_Store
+.idea/
+.vscode/
+coverage/
+.phpunit.result.cache
+.pytest_cache/
+*.log
