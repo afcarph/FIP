@@ -1,0 +1,11 @@
+{
+  "name": "Fuel Intelligence Platform",
+  "short_name": "FIP",
+  "description": "AI-powered fuel price intelligence for the Philippines",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "categories": ["travel", "utilities", "finance"]
+}

@@ -52,3 +52,7 @@ coverage/
 .phpunit.result.cache
 .pytest_cache/
 *.log
+
+# Next.js build metadata
+frontend/.next/
+frontend/next-env.d.ts

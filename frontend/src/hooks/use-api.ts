@@ -1,0 +1,282 @@
+'use client';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { api } from '@/lib/api-client';
+import type {
+  Advisory,
+  AssistantReply,
+  CheapestStation,
+  DashboardData,
+  ExecutiveDashboard,
+  ExpenseSummary,
+  FleetDashboard,
+  Forecast,
+  FuelPurchase,
+  FuelType,
+  HeatMapCell,
+  MonthlyPoint,
+  PriceComparison,
+  RefuelRecommendation,
+  RegionalMovement,
+  SavingsAnalysis,
+  Station,
+  TrendPoint,
+  Vehicle,
+} from '@/types/api';
+
+/**
+ * Query keys are declared in one place so an invalidation after a mutation
+ * cannot silently miss a cache entry.
+ */
+export const queryKeys = {
+  dashboard: ['dashboard'] as const,
+  fleetDashboard: (fleetId?: number) => ['dashboard', 'fleet', fleetId] as const,
+  executive: ['dashboard', 'executive'] as const,
+  fuelTypes: ['fuel-types'] as const,
+  stations: (filters: Record<string, unknown>) => ['stations', filters] as const,
+  nearby: (lat: number, lng: number, radius: number, fuelTypeId?: number) =>
+    ['stations', 'nearby', lat.toFixed(3), lng.toFixed(3), radius, fuelTypeId] as const,
+  cheapest: (lat: number, lng: number, fuelTypeId: number) =>
+    ['stations', 'cheapest', lat.toFixed(3), lng.toFixed(3), fuelTypeId] as const,
+  station: (slug: string) => ['stations', slug] as const,
+  comparison: (cityId?: number) => ['prices', 'comparison', cityId] as const,
+  trend: (fuelTypeId: number, days: number) => ['prices', 'trend', fuelTypeId, days] as const,
+  advisories: (fuelTypeId: number, weeks: number) => ['prices', 'advisories', fuelTypeId, weeks] as const,
+  heatMap: (fuelTypeId?: number) => ['prices', 'heat-map', fuelTypeId] as const,
+  regional: (fuelTypeId: number) => ['prices', 'regional', fuelTypeId] as const,
+  forecasts: ['forecasts'] as const,
+  vehicles: (filters?: Record<string, unknown>) => ['vehicles', filters] as const,
+  vehicle: (id: number) => ['vehicles', id] as const,
+  expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
+  expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
+  notifications: (unread: boolean) => ['notifications', unread] as const,
+};
+
+const FIVE_MINUTES = 5 * 60 * 1000;
+
+// ------------------------------------------------------------ dashboards ---
+
+export function useDashboard() {
+  return useQuery({
+    queryKey: queryKeys.dashboard,
+    queryFn: async () => (await api.get<DashboardData>('/dashboard')).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useFleetDashboard(fleetId?: number) {
+  return useQuery({
+    queryKey: queryKeys.fleetDashboard(fleetId),
+    queryFn: async () =>
+      (await api.get<FleetDashboard>('/fleet/dashboard', { fleet_id: fleetId })).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useExecutiveDashboard() {
+  return useQuery({
+    queryKey: queryKeys.executive,
+    queryFn: async () => (await api.get<ExecutiveDashboard>('/dashboard/executive')).data,
+    staleTime: FIVE_MINUTES,
+  });
+}
+
+// ---------------------------------------------------------------- prices ---
+
+export function useFuelTypes() {
+  return useQuery({
+    queryKey: queryKeys.fuelTypes,
+    queryFn: async () => (await api.get<FuelType[]>('/prices/fuel-types')).data,
+    // Reference data: effectively immutable within a session.
+    staleTime: Infinity,
+  });
+}
+
+export function usePriceComparison(cityId?: number) {
+  return useQuery({
+    queryKey: queryKeys.comparison(cityId),
+    queryFn: async () =>
+      (await api.get<PriceComparison[]>('/prices/comparison', { city_id: cityId })).data,
+    staleTime: FIVE_MINUTES,
+  });
+}
+
+export function usePriceTrend(fuelTypeId: number | undefined, days = 90) {
+  return useQuery({
+    queryKey: queryKeys.trend(fuelTypeId ?? 0, days),
+    queryFn: async () =>
+      (await api.get<TrendPoint[]>('/prices/trend', { fuel_type_id: fuelTypeId, days })).data,
+    enabled: Boolean(fuelTypeId),
+    staleTime: FIVE_MINUTES,
+  });
+}
+
+export function useAdvisories(fuelTypeId: number | undefined, weeks = 12) {
+  return useQuery({
+    queryKey: queryKeys.advisories(fuelTypeId ?? 0, weeks),
+    queryFn: async () =>
+      (await api.get<Advisory[]>('/prices/advisories', { fuel_type_id: fuelTypeId, weeks })).data,
+    enabled: Boolean(fuelTypeId),
+    staleTime: FIVE_MINUTES,
+  });
+}
+
+export function useHeatMap(fuelTypeId?: number) {
+  return useQuery({
+    queryKey: queryKeys.heatMap(fuelTypeId),
+    queryFn: async () =>
+      (await api.get<HeatMapCell[]>('/prices/heat-map', { fuel_type_id: fuelTypeId })).data,
+    staleTime: FIVE_MINUTES,
+  });
+}
+
+export function useRegionalMovement(fuelTypeId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.regional(fuelTypeId ?? 0),
+    queryFn: async () =>
+      (await api.get<RegionalMovement[]>('/prices/regional-movement', { fuel_type_id: fuelTypeId })).data,
+    enabled: Boolean(fuelTypeId),
+    staleTime: FIVE_MINUTES,
+  });
+}
+
+export function useForecasts() {
+  return useQuery({
+    queryKey: queryKeys.forecasts,
+    queryFn: async () => (await api.get<Forecast[]>('/forecasts')).data,
+    staleTime: 30 * 60 * 1000,   // regenerated weekly; no need to poll
+  });
+}
+
+// -------------------------------------------------------------- stations ---
+
+export function useNearbyStations(
+  lat: number,
+  lng: number,
+  radiusKm = 5,
+  fuelTypeId?: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: queryKeys.nearby(lat, lng, radiusKm, fuelTypeId),
+    queryFn: async () =>
+      (
+        await api.get<Station[]>('/stations/nearby', {
+          latitude: lat,
+          longitude: lng,
+          radius_km: radiusKm,
+          fuel_type_id: fuelTypeId,
+        })
+      ).data,
+    enabled: enabled && Number.isFinite(lat) && Number.isFinite(lng),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useCheapestStations(lat: number, lng: number, fuelTypeId: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.cheapest(lat, lng, fuelTypeId ?? 0),
+    queryFn: async () =>
+      (
+        await api.get<CheapestStation[]>('/stations/cheapest', {
+          latitude: lat,
+          longitude: lng,
+          fuel_type_id: fuelTypeId,
+          limit: 10,
+        })
+      ).data,
+    enabled: Boolean(fuelTypeId) && Number.isFinite(lat),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useStation(slug: string) {
+  return useQuery({
+    queryKey: queryKeys.station(slug),
+    queryFn: async () => (await api.get<Station>(`/stations/${slug}`)).data,
+    enabled: Boolean(slug),
+  });
+}
+
+// -------------------------------------------------------------- vehicles ---
+
+export function useVehicles(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.vehicles(filters),
+    queryFn: async () => (await api.get<Vehicle[]>('/vehicles', filters as never)).data,
+  });
+}
+
+export function useVehicle(id: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.vehicle(id ?? 0),
+    queryFn: async () => (await api.get<Vehicle>(`/vehicles/${id}`)).data,
+    enabled: Boolean(id),
+  });
+}
+
+// -------------------------------------------------------------- expenses ---
+
+export function useExpenses(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.expenses(filters),
+    queryFn: async () => (await api.get<FuelPurchase[]>('/expenses', filters as never)).data,
+  });
+}
+
+export function useExpenseSummary(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.expenseSummary(filters),
+    queryFn: async () =>
+      (
+        await api.get<{
+          summary: ExpenseSummary;
+          monthly_series: MonthlyPoint[];
+          savings: SavingsAnalysis;
+        }>('/expenses/summary', filters as never)
+      ).data,
+  });
+}
+
+export function useLogFillUp() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.post<FuelPurchase>('/expenses', payload)).data,
+    onSuccess: () => {
+      // A fill-up changes spend, efficiency and the dashboard tiles at once.
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+  });
+}
+
+// ------------------------------------------------------------- assistant ---
+
+export function useAskAssistant() {
+  return useMutation({
+    mutationFn: async (payload: {
+      question: string;
+      session_id?: number;
+      latitude?: number;
+      longitude?: number;
+    }) => (await api.post<AssistantReply>('/assistant/chat', payload)).data,
+  });
+}
+
+export function useRefuelRecommendation(vehicleId?: number, tankLevelPct?: number) {
+  return useQuery({
+    queryKey: ['assistant', 'should-i-refuel', vehicleId, tankLevelPct],
+    queryFn: async () =>
+      (
+        await api.get<RefuelRecommendation>('/assistant/should-i-refuel', {
+          vehicle_id: vehicleId,
+          tank_level_pct: tankLevelPct,
+        })
+      ).data,
+    staleTime: 30 * 60 * 1000,
+  });
+}

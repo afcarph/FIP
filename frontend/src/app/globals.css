@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens.
+ *
+ * Both themes define the same variable names, so every component is written
+ * once and renders correctly in either. Dark mode is not an inversion — the
+ * surfaces are re-picked so that contrast ratios stay above 4.5:1 for body
+ * text and 3:1 for large text and UI chrome.
+ */
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+
+    /* Price movement. Up is bad news for a motorist, so it takes the warm
+       colour; down takes the cool one. */
+    --price-up: 0 72% 51%;
+    --price-down: 142 71% 40%;
+    --price-flat: 215 16% 47%;
+
+    /* Categorical chart series, checked for distinguishability under the
+       three common colour-vision deficiencies. */
+    --chart-1: 221 83% 53%;
+    --chart-2: 142 71% 40%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 271 81% 56%;
+    --chart-5: 199 89% 48%;
+    --chart-6: 340 75% 55%;
+
+    --radius: 0.75rem;
+
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    /* Glass surfaces are tuned per theme: a light frost over a light page,
+       a dark frost over a dark one. Reusing one value looks wrong in both. */
+    --glass-bg: 0 0% 100% / 0.72;
+    --glass-border: 214 32% 91% / 0.8;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 44% 10%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 44% 10%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 19%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 63% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 217 91% 60%;
+
+    /* Saturation is lifted slightly in dark mode; the same hues read as
+       muddy against a dark surface otherwise. */
+    --price-up: 0 84% 63%;
+    --price-down: 142 69% 52%;
+    --price-flat: 215 20% 65%;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 142 69% 52%;
+    --chart-3: 38 95% 58%;
+    --chart-4: 271 85% 68%;
+    --chart-5: 199 90% 58%;
+    --chart-6: 340 82% 66%;
+
+    --glass-bg: 222 44% 12% / 0.72;
+    --glass-border: 217 33% 24% / 0.8;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'tnum' 1;
+  }
+
+  /* Tabular figures everywhere a price or a total appears, so digits line up
+     in columns and a changing value does not shift the layout. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Respect the user's motion preference — animation here is decoration. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* A visible focus ring is a requirement, not a preference. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  ::selection {
+    @apply bg-primary/20;
+  }
+}
+
+@layer components {
+  /**
+   * Glassmorphism. The backdrop blur is the effect; the border and the
+   * semi-opaque fill are what keep text legible over whatever sits behind.
+   * Without the fill, body copy over a busy map becomes unreadable.
+   */
+  .glass {
+    background: hsl(var(--glass-bg));
+    border: 1px solid hsl(var(--glass-border));
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+  }
+
+  .glass-strong {
+    background: hsl(var(--glass-bg));
+    border: 1px solid hsl(var(--glass-border));
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+  }
+
+  /* Browsers without backdrop-filter get an opaque surface rather than
+     unreadable transparent text. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass,
+    .glass-strong {
+      background: hsl(var(--card));
+    }
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glass-lg;
+  }
+
+  /* Skeleton shimmer for loading states. */
+  .skeleton {
+    @apply relative overflow-hidden bg-muted;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    content: '';
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--foreground) / 0.06),
+      transparent
+    );
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/30;
+  }
+}
