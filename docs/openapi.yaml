@@ -1,0 +1,1147 @@
+openapi: 3.0.3
+
+info:
+  title: Fuel Intelligence Platform API
+  version: 1.0.0
+  description: |
+    AI-powered fuel price intelligence, expense optimisation and fleet
+    management for the Philippine market.
+
+    ## Response envelope
+
+    Every response shares one shape, so a client writes one parser.
+
+    Success:
+    ```json
+    { "success": true, "data": {}, "meta": { "request_id": "…" } }
+    ```
+
+    Failure:
+    ```json
+    { "success": false, "error": { "code": "…", "message": "…", "details": {} } }
+    ```
+
+    **Branch on `error.code`, never on `error.message`.** Codes are contract;
+    messages are written for humans and will be reworded.
+
+    ## Authentication
+
+    `Authorization: Bearer <jwt>`. Access tokens live 60 minutes; refresh
+    tokens 14 days.
+
+    ## Tracing
+
+    Send `X-Request-Id` and it is echoed back and written to the audit trail.
+    Quote it in support requests.
+  contact:
+    name: FIP Engineering
+    email: api@fip.ph
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.fip.ph/api/v1
+    description: Production
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+tags:
+  - name: Authentication
+    description: Registration, sign-in, MFA and session lifecycle
+  - name: Prices
+    description: Live prices, history, comparison and heat map
+  - name: Stations
+    description: Directory, proximity search and ratings
+  - name: Forecasts
+    description: AI weekly pump-price predictions and their track record
+  - name: Vehicles
+    description: Vehicle registry, odometer and documents
+  - name: Expenses
+    description: Fuel purchase log and spend analytics
+  - name: Crowd Reports
+    description: Community price, shortage and queue reports
+  - name: OCR
+    description: Price board scanning
+  - name: AI Advisor
+    description: Conversational assistant and decision helpers
+  - name: Fleet
+    description: Fleets, drivers, assignments and fraud alerts
+  - name: Reports
+    description: Report generation and export
+  - name: Admin
+    description: Moderation, users, audit and AI model management
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ------------------------------------------------------- authentication ---
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Create an account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, email, password, password_confirmation, accepts_terms]
+              properties:
+                first_name: { type: string, maxLength: 80, example: Ella }
+                last_name: { type: string, maxLength: 80, example: Santos }
+                email: { type: string, format: email }
+                password:
+                  type: string
+                  format: password
+                  minLength: 12
+                  description: |
+                    At least 12 characters with mixed case, a number and a
+                    symbol. Checked against known breach corpora and rejected
+                    if it appears in one.
+                password_confirmation: { type: string, format: password }
+                accepts_terms: { type: boolean, example: true }
+      responses:
+        '201':
+          description: Account created and signed in
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data: { $ref: '#/components/schemas/Session' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Sign in with email and password
+      security: []
+      description: |
+        Returns a session, or an MFA challenge when the account has two-factor
+        authentication enabled.
+
+        An unknown address and a wrong password produce an identical response
+        and comparable timing, so this endpoint cannot be used to enumerate
+        accounts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                device:
+                  type: object
+                  properties:
+                    device_uuid: { type: string, maxLength: 64 }
+                    device_name: { type: string }
+                    platform: { type: string, enum: [web, ios, android] }
+                    fcm_token: { type: string }
+      responses:
+        '200':
+          description: Signed in, or an MFA challenge
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - allOf:
+                      - $ref: '#/components/schemas/Envelope'
+                      - properties: { data: { $ref: '#/components/schemas/Session' } }
+                  - allOf:
+                      - $ref: '#/components/schemas/Envelope'
+                      - properties: { data: { $ref: '#/components/schemas/MfaChallenge' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '423':
+          description: Account temporarily locked after repeated failures
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /auth/mfa/verify:
+    post:
+      tags: [Authentication]
+      summary: Complete an MFA challenge
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_token, code]
+              properties:
+                challenge_token: { type: string, minLength: 64, maxLength: 64 }
+                code:
+                  type: string
+                  description: Six-digit TOTP code, or an eleven-character recovery code.
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties: { data: { $ref: '#/components/schemas/Session' } }
+        '410':
+          description: The challenge expired; start the sign-in again
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Current profile, roles and permissions
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data:
+                        type: object
+                        properties:
+                          user: { $ref: '#/components/schemas/User' }
+                          roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+                          permissions: { type: array, items: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Exchange a valid token for a fresh one
+      responses:
+        '200':
+          description: New access token
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Invalidate the current token
+      description: The token is blacklisted until its natural expiry.
+      responses:
+        '204': { description: Signed out }
+
+  # -------------------------------------------------------------- prices ---
+  /prices/fuel-types:
+    get:
+      tags: [Prices]
+      summary: Fuel type reference list
+      security: []
+      responses:
+        '200':
+          description: Active fuel types
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/FuelType' } }
+
+  /prices/comparison:
+    get:
+      tags: [Prices]
+      summary: Minimum, average, maximum and spread per fuel type
+      security: []
+      description: |
+        The `spread` column is the actionable one — it is the money a driver
+        can save today by choosing a different station, before any forecast is
+        involved.
+      parameters:
+        - { name: city_id, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: Comparison matrix
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/PriceComparison' } }
+
+  /prices/trend:
+    get:
+      tags: [Prices]
+      summary: National daily average price series
+      security: []
+      parameters:
+        - { name: fuel_type_id, in: query, required: true, schema: { type: integer } }
+        - { name: days, in: query, schema: { type: integer, default: 90, minimum: 7, maximum: 730 } }
+      responses:
+        '200':
+          description: Time series with the daily min–max band
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /prices/advisories:
+    get:
+      tags: [Prices]
+      summary: Weekly DOE adjustment history
+      security: []
+      parameters:
+        - { name: fuel_type_id, in: query, required: true, schema: { type: integer } }
+        - { name: weeks, in: query, schema: { type: integer, default: 12, maximum: 104 } }
+        - { name: region_id, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Advisory history }
+
+  /prices/heat-map:
+    get:
+      tags: [Prices]
+      summary: City-level price aggregates for map shading
+      security: []
+      parameters:
+        - { name: fuel_type_id, in: query, schema: { type: integer } }
+        - { name: region_id, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Heat map cells }
+
+  # ------------------------------------------------------------ stations ---
+  /stations:
+    get:
+      tags: [Stations]
+      summary: Browse the station directory
+      security: []
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: brand_id, in: query, schema: { type: integer } }
+        - { name: city_id, in: query, schema: { type: integer } }
+        - { name: fuel_type_id, in: query, schema: { type: integer } }
+        - { name: has_ev_charging, in: query, schema: { type: boolean } }
+        - { name: per_page, in: query, schema: { type: integer, default: 15, maximum: 100 } }
+      responses:
+        '200':
+          description: Paginated stations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/Station' } }
+
+  /stations/nearby:
+    get:
+      tags: [Stations]
+      summary: Stations within a radius, nearest first
+      security: []
+      description: |
+        Each row carries `distance_km`. Results are ordered by distance; sort
+        client-side by price where that is what the screen needs.
+      parameters:
+        - { name: latitude, in: query, required: true, schema: { type: number, format: double, minimum: -90, maximum: 90 } }
+        - { name: longitude, in: query, required: true, schema: { type: number, format: double, minimum: -180, maximum: 180 } }
+        - { name: radius_km, in: query, schema: { type: number, default: 5, maximum: 50 } }
+        - { name: fuel_type_id, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer, default: 25, maximum: 100 } }
+      responses:
+        '200':
+          description: Nearby stations with distance and live prices
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /stations/cheapest:
+    get:
+      tags: [Stations]
+      summary: Cheapest stations nearby for one fuel type
+      security: []
+      parameters:
+        - { name: latitude, in: query, required: true, schema: { type: number, format: double } }
+        - { name: longitude, in: query, required: true, schema: { type: number, format: double } }
+        - { name: fuel_type_id, in: query, required: true, schema: { type: integer } }
+        - { name: radius_km, in: query, schema: { type: number, default: 5 } }
+      responses:
+        '200': { description: Ranked by price, then by distance }
+
+  /stations/{slug}:
+    get:
+      tags: [Stations]
+      summary: Station detail
+      security: []
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Station
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties: { data: { $ref: '#/components/schemas/Station' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /stations/{station}/prices:
+    put:
+      tags: [Prices]
+      summary: Operator updates a station's board prices
+      description: |
+        Operator prices are authoritative — they outrank crowd and OCR data and
+        will not be displaced by them while fresh.
+      parameters:
+        - { name: station, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prices]
+              properties:
+                prices:
+                  type: array
+                  minItems: 1
+                  maxItems: 12
+                  items:
+                    type: object
+                    required: [fuel_type_id, price]
+                    properties:
+                      fuel_type_id: { type: integer }
+                      price: { type: number, format: double, minimum: 0.01, maximum: 999.99 }
+      responses:
+        '200': { description: Prices recorded }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ----------------------------------------------------------- forecasts ---
+  /forecasts:
+    get:
+      tags: [Forecasts]
+      summary: Latest forecast per fuel type
+      security: []
+      responses:
+        '200':
+          description: Forecasts with direction, confidence and ranked drivers
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/Forecast' } }
+
+  /forecasts/accuracy:
+    get:
+      tags: [Forecasts]
+      summary: Published model accuracy
+      security: []
+      description: |
+        Computed only over forecasts that have been scored against an actual
+        DOE adjustment. A forecast product that never publishes its error rate
+        is asking users to trust an unfalsifiable claim.
+      parameters:
+        - { name: weeks, in: query, schema: { type: integer, default: 26 } }
+      responses:
+        '200':
+          description: Mean absolute error and direction accuracy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data:
+                        type: object
+                        properties:
+                          samples: { type: integer, example: 48 }
+                          mae: { type: number, format: double, example: 0.214, nullable: true }
+                          direction_accuracy: { type: number, format: double, example: 0.842, nullable: true }
+
+  # ------------------------------------------------------------ vehicles ---
+  /vehicles:
+    get:
+      tags: [Vehicles]
+      summary: List vehicles visible to the caller
+      description: Scoped to the caller's tenant; a null user yields no rows.
+      responses:
+        '200':
+          description: Paginated vehicles
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - properties:
+                      data: { type: array, items: { $ref: '#/components/schemas/Vehicle' } }
+    post:
+      tags: [Vehicles]
+      summary: Register a vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehicleInput' }
+      responses:
+        '201': { description: Created, with a maintenance schedule bootstrapped }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /vehicles/{vehicle}/odometer:
+    post:
+      tags: [Vehicles]
+      summary: Record an odometer reading
+      parameters:
+        - { name: vehicle, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reading]
+              properties:
+                reading: { type: number, format: double, minimum: 0 }
+                recorded_at: { type: string, format: date-time }
+      responses:
+        '201': { description: Reading recorded; maintenance statuses refreshed }
+        '422':
+          description: The reading is below the last recorded value
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  # ------------------------------------------------------------ expenses ---
+  /expenses:
+    get:
+      tags: [Expenses]
+      summary: List fuel purchases
+      parameters:
+        - { name: vehicle_id, in: query, schema: { type: integer } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Paginated purchases }
+    post:
+      tags: [Expenses]
+      summary: Log a fill-up
+      description: |
+        Derives `distance_since_last`, `km_per_litre` and `cost_per_km` from
+        the previous full-tank fill-up, at write time. Two validations run
+        first: the total must be within ₱1 or 2% of litres × price, and the
+        odometer must not be below the previous reading.
+
+        Efficiency is only computed between two full tanks — a partial fill
+        returns a null `km_per_litre` rather than an invented figure.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FuelPurchaseInput' }
+      responses:
+        '201':
+          description: Recorded, with derived metrics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties: { data: { $ref: '#/components/schemas/FuelPurchase' } }
+        '422':
+          description: Inconsistent total or an odometer rollback
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /expenses/summary:
+    get:
+      tags: [Expenses]
+      summary: Spend, litres, efficiency and savings for a period
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: vehicle_id, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Summary, monthly series and savings analysis }
+
+  # ------------------------------------------------------- crowd sourcing ---
+  /reports:
+    get:
+      tags: [Crowd Reports]
+      summary: Published community reports
+      security: []
+      responses:
+        '200': { description: Paginated reports }
+    post:
+      tags: [Crowd Reports]
+      summary: Submit a community report
+      description: |
+        Two hard gates run before moderation, and a failure at either rejects
+        the submission outright:
+
+        * **Geofence** — the report must be filed within 500 m of the station.
+        * **Price band** — the price must be within 15% of the city median.
+
+        A reporter whose trust score clears the configured floor publishes
+        immediately. Two independent reporters agreeing also publishes without
+        a moderator.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [station_id, report_type]
+              properties:
+                station_id: { type: integer }
+                report_type:
+                  type: string
+                  enum: [price, shortage, closure, long_queue, wrong_info]
+                fuel_type_id: { type: integer, description: Required when report_type is "price". }
+                price: { type: number, format: double, description: Required when report_type is "price". }
+                latitude: { type: number, format: double }
+                longitude: { type: number, format: double }
+                comment: { type: string, maxLength: 500 }
+      responses:
+        '201': { description: Submitted; may publish immediately }
+        '422':
+          description: Outside the geofence or the local price band
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+              example:
+                success: false
+                error:
+                  code: report_too_far
+                  message: You are 1240 m from the station; reports must be filed within 500 m.
+                  details: { distance_m: 1240, allowed_m: 500 }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /ocr/scan:
+    post:
+      tags: [OCR]
+      summary: Upload a price board photo for extraction
+      description: |
+        Returns every recognised line with its own confidence, and lists what
+        was skipped with a reason. Validation against the local price band
+        happens here too, so a misplaced decimal point never reaches the live
+        price table.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image: { type: string, format: binary }
+                station_id: { type: integer }
+      responses:
+        '201':
+          description: Scan result with per-line confidence
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties: { data: { $ref: '#/components/schemas/OcrScan' } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  # ---------------------------------------------------------- ai advisor ---
+  /assistant/chat:
+    post:
+      tags: [AI Advisor]
+      summary: Ask the fuel advisor a question
+      description: |
+        Answers are grounded in a factual snapshot of the caller's own data —
+        their vehicles, recent spend, live nearby prices and this week's
+        forecast. The `sources` array names where the facts came from.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, minLength: 3, maxLength: 1000, example: 'Should I refuel today?' }
+                session_id: { type: integer }
+                latitude: { type: number, format: double }
+                longitude: { type: number, format: double }
+      responses:
+        '200':
+          description: Grounded answer with sources and follow-up suggestions
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /assistant/should-i-refuel:
+    get:
+      tags: [AI Advisor]
+      summary: Refuel-now-or-wait recommendation
+      description: |
+        Deliberately deterministic — the answer is arithmetic on the forecast
+        and the vehicle's tank, so the same question always produces the same
+        result. It does not pass through the language model.
+      parameters:
+        - { name: vehicle_id, in: query, schema: { type: integer } }
+        - { name: tank_level_pct, in: query, schema: { type: number, minimum: 0, maximum: 100 } }
+      responses:
+        '200':
+          description: Recommendation with the peso impact
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data:
+                        type: object
+                        properties:
+                          recommendation:
+                            type: string
+                            enum: [refuel_now, wait, neutral, no_strong_signal]
+                          headline: { type: string }
+                          confidence: { type: number, format: double, nullable: true }
+                          estimated_impact: { type: number, format: double, nullable: true }
+
+  /routes/optimize:
+    post:
+      tags: [AI Advisor]
+      summary: Plan a route optimised for cost, time or fuel
+      description: |
+        "Cheapest" means the total cost of the journey — fuel plus tolls plus
+        the detour needed to reach a cheap station — not simply the lowest
+        pump price.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [origin_label, destination_label, origin_lat, origin_lng, destination_lat, destination_lng]
+              properties:
+                origin_label: { type: string }
+                destination_label: { type: string }
+                origin_lat: { type: number, format: double }
+                origin_lng: { type: number, format: double }
+                destination_lat: { type: number, format: double }
+                destination_lng: { type: number, format: double }
+                optimize_for: { type: string, enum: [cost, time, fuel, balanced], default: cost }
+                vehicle_id: { type: integer }
+      responses:
+        '201': { description: Ranked alternatives with fuel, toll and refuelling stop }
+
+  # --------------------------------------------------------------- fleet ---
+  /fleet/dashboard:
+    get:
+      tags: [Fleet]
+      summary: Fleet operations dashboard
+      parameters:
+        - { name: fleet_id, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Vehicles, drivers, spend, fraud and maintenance }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /fleet/fraud-alerts:
+    get:
+      tags: [Fleet]
+      summary: Fuel fraud alerts for the caller's company
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [open, investigating, confirmed, dismissed] } }
+        - { name: severity, in: query, schema: { type: string, enum: [low, medium, high, critical] } }
+      responses:
+        '200': { description: Alerts with evidence }
+
+  # ------------------------------------------------------------- reports ---
+  /reports/generate:
+    post:
+      tags: [Reports]
+      summary: Generate a report
+      description: |
+        Reports under 5,000 rows render inline and return 201. Larger ones
+        queue and return 202; poll the run for completion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  enum: [fuel_expense_summary, fleet_utilisation, price_movement, station_performance, fraud_register]
+                format: { type: string, enum: [pdf, xlsx, csv, json], default: pdf }
+                period: { type: string, enum: [daily, weekly, monthly, annual] }
+                from: { type: string, format: date }
+                to: { type: string, format: date }
+      responses:
+        '201': { description: Generated inline, with a signed download URL }
+        '202': { description: Queued }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # --------------------------------------------------------------- admin ---
+  /admin/moderation/queue:
+    get:
+      tags: [Admin]
+      summary: Crowd reports awaiting moderation
+      description: Sorted by reporter trust score, so likely-good submissions surface first.
+      responses:
+        '200': { description: Moderation queue }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/ai/models:
+    get:
+      tags: [Admin]
+      summary: Registered models, metrics and live service capabilities
+      description: |
+        `service_healthy` plus the capability flags reveal whether the service
+        has silently degraded to a fallback path.
+      responses:
+        '200': { description: Model registry }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /dashboard/executive:
+    get:
+      tags: [Admin]
+      summary: Platform-wide executive dashboard
+      responses:
+        '200': { description: Platform metrics, growth and price analytics }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by POST /auth/login.
+
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, nullable: true }
+        meta: { $ref: '#/components/schemas/Meta' }
+
+    PaginatedEnvelope:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        meta:
+          allOf:
+            - $ref: '#/components/schemas/Meta'
+            - type: object
+              properties:
+                pagination: { $ref: '#/components/schemas/Pagination' }
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: validation_failed
+              description: Stable machine-readable identifier. Branch on this, not the message.
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+        meta: { $ref: '#/components/schemas/Meta' }
+
+    Meta:
+      type: object
+      properties:
+        request_id: { type: string, format: uuid }
+        timestamp: { type: string, format: date-time }
+
+    Pagination:
+      type: object
+      properties:
+        current_page: { type: integer, example: 1 }
+        per_page: { type: integer, example: 20 }
+        total: { type: integer, example: 143 }
+        last_page: { type: integer, example: 8 }
+        from: { type: integer, nullable: true }
+        to: { type: integer, nullable: true }
+
+    Role:
+      type: string
+      enum: [super_admin, system_admin, station_admin, fleet_manager, company_manager, driver, user, guest]
+
+    Session:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: bearer }
+        expires_in: { type: integer, example: 3600 }
+        user: { $ref: '#/components/schemas/User' }
+        roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+        permissions: { type: array, items: { type: string } }
+
+    MfaChallenge:
+      type: object
+      properties:
+        status: { type: string, enum: [mfa_required] }
+        challenge_token:
+          type: string
+          description: Opaque, single-use, held in Redis for five minutes.
+        expires_in: { type: integer, example: 300 }
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        first_name: { type: string }
+        last_name: { type: string }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        status: { type: string, enum: [active, pending, suspended, banned] }
+        email_verified: { type: boolean }
+        mfa_enabled: { type: boolean }
+        biometric_enabled: { type: boolean }
+        last_login_at: { type: string, format: date-time, nullable: true }
+
+    FuelType:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string, example: gasoline_ron95 }
+        name: { type: string, example: Gasoline RON 95 }
+        category: { type: string, enum: [gasoline, diesel, lpg, ev, cng] }
+        octane: { type: integer, nullable: true }
+        unit: { type: string, example: L }
+        color_hex: { type: string, example: '#16A34A' }
+
+    Station:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        distance_km:
+          type: number
+          format: double
+          description: Present only on proximity queries.
+        is_24_hours: { type: boolean }
+        has_ev_charging: { type: boolean }
+        is_verified: { type: boolean }
+        rating:
+          type: object
+          properties:
+            average: { type: number, format: double }
+            count: { type: integer }
+        prices: { type: array, items: { $ref: '#/components/schemas/StationPrice' } }
+
+    StationPrice:
+      type: object
+      properties:
+        fuel_type_id: { type: integer }
+        fuel_type: { type: string }
+        price: { type: number, format: double, example: 63.20 }
+        previous_price: { type: number, format: double, nullable: true }
+        change_amount: { type: number, format: double }
+        trend: { type: string, enum: [up, down, flat] }
+        source:
+          type: string
+          enum: [operator, doe, crowd, ocr, import, ai_estimate]
+          description: |
+            Precedence order, weakest first. A weaker source cannot displace a
+            stronger one while the stored price is still fresh.
+        confidence: { type: number, format: double }
+        is_stale:
+          type: boolean
+          description: True once the price is older than 72 hours.
+        effective_at: { type: string, format: date-time }
+
+    PriceComparison:
+      type: object
+      properties:
+        fuel_type_id: { type: integer }
+        fuel_code: { type: string }
+        fuel_name: { type: string }
+        avg_price: { type: number, format: double }
+        min_price: { type: number, format: double }
+        max_price: { type: number, format: double }
+        spread:
+          type: number
+          format: double
+          description: max − min. What a driver can save today by choosing differently.
+        station_count: { type: integer }
+
+    Forecast:
+      type: object
+      properties:
+        id: { type: integer }
+        fuel_type: { $ref: '#/components/schemas/FuelType' }
+        forecast_for: { type: string, format: date }
+        direction: { type: string, enum: [increase, rollback, no_change] }
+        change_amount: { type: number, format: double, example: 0.55 }
+        confidence: { type: number, format: double, example: 0.812 }
+        confidence_label: { type: string, enum: [high, moderate, low] }
+        narrative: { type: string, nullable: true }
+        drivers:
+          type: array
+          description: Ranked contributing factors, weights summing to roughly 1.
+          items:
+            type: object
+            properties:
+              factor: { type: string, example: Regional product crack (MOPS) }
+              weight: { type: number, format: double, example: 0.46 }
+              value: { type: string, example: '₱+0.38/L' }
+              direction: { type: string, enum: [up, down, flat] }
+        actual_change:
+          type: number
+          format: double
+          nullable: true
+          description: Back-filled once the DOE announces the real adjustment.
+        absolute_error: { type: number, format: double, nullable: true }
+        was_correct: { type: boolean }
+
+    Vehicle:
+      type: object
+      properties:
+        id: { type: integer }
+        display_name: { type: string }
+        plate_number: { type: string, example: ABC 1234 }
+        vehicle_type: { type: string }
+        tank_capacity: { type: number, format: double, nullable: true }
+        current_odometer: { type: number, format: double }
+        efficiency:
+          type: object
+          properties:
+            baseline_km_per_litre: { type: number, format: double, nullable: true }
+            avg_km_per_litre: { type: number, format: double, nullable: true }
+            deviation_pct: { type: number, format: double, nullable: true }
+            estimated_range_km: { type: number, format: double, nullable: true }
+        status: { type: string, enum: [active, in_maintenance, inactive, sold] }
+
+    VehicleInput:
+      type: object
+      required: [plate_number, vehicle_type, fuel_type_id]
+      properties:
+        plate_number: { type: string, maxLength: 16, example: ABC 1234 }
+        nickname: { type: string, maxLength: 80 }
+        vehicle_type:
+          type: string
+          enum: [car, suv, van, motorcycle, tricycle, jeepney, truck, bus, trailer, ev]
+        fuel_type_id: { type: integer }
+        tank_capacity: { type: number, format: double }
+        baseline_km_per_litre: { type: number, format: double }
+        registration_expiry: { type: string, format: date }
+        insurance_expiry: { type: string, format: date }
+
+    FuelPurchase:
+      type: object
+      properties:
+        id: { type: integer }
+        purchased_at: { type: string, format: date-time }
+        litres: { type: number, format: double }
+        price_per_litre: { type: number, format: double }
+        total_cost: { type: number, format: double }
+        odometer: { type: number, format: double, nullable: true }
+        distance_since_last: { type: number, format: double, nullable: true }
+        km_per_litre:
+          type: number
+          format: double
+          nullable: true
+          description: Null unless this and the previous fill-up were both full tanks.
+        cost_per_km: { type: number, format: double, nullable: true }
+        is_full_tank: { type: boolean }
+        is_flagged:
+          type: boolean
+          description: True when the anomaly score cleared the fraud threshold.
+
+    FuelPurchaseInput:
+      type: object
+      required: [vehicle_id, litres, price_per_litre, purchased_at]
+      properties:
+        vehicle_id: { type: integer }
+        station_id: { type: integer }
+        fuel_type_id: { type: integer }
+        litres: { type: number, format: double, minimum: 0.001, maximum: 5000 }
+        price_per_litre: { type: number, format: double, minimum: 0.01, maximum: 999.99 }
+        total_cost:
+          type: number
+          format: double
+          description: Optional. Must be within ₱1 or 2% of litres × price_per_litre.
+        odometer: { type: number, format: double }
+        is_full_tank: { type: boolean, default: true }
+        purchased_at: { type: string, format: date-time }
+
+    OcrScan:
+      type: object
+      properties:
+        id: { type: integer }
+        status:
+          type: string
+          enum: [processing, parsed, needs_review, approved, rejected, failed]
+        overall_confidence: { type: number, format: double, nullable: true }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string, nullable: true }
+              fuel_type_code: { type: string, nullable: true }
+              price: { type: number, format: double, nullable: true }
+              confidence: { type: number, format: double, nullable: true }
+              valid: { type: boolean }
+              rejection_reason:
+                type: string
+                nullable: true
+                enum: [unrecognised_fuel_label, implausible_price, price_out_of_local_band]
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    Forbidden:
+      description: Authenticated, but not permitted
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    NotFound:
+      description: The resource does not exist
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    Conflict:
+      description: Conflicts with existing data
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    ValidationError:
+      description: The payload failed validation; `details` maps field to messages
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds to wait before retrying.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    ServiceUnavailable:
+      description: The AI service is temporarily unavailable; retry shortly
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
