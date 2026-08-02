@@ -1,0 +1,118 @@
+# -----------------------------------------------------------------------------
+#  Production server block — TLS termination and HSTS.
+#
+#  Copy to fip.conf, replace the domain, and obtain certificates with:
+#    certbot --nginx -d fip.ph -d www.fip.ph -d api.fip.ph
+#
+#  Behind Cloudflare, set the SSL mode to "Full (strict)" so the origin
+#  certificate is validated rather than trusted blindly.
+# -----------------------------------------------------------------------------
+
+# Redirect all plaintext traffic, except the ACME challenge.
+server {
+    listen 80;
+    server_name fip.ph www.fip.ph api.fip.ph;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# --- API ----------------------------------------------------------------------
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name api.fip.ph;
+
+    ssl_certificate     /etc/letsencrypt/live/api.fip.ph/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.fip.ph/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/api.fip.ph/chain.pem;
+
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:20m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # OCSP stapling so clients need not contact the CA themselves.
+    ssl_stapling        on;
+    ssl_stapling_verify on;
+    resolver 1.1.1.1 8.8.8.8 valid=300s;
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header X-Request-Id $request_id always;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Request-Id      $request_id;
+    proxy_set_header Connection        "";
+
+    client_max_body_size 12M;
+    limit_conn conn 30;
+
+    location ~ ^/api/v1/auth/(login|register|reset-password|biometric) {
+        limit_req zone=auth burst=5 nodelay;
+        proxy_pass http://fip_api;
+    }
+
+    location = /api/v1/ocr/scan {
+        limit_req zone=ocr burst=3 nodelay;
+        proxy_read_timeout 90s;
+        proxy_pass http://fip_api;
+    }
+
+    location / {
+        limit_req zone=api burst=40 nodelay;
+        proxy_pass http://fip_api;
+    }
+}
+
+# --- Web app ------------------------------------------------------------------
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name fip.ph www.fip.ph;
+
+    ssl_certificate     /etc/letsencrypt/live/fip.ph/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/fip.ph/privkey.pem;
+
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:20m;
+    ssl_session_tickets off;
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # The web app loads Google Maps, so the CSP must allow it explicitly —
+    # a blanket 'unsafe-inline' would defeat the point.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.amazonaws.com; connect-src 'self' https://api.fip.ph https://maps.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header Connection        "";
+
+    location /_next/static/ {
+        proxy_pass http://fip_web;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location / {
+        proxy_pass http://fip_web;
+    }
+}

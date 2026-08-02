@@ -1,0 +1,85 @@
+name: Security
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Monday 03:00 UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+
+      - name: Audit PHP dependencies
+        working-directory: backend
+        run: composer audit --no-interaction || true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Audit npm dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high || true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Audit Python dependencies
+        working-directory: ai-service
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt || true
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan the history for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  containers:
+    name: Container scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the API image
+        run: docker build -t fip/api:scan -f infra/docker/backend.Dockerfile --target production backend
+
+      - name: Scan for known vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: fip/api:scan
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy.sarif

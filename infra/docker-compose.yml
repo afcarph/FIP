@@ -1,0 +1,256 @@
+# =============================================================================
+#  Fuel Intelligence Platform — local development stack
+#
+#  make up          build and start everything
+#  make bootstrap   migrate, seed and generate keys
+#  make down        stop and remove containers (volumes survive)
+#
+#  Production uses the same images with docker-compose.prod.yml, which drops
+#  the bind mounts, MailHog and MinIO's console, and adds replica counts.
+# =============================================================================
+
+name: fip
+
+services:
+  # ---------------------------------------------------------------- data ---
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-fip}
+      MYSQL_USER: ${DB_USERNAME:-fip}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+      # The price history table is the hot path; give InnoDB room to cache it.
+      - --innodb-buffer-pool-size=512M
+      - --max-connections=200
+      - --slow-query-log=1
+      - --long-query-time=1
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - '${DB_PORT_HOST:-3306}:3306'
+    healthcheck:
+      # Wait for real query readiness, not just an open port — migrations
+      # started too early fail with a confusing connection error.
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-p${DB_ROOT_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [fip]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - '${REDIS_PORT_HOST:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--no-auth-warning', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [fip]
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [fip]
+
+  # Creates the bucket once MinIO is up, then exits.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set fip http://minio:9000 ${AWS_ACCESS_KEY_ID:-minioadmin} ${AWS_SECRET_ACCESS_KEY:-minioadmin};
+      mc mb --ignore-existing fip/${AWS_BUCKET:-fip-media};
+      mc anonymous set none fip/${AWS_BUCKET:-fip-media};
+      echo 'Bucket ready';
+      "
+    networks: [fip]
+
+  # ------------------------------------------------------------- backend ---
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../infra/docker/backend.Dockerfile
+      target: development
+    restart: unless-stopped
+    env_file: [../.env]
+    environment:
+      APP_ENV: local
+      DB_HOST: mysql
+      REDIS_HOST: redis
+      AI_SERVICE_URL: http://ai-service:8001
+      AWS_ENDPOINT: http://minio:9000
+    volumes:
+      # Bind mount for hot reload; the vendor directory stays in the image.
+      - ../backend:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - '${API_PORT:-8000}:8000'
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:8000/api/health']
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [fip]
+
+  # Queue worker. Priority order matters: a user waiting on a price alert
+  # must not queue behind an hour-long report export.
+  queue:
+    build:
+      context: ../backend
+      dockerfile: ../infra/docker/backend.Dockerfile
+      target: development
+    restart: unless-stopped
+    env_file: [../.env]
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+      AI_SERVICE_URL: http://ai-service:8001
+    command: >
+      php artisan queue:work
+      --queue=realtime,notifications,default,ai,reports
+      --tries=3 --backoff=10 --max-time=3600 --sleep=1
+    volumes:
+      - ../backend:/var/www/html
+      - /var/www/html/vendor
+    depends_on:
+      api: { condition: service_started }
+      redis: { condition: service_healthy }
+    networks: [fip]
+
+  scheduler:
+    build:
+      context: ../backend
+      dockerfile: ../infra/docker/backend.Dockerfile
+      target: development
+    restart: unless-stopped
+    env_file: [../.env]
+    environment:
+      DB_HOST: mysql
+      REDIS_HOST: redis
+    command: php artisan schedule:work
+    volumes:
+      - ../backend:/var/www/html
+      - /var/www/html/vendor
+    depends_on:
+      api: { condition: service_started }
+    networks: [fip]
+
+  # ---------------------------------------------------------- ai service ---
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: ../infra/docker/ai.Dockerfile
+    restart: unless-stopped
+    env_file: [../.env]
+    environment:
+      APP_ENV: local
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/2
+      SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+    volumes:
+      - ../ai-service/app:/app/app
+      - ai-models:/app/models
+    ports:
+      - '${AI_PORT:-8001}:8001'
+    depends_on:
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks: [fip]
+
+  # ------------------------------------------------------------ frontend ---
+  web:
+    build:
+      context: ../frontend
+      dockerfile: ../infra/docker/frontend.Dockerfile
+      target: development
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+      WATCHPACK_POLLING: 'true'
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      - api
+    networks: [fip]
+
+  # ---------------------------------------------------------------- edge ---
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ../infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../infra/nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - '${HTTP_PORT:-80}:80'
+    depends_on:
+      - api
+      - web
+    networks: [fip]
+
+  # ----------------------------------------------------------- dev tools ---
+  mailhog:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '8025:8025'
+      - '1025:1025'
+    networks: [fip]
+
+volumes:
+  mysql-data:
+  redis-data:
+  minio-data:
+  ai-models:
+
+networks:
+  fip:
+    driver: bridge
