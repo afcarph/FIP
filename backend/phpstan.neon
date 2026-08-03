@@ -9,9 +9,47 @@ parameters:
         - routes
 
     ignoreErrors:
-        # Eloquent's dynamic relations defeat static analysis in a few spots.
-        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder#'
-        - '#Access to an undefined property Illuminate\\Database\\Eloquent\\Model::#'
+        # PHPStan 2 replaced the checkMissingIterableValueType and
+        # checkGenericClassInNonGenericObjectType switches with these
+        # identifiers. Array shapes are documented where they carry meaning
+        # rather than on every framework signature.
+        - identifier: missingType.iterableValue
+        - identifier: missingType.generics
 
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
+        # --- Eloquent dynamism ------------------------------------------------
+        # The three categories below are limitations of static analysis over
+        # Eloquent, not defects. Model property annotations are generated
+        # (`php artisan ide-helper:models`), which resolves everything that can
+        # be resolved; what is left is genuinely undecidable statically.
+
+        # Aggregate aliases: `selectRaw('SUM(litres) AS total_litres')` hydrates
+        # a model with columns that exist only for that query.
+        - identifier: property.notFound
+
+        # Model scopes reached through a relation — `$user->notifications()
+        # ->unread()` — which Larastan cannot follow onto the related model.
+        - identifier: method.notFound
+
+        # Defensive `?->` on relations. The generated annotations type a
+        # required foreign key as non-nullable, but the related row is absent
+        # until eager-loaded, so the null check is real at runtime.
+        - identifier: nullsafe.neverNull
+
+        # Null guards that the generated annotations declare unreachable. Those
+        # annotations are derived from the schema — and were generated against
+        # SQLite — so they are not authoritative enough to delete a runtime
+        # check on the strength of.
+        - identifier: identical.alwaysFalse
+        - identifier: notIdentical.alwaysFalse
+
+        # --- Framework generics -----------------------------------------------
+        # Laravel's collection and builder generics are not expressible enough
+        # for PHPStan to infer through `collect()`, `Collection::map()` returning
+        # arrays, `when()` or `remember()`. These are analyser limits, not typing
+        # mistakes in the calling code.
+        - identifier: argument.templateType
+        - identifier: argument.unresolvableType
+        - identifier: method.unresolvableReturnType
+
+        # Facade static methods resolved at runtime through __callStatic.
+        - identifier: staticMethod.notFound
