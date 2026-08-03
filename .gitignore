@@ -57,6 +57,9 @@ ai-service/models/*.joblib
 .DS_Store
 .idea/
 .vscode/
+# Claude Code: launch.json is shared project config and is tracked;
+# *.local.json holds per-operator permission grants and is not.
+.claude/*.local.json
 coverage/
 .phpunit.result.cache
 backend/.phpunit.cache/
