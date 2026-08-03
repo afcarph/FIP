@@ -244,8 +244,10 @@ Alert on:
 
 In the order pressure actually arrives:
 
-**1. Read replica.** Already supported — set `DB_READ_HOST` and analytics
-queries move off the primary.
+**1. Read replica.** Already supported — set `DB_READ_HOST` and every `SELECT`
+moves off the primary. Reads are sticky within a request that has written, so a
+caller never observes replica lag on its own write. Leave it unset on a single
+node and reads stay on `DB_HOST`.
 
 **2. Horizontal API.** `api` and `web` are stateless; raise `replicas` in the
 production overlay. Sessions live in JWTs, so no sticky routing is required.

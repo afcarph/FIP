@@ -248,10 +248,18 @@ old partitions can be dropped in constant time.
 ### Read replica
 
 Analytics queries (`heatMap`, `nationalTrend`, `regionalMovement`) scan large
-ranges and would otherwise compete with the transactional workload. They are
-routed explicitly to `mysql_read`. This is opt-in per query rather than
-automatic, because a stale read is unacceptable for the price write path but
-irrelevant for a six-month trend chart.
+ranges and would otherwise compete with the transactional workload. The `mysql`
+connection therefore declares Laravel's native read/write split: every `SELECT`
+goes to `DB_READ_HOST`, and writes go to `DB_HOST`.
+
+`sticky` is enabled, so a connection that has already written in the current
+request reads from the primary for the rest of it — a request that records a
+fill-up never then reads back a replica copy that predates it. A stale read is
+unacceptable on the price write path but irrelevant for a six-month trend chart,
+and stickiness draws exactly that line.
+
+`DB_READ_HOST` is optional: leave it unset for a single-node database and reads
+fall back to `DB_HOST`.
 
 ### Cache invalidation
 

@@ -11,6 +11,18 @@ return [
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
+
+            // Native read/write split: SELECTs go to the replica, writes to the
+            // primary. `sticky` keeps a request that has just written reading
+            // from the primary so it never observes stale replica data.
+            'read' => [
+                'host' => [env('DB_READ_HOST', env('DB_HOST', '127.0.0.1'))],
+            ],
+            'write' => [
+                'host' => [env('DB_HOST', '127.0.0.1')],
+            ],
+            'sticky' => true,
+
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('DB_DATABASE', 'fip'),
@@ -26,20 +38,6 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
-        ],
-
-        // Read replica used by heavy analytics endpoints.
-        'mysql_read' => [
-            'driver' => 'mysql',
-            'host' => env('DB_READ_HOST', env('DB_HOST', '127.0.0.1')),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'fip'),
-            'username' => env('DB_USERNAME', 'fip'),
-            'password' => env('DB_PASSWORD', ''),
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_0900_ai_ci',
-            'strict' => true,
-            'engine' => 'InnoDB',
         ],
 
         'sqlite' => [
