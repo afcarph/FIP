@@ -8,48 +8,132 @@ parameters:
         - database/seeders
         - routes
 
+    # Every suppression below is pinned to the files that actually need it, so a
+    # new occurrence anywhere else still fails the build -- a mistyped model
+    # attribute in a file not listed here is a real error, not a known limit of
+    # the analyser. reportUnmatchedIgnoredErrors (on by default) keeps the lists
+    # honest: fix one and PHPStan reports the ignore as unmatched.
     ignoreErrors:
-        # PHPStan 2 replaced the checkMissingIterableValueType and
-        # checkGenericClassInNonGenericObjectType switches with these
-        # identifiers. Array shapes are documented where they carry meaning
-        # rather than on every framework signature.
+        # PHPStan 2 replaced checkMissingIterableValueType and
+        # checkGenericClassInNonGenericObjectType with these identifiers. Array
+        # shapes are documented where they carry meaning, not on every signature.
         - identifier: missingType.iterableValue
         - identifier: missingType.generics
 
-        # --- Eloquent dynamism ------------------------------------------------
-        # The three categories below are limitations of static analysis over
-        # Eloquent, not defects. Model property annotations are generated
-        # (`php artisan ide-helper:models`), which resolves everything that can
-        # be resolved; what is left is genuinely undecidable statically.
+        # Aggregate aliases: selectRaw('SUM(litres) AS total_litres') hydrates a
+        # model with columns that exist only for that one query.
+        -
+            identifier: property.notFound
+            paths:
+                - app/Domain/Ai/Services/FuelAdvisorService.php
+                - app/Domain/Expense/Services/FuelExpenseService.php
+                - app/Domain/Expense/Services/RouteOptimizationService.php
+                - app/Domain/Maintenance/Services/MaintenanceService.php
+                - app/Domain/Pricing/Models/StationPrice.php
+                - app/Domain/Reporting/Services/DashboardService.php
+                - app/Domain/Reporting/Services/ReportService.php
+                - app/Domain/User/Models/User.php
+                - app/Domain/User/Repositories/UserRepository.php
+                - app/Domain/Vehicle/Repositories/VehicleRepository.php
+                - app/Http/Controllers/Api/V1/PriceController.php
+                - app/Http/Controllers/Api/V1/StationController.php
+                - app/Http/Controllers/Api/V1/VehicleController.php
+                - app/Http/Resources/DriverResource.php
+                - app/Http/Resources/ForecastResource.php
+                - app/Http/Resources/FuelPurchaseResource.php
+                - app/Http/Resources/OcrScanResource.php
+                - app/Http/Resources/PriceReportResource.php
+                - app/Http/Resources/StationResource.php
+                - app/Http/Resources/UserResource.php
+                - app/Http/Resources/VehicleResource.php
 
-        # Aggregate aliases: `selectRaw('SUM(litres) AS total_litres')` hydrates
-        # a model with columns that exist only for that query.
-        - identifier: property.notFound
+        # Model scopes reached through a relation, which Larastan cannot follow
+        # onto the related model.
+        -
+            identifier: method.notFound
+            paths:
+                - app/Domain/Expense/Services/FuelExpenseService.php
+                - app/Domain/Notification/Services/NotificationService.php
+                - app/Domain/Reporting/Services/DashboardService.php
+                - app/Domain/Station/Models/City.php
+                - app/Domain/Station/Models/GasStation.php
+                - app/Http/Controllers/Api/V1/Auth/AuthController.php
+                - app/Http/Controllers/Api/V1/NotificationController.php
+                - app/Http/Resources/ForecastResource.php
+                - app/Http/Resources/PriceReportResource.php
+                - app/Http/Resources/VehicleResource.php
+                - app/Support/Concerns/Auditable.php
 
-        # Model scopes reached through a relation — `$user->notifications()
-        # ->unread()` — which Larastan cannot follow onto the related model.
-        - identifier: method.notFound
+        # Defensive ?-> where the annotations describe a persisted row. The related
+        # row is absent until eager-loaded, so the check is real at runtime.
+        -
+            identifier: nullsafe.neverNull
+            paths:
+                - app/Console/Commands/GenerateWeeklyForecast.php
+                - app/Domain/Ai/Services/FuelAdvisorService.php
+                - app/Domain/Expense/Services/RouteOptimizationService.php
+                - app/Domain/Maintenance/Services/MaintenanceService.php
+                - app/Domain/Pricing/Services/PriceService.php
+                - app/Domain/Reporting/Services/DashboardService.php
+                - app/Domain/Reporting/Services/ReportService.php
+                - app/Domain/User/Models/LoginAttempt.php
+                - app/Domain/User/Services/AuthService.php
+                - app/Domain/Vehicle/Models/Vehicle.php
+                - app/Http/Controllers/Api/V1/MaintenanceController.php
+                - app/Http/Controllers/Api/V1/ReportController.php
+                - app/Http/Resources/StationResource.php
+                - app/Jobs/EvaluatePriceAlerts.php
+                - app/Jobs/GenerateReport.php
+                - app/Jobs/SendMaintenanceReminders.php
+                - app/Services/External/AiServiceClient.php
+                - app/Support/Concerns/Auditable.php
+                - app/Support/Http/ApiResponse.php
+                - database/seeders/DemoDataSeeder.php
+                - database/seeders/RolePermissionSeeder.php
 
-        # Defensive `?->` on relations. The generated annotations type a
-        # required foreign key as non-nullable, but the related row is absent
-        # until eager-loaded, so the null check is real at runtime.
-        - identifier: nullsafe.neverNull
+        # Null guards on NOT NULL columns. The annotations describe persisted rows;
+        # an accessor can still run on an unsaved model, so the guard stays.
+        -
+            identifier: identical.alwaysFalse
+            paths:
+                - app/Domain/Pricing/Models/OcrScan.php
+                - app/Domain/Station/Models/StationPhoto.php
 
-        # Null guards that the generated annotations declare unreachable. Those
-        # annotations are derived from the schema — and were generated against
-        # SQLite — so they are not authoritative enough to delete a runtime
-        # check on the strength of.
-        - identifier: identical.alwaysFalse
-        - identifier: notIdentical.alwaysFalse
+        # As above, on seed definitions where every row happens to share a value.
+        -
+            identifier: notIdentical.alwaysFalse
+            paths:
+                - database/seeders/DemoDataSeeder.php
 
-        # --- Framework generics -----------------------------------------------
-        # Laravel's collection and builder generics are not expressible enough
-        # for PHPStan to infer through `collect()`, `Collection::map()` returning
-        # arrays, `when()` or `remember()`. These are analyser limits, not typing
-        # mistakes in the calling code.
-        - identifier: argument.templateType
-        - identifier: argument.unresolvableType
-        - identifier: method.unresolvableReturnType
+        # Laravel's collection and builder generics are not expressive enough for
+        # PHPStan to infer through collect(), when() or remember().
+        -
+            identifier: argument.templateType
+            paths:
+                - app/Domain/Pricing/Services/PriceService.php
+                - app/Domain/Reporting/Services/ReportService.php
+                - app/Http/Controllers/Api/V1/Admin/UserAdminController.php
+                - app/Http/Controllers/Api/V1/NotificationController.php
+                - app/Http/Controllers/Api/V1/ReportController.php
+                - app/Http/Resources/OcrScanResource.php
 
-        # Facade static methods resolved at runtime through __callStatic.
-        - identifier: staticMethod.notFound
+        # Collection::map() returning an array shape.
+        -
+            identifier: argument.unresolvableType
+            paths:
+                - app/Domain/Ai/Services/FuelAdvisorService.php
+                - app/Domain/Expense/Services/FuelExpenseService.php
+                - app/Domain/Reporting/Services/DashboardService.php
+                - app/Domain/User/Repositories/UserRepository.php
+                - app/Http/Controllers/Api/V1/StationController.php
+
+        # Collection::map() / all() returning an array shape.
+        -
+            identifier: method.unresolvableReturnType
+            paths:
+                - app/Domain/Ai/Services/FuelAdvisorService.php
+                - app/Domain/Expense/Services/FuelExpenseService.php
+                - app/Domain/Reporting/Services/DashboardService.php
+                - app/Domain/User/Repositories/UserRepository.php
+                - app/Http/Controllers/Api/V1/StationController.php
+
