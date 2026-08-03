@@ -503,7 +503,7 @@ CREATE TABLE price_advisories (
   week_start     DATE NOT NULL,
   effective_at   TIMESTAMP NOT NULL,
   change_amount  DECIMAL(10,4) NOT NULL,        -- +increase / -rollback per litre
-  direction      VARCHAR(8) NOT NULL,
+  direction      VARCHAR(16) NOT NULL,
   source         VARCHAR(24) NOT NULL DEFAULT 'doe',
   source_url     VARCHAR(255) NULL,
   notes          VARCHAR(500) NULL,
@@ -983,7 +983,7 @@ CREATE TABLE price_forecasts (
   region_id      BIGINT UNSIGNED NULL,
   forecast_for   DATE NOT NULL,             -- effective week start
   generated_at   TIMESTAMP NOT NULL,
-  direction      VARCHAR(8) NOT NULL,
+  direction      VARCHAR(16) NOT NULL,
   change_amount  DECIMAL(10,4) NOT NULL,
   predicted_price DECIMAL(10,4) NULL,
   lower_bound    DECIMAL(10,4) NULL,

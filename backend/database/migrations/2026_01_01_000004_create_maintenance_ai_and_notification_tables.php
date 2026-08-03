@@ -84,7 +84,8 @@ return new class extends Migration
             $table->foreignId('region_id')->nullable()->constrained()->cascadeOnDelete();
             $table->date('forecast_for');
             $table->timestamp('generated_at');
-            $table->string('direction', 8);
+            // 16, not 8: the longest permitted value is 'no_change' (9).
+            $table->string('direction', 16);
             $table->decimal('change_amount', 10, 4);
             $table->decimal('predicted_price', 10, 4)->nullable();
             $table->decimal('lower_bound', 10, 4)->nullable();

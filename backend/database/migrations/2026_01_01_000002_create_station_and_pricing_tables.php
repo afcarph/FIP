@@ -190,7 +190,8 @@ return new class extends Migration
             $table->date('week_start');
             $table->timestamp('effective_at');
             $table->decimal('change_amount', 10, 4);
-            $table->string('direction', 8);
+            // 16, not 8: the longest permitted value is 'no_change' (9).
+            $table->string('direction', 16);
             $table->string('source', 24)->default('doe');
             $table->string('source_url', 255)->nullable();
             $table->string('notes', 500)->nullable();
