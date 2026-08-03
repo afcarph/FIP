@@ -5,10 +5,24 @@ import 'package:intl/intl.dart';
 class Formatters {
   const Formatters._();
 
-  static final NumberFormat _peso = NumberFormat.currency(locale: 'en_PH', symbol: '₱', decimalDigits: 2);
-  static final NumberFormat _pesoWhole = NumberFormat.currency(locale: 'en_PH', symbol: '₱', decimalDigits: 0);
-  static final NumberFormat _compact = NumberFormat.compact(locale: 'en_PH');
-  static final NumberFormat _decimal = NumberFormat.decimalPattern('en_PH');
+  static final NumberFormat _peso = NumberFormat.currency(
+    locale: 'en_PH',
+    symbol: '₱',
+    decimalDigits: 2,
+  );
+  static final NumberFormat _pesoWhole = NumberFormat.currency(
+    locale: 'en_PH',
+    symbol: '₱',
+    decimalDigits: 0,
+  );
+  // Pin the compact precision to one fraction digit, matching the web client's
+  // `maximumFractionDigits: 1`. intl's own default is three *significant*
+  // digits, which renders 1,250,000 as 1.25M where the web shows 1.3M — and
+  // that default has shifted between intl releases.
+  static final NumberFormat _compact =
+      NumberFormat.compact(locale: 'en_PH')
+        ..significantDigitsInUse = false
+        ..maximumFractionDigits = 1;
 
   static const String _placeholder = '—';
 
@@ -28,12 +42,17 @@ class Formatters {
   static String number(num? value, {int decimals = 0}) {
     if (value == null) return _placeholder;
 
-    return NumberFormat.decimalPatternDigits(locale: 'en_PH', decimalDigits: decimals).format(value);
+    return NumberFormat.decimalPatternDigits(
+      locale: 'en_PH',
+      decimalDigits: decimals,
+    ).format(value);
   }
 
-  static String litres(num? value) => value == null ? _placeholder : '${number(value, decimals: 1)} L';
+  static String litres(num? value) =>
+      value == null ? _placeholder : '${number(value, decimals: 1)} L';
 
-  static String distance(num? value) => value == null ? _placeholder : '${number(value, decimals: 1)} km';
+  static String distance(num? value) =>
+      value == null ? _placeholder : '${number(value, decimals: 1)} km';
 
   static String efficiency(num? value) =>
       value == null ? _placeholder : '${number(value, decimals: 1)} km/L';

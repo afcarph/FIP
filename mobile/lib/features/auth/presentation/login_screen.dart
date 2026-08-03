@@ -65,23 +65,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final api = ref.read(apiClientProvider);
 
+      // Read the platform before the first await: touching `context` after one
+      // is unsafe, since the widget may have been disposed by then.
+      final platform = Theme.of(context).platform == TargetPlatform.iOS ? 'ios' : 'android';
+
       final session = await api.post<Map<String, dynamic>>(
         '/auth/login',
         body: {
           'email': _emailController.text.trim(),
           'password': _passwordController.text,
-          'device': {
-            'device_uuid': await api.deviceUuid(),
-            'platform': Theme.of(context).platform == TargetPlatform.iOS ? 'ios' : 'android',
-          },
+          'device': {'device_uuid': await api.deviceUuid(), 'platform': platform},
         },
         skipAuth: true,
       );
 
       if (session['status'] == 'mfa_required') {
         if (mounted) {
-          setState(() => _error = 'This account requires a verification code. '
-              'Open the web app to complete two-factor sign-in.');
+          setState(
+            () =>
+                _error =
+                    'This account requires a verification code. '
+                    'Open the web app to complete two-factor sign-in.',
+          );
         }
         return;
       }
@@ -98,10 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final authenticated = await _localAuth.authenticate(
         localizedReason: 'Sign in to Fuel Intelligence Platform',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
+        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
       );
 
       if (!authenticated) return;
@@ -140,27 +142,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       child: Icon(LucideIcons.fuel, color: scheme.onPrimary, size: 26),
                     ),
-
                     const SizedBox(height: 20),
-
                     Text(
                       'Welcome back',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Sign in to track prices and your fuel spend',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                     ),
-
                     const SizedBox(height: 28),
-
                     if (_error != null) ...[
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -184,7 +182,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -195,14 +192,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         prefixIcon: Icon(LucideIcons.mail, size: 18),
                       ),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) return 'Enter your email address.';
-                        if (!value.contains('@')) return 'That does not look like an email address.';
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Enter your email address.';
+                        }
+                        if (!value.contains('@')) {
+                          return 'That does not look like an email address.';
+                        }
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 14),
-
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscure,
@@ -218,23 +217,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           tooltip: _obscure ? 'Show password' : 'Hide password',
                         ),
                       ),
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? 'Enter your password.' : null,
+                      validator:
+                          (value) =>
+                              (value == null || value.isEmpty) ? 'Enter your password.' : null,
                     ),
-
                     const SizedBox(height: 20),
-
                     FilledButton(
                       onPressed: _submitting ? null : _signIn,
-                      child: _submitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Sign in'),
+                      child:
+                          _submitting
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                              : const Text('Sign in'),
                     ),
-
                     if (_biometricAvailable) ...[
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
@@ -243,15 +241,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         label: const Text('Use biometrics'),
                       ),
                     ],
-
                     const SizedBox(height: 24),
-
                     Text(
                       'Prices and forecasts are free to browse without an account.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),

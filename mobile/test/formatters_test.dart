@@ -64,7 +64,10 @@ void main() {
   group('relative time', () {
     test('describes recent moments in words', () {
       expect(Formatters.relative(DateTime.now().subtract(const Duration(seconds: 20))), 'just now');
-      expect(Formatters.relative(DateTime.now().subtract(const Duration(minutes: 30))), '30 min ago');
+      expect(
+        Formatters.relative(DateTime.now().subtract(const Duration(minutes: 30))),
+        '30 min ago',
+      );
       expect(Formatters.relative(DateTime.now().subtract(const Duration(hours: 5))), '5 hr ago');
     });
 
