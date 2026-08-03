@@ -170,7 +170,9 @@ final readonly class FuelAdvisorService
      */
     public function explainConsumptionChange(User $user, ?int $vehicleId = null): array
     {
-        $scope = $user->fuelPurchases()->when($vehicleId, fn ($q) => $q->where('vehicle_id', $vehicleId));
+        $scope = $user->fuelPurchases()
+            ->getQuery()
+            ->when($vehicleId, fn ($q) => $q->where('vehicle_id', $vehicleId));
 
         $now = now();
         $current = $this->expenses->summary(clone $scope, $now->copy()->subDays(30), $now);
@@ -282,7 +284,7 @@ final readonly class FuelAdvisorService
         }
 
         $snapshot['spend_last_30_days'] = $this->expenses->summary(
-            $user->fuelPurchases(),
+            $user->fuelPurchases()->getQuery(),
             now()->subDays(30),
             now(),
         );

@@ -13,6 +13,7 @@ use App\Domain\Vehicle\Models\Vehicle;
 use App\Jobs\GenerateReport;
 use App\Support\Exceptions\DomainException;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Excel;
@@ -83,7 +84,7 @@ final readonly class ReportService
                 'status' => ReportRun::STATUS_COMPLETED,
                 'file_path' => $path,
                 'file_size' => Storage::size($path),
-                'row_count' => count($dataset['rows'] ?? []),
+                'row_count' => count($dataset['rows']),
                 'completed_at' => now(),
             ]);
         } catch (\Throwable $e) {
@@ -354,7 +355,13 @@ final readonly class ReportService
         };
     }
 
-    private function visibleVehicleIds(User $user, array $params)
+    /**
+     * An id subquery rather than a materialised list: callers feed it straight
+     * into whereIn, which keeps the filtering in the database.
+     *
+     * @return Builder<Vehicle>
+     */
+    private function visibleVehicleIds(User $user, array $params): Builder
     {
         return Vehicle::query()
             ->forUser($user)

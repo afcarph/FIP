@@ -167,7 +167,7 @@ final readonly class RouteOptimizationService
             };
         });
 
-        return array_values($options);
+        return $options;
     }
 
     /** Money and time weighted equally, with ₱10/minute as the exchange rate. */

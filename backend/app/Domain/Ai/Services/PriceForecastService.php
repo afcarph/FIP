@@ -56,7 +56,7 @@ final readonly class PriceForecastService
 
         Cache::forget('forecast:latest');
 
-        return array_filter($results);
+        return $results;
     }
 
     public function generateFor(FuelType $fuelType, Carbon $forWeek, ?AiModel $model = null): PriceForecast

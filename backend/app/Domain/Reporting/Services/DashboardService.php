@@ -44,13 +44,13 @@ final readonly class DashboardService
         $from = now()->startOfMonth();
         $to = now();
 
-        $summary = $this->expenses->summary($user->fuelPurchases(), $from, $to);
-        $savings = $this->expenses->savingsAnalysis($user->fuelPurchases(), now()->subDays(90), $to);
+        $summary = $this->expenses->summary($user->fuelPurchases()->getQuery(), $from, $to);
+        $savings = $this->expenses->savingsAnalysis($user->fuelPurchases()->getQuery(), now()->subDays(90), $to);
 
         return [
             'summary' => $summary,
             'savings' => $savings,
-            'monthly_series' => $this->expenses->monthlySeries($user->fuelPurchases(), 12),
+            'monthly_series' => $this->expenses->monthlySeries($user->fuelPurchases()->getQuery(), 12),
             'vehicles' => $user->vehicles()->active()->with('fuelType')->get()->map(fn (Vehicle $v) => [
                 'id' => $v->getKey(),
                 'name' => $v->display_name,
