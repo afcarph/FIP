@@ -19,7 +19,9 @@ linter:
     - prefer_const_declarations
     - prefer_final_locals
     - prefer_single_quotes
-    - require_trailing_commas
+    # require_trailing_commas is deliberately absent: from Dart 3.7 the
+    # formatter's tall style decides trailing commas itself, and the lint now
+    # fights `dart format` rather than reinforcing it.
     - sort_child_properties_last
     - unawaited_futures
     - use_super_parameters

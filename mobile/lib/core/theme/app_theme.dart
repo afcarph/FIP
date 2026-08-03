@@ -32,10 +32,7 @@ class AppTheme {
 
     final textTheme = GoogleFonts.interTextTheme(
       isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
-    ).apply(
-      bodyColor: scheme.onSurface,
-      displayColor: scheme.onSurface,
-    );
+    ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
     return ThemeData(
       useMaterial3: true,
@@ -43,7 +40,6 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
       textTheme: textTheme,
-
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
@@ -53,8 +49,7 @@ class AppTheme {
         titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
         systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       ),
-
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: scheme.surfaceContainerHighest,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -63,7 +58,6 @@ class AppTheme {
           side: BorderSide(color: scheme.outlineVariant),
         ),
       ),
-
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           // 48dp keeps every primary action above the minimum touch target.
@@ -72,7 +66,6 @@ class AppTheme {
           textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
-
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(64, 48),
@@ -80,7 +73,6 @@ class AppTheme {
           side: BorderSide(color: scheme.outlineVariant),
         ),
       ),
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? const Color(0xFF162034) : Colors.white,
@@ -102,7 +94,6 @@ class AppTheme {
           borderSide: BorderSide(color: scheme.error),
         ),
       ),
-
       chipTheme: ChipThemeData(
         backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
         selectedColor: scheme.primary.withValues(alpha: 0.15),
@@ -110,7 +101,6 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         side: BorderSide.none,
       ),
-
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surfaceContainerHighest,
         elevation: 0,
@@ -118,17 +108,12 @@ class AppTheme {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         indicatorColor: scheme.primary.withValues(alpha: 0.15),
       ),
-
       dividerTheme: DividerThemeData(color: scheme.outlineVariant, thickness: 1, space: 1),
-
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-
-      extensions: <ThemeExtension<dynamic>>[
-        isDark ? FipColors.dark : FipColors.light,
-      ],
+      extensions: <ThemeExtension<dynamic>>[isDark ? FipColors.dark : FipColors.light],
     );
   }
 }
