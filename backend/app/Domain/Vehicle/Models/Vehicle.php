@@ -37,6 +37,16 @@ class Vehicle extends Model
     use HasFactory;
     use SoftDeletes;
 
+    /**
+     * `display_name` falls back to "<make> <model>", so every caller that reads
+     * it needs both relations. They were easy to forget — the dashboard loaded
+     * only `fuelType` and threw under preventLazyLoading, and would have run an
+     * N+1 in production instead. Both are small reference tables, so eager
+     * loading them costs two queries per request and makes the accessor
+     * self-sufficient wherever it is used.
+     */
+    protected $with = ['make', 'model'];
+
     protected $fillable = [
         'owner_id', 'company_id', 'fleet_id', 'make_id', 'model_id', 'fuel_type_id',
         'nickname', 'plate_number', 'vin', 'engine_number', 'vehicle_type', 'year',
@@ -67,7 +77,7 @@ class Vehicle extends Model
         });
     }
 
-    protected function ownerColumn(): string
+    protected function ownerColumn(): ?string
     {
         return 'vehicles.owner_id';
     }
