@@ -17,9 +17,13 @@ return [
             // from the primary so it never observes stale replica data.
             'read' => [
                 'host' => [env('DB_READ_HOST', env('DB_HOST', '127.0.0.1'))],
+                // A replica is often reached through a proxy or tunnel on a
+                // different port, so it gets its own, defaulting to the primary's.
+                'port' => env('DB_READ_PORT', env('DB_PORT', '3306')),
             ],
             'write' => [
                 'host' => [env('DB_HOST', '127.0.0.1')],
+                'port' => env('DB_PORT', '3306'),
             ],
             'sticky' => true,
 
