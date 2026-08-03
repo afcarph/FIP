@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Domain\User\Models\User;
+use App\Domain\User\Services\AuthService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthenticationTest extends TestCase
 {
@@ -149,5 +151,34 @@ class AuthenticationTest extends TestCase
         $known->assertOk();
         $unknown->assertOk();
         $this->assertSame($known->json('message'), $unknown->json('message'));
+    }
+
+    /**
+     * `JWT::invalidate()` takes a `forceForever` flag, not a token. Passing the
+     * token made the argument truthy, which sent every sign-out down
+     * Blacklist::addForever() — a cache key with no expiry. The blacklist then
+     * grew by one permanent entry per logout and never shed any of them.
+     */
+    public function test_logout_blacklists_the_token_without_forcing_it_forever(): void
+    {
+        $user = User::factory()->create();
+
+        JWTAuth::shouldReceive('getToken')->once()->andReturn('header.payload.signature');
+        // withNoArgs() is the assertion: any argument here means forceForever.
+        JWTAuth::shouldReceive('invalidate')->once()->withNoArgs();
+
+        app(AuthService::class)->logout($user);
+    }
+
+    public function test_logout_is_tolerant_of_a_token_that_cannot_be_parsed(): void
+    {
+        $user = User::factory()->create();
+
+        JWTAuth::shouldReceive('getToken')->once()->andReturnNull();
+        JWTAuth::shouldReceive('invalidate')->never();
+
+        app(AuthService::class)->logout($user);
+
+        $this->assertTrue(true, 'Signing out without a readable token must not raise.');
     }
 }

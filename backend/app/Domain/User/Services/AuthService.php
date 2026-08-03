@@ -244,7 +244,15 @@ final readonly class AuthService
 
     public function logout(User $user, ?string $deviceUuid = null): void
     {
-        JWTAuth::invalidate(JWTAuth::getToken());
+        // getToken() parses the bearer token off the request as a side effect;
+        // invalidate() then blacklists whatever token is on the instance. Its
+        // argument is a `forceForever` flag, *not* the token — passing the token
+        // made it truthy, so every logout took the addForever() path and wrote a
+        // blacklist entry that never expires. Left alone the blacklist grows
+        // without bound, one permanent key per sign-out.
+        if (JWTAuth::getToken() !== null) {
+            JWTAuth::invalidate();
+        }
 
         if ($deviceUuid !== null) {
             UserDevice::where('user_id', $user->getKey())
