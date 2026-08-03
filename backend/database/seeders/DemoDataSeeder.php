@@ -415,7 +415,7 @@ class DemoDataSeeder extends Seeder
         foreach ($vehicles as $vehicle) {
             $actor = $vehicle->owner_id !== null
                 ? $users['user']
-                : ($vehicle->company_id === $users['fleet_manager']->company_id ? $users['fleet_manager'] : $users['manager']);
+                : ($vehicle->company_id === $users['fleet_manager']->company_id ? $users['fleet_manager'] : $users['company_manager']);
 
             $odometer = max($vehicle->current_odometer - 6000, 0);
             $intervalDays = $vehicle->vehicle_type === 'motorcycle' ? 14 : 10;
