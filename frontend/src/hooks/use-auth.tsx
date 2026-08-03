@@ -33,7 +33,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data, isLoading } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: async () => {
-      const response = await api.get<{ user: User; roles: Role[]; permissions: string[] }>('/auth/me');
+      const response = await api.get<{ user: User; roles: Role[]; permissions: string[] }>(
+        '/auth/me',
+      );
       return response.data;
     },
     enabled: hydrated && Boolean(tokenStore.get()),
@@ -66,8 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       permissions,
       isLoading: !hydrated || isLoading,
       isAuthenticated: Boolean(data?.user),
-      can: (permission) =>
-        roles.includes('super_admin') || permissions.includes(permission),
+      can: (permission) => roles.includes('super_admin') || permissions.includes(permission),
       hasRole: (...candidates) => candidates.some((role) => roles.includes(role)),
       isAdmin: roles.includes('super_admin') || roles.includes('system_admin'),
       logout,
@@ -100,7 +101,8 @@ export function useLogin() {
           ...credentials,
           device: {
             device_uuid: deviceUuid(),
-            device_name: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : 'Web',
+            device_name:
+              typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : 'Web',
             platform: 'web',
           },
         },
@@ -123,6 +125,40 @@ export function useLogin() {
         permissions: (data as Session).permissions,
       });
       router.push('/dashboard');
+    },
+  });
+}
+
+/**
+ * Requests a reset link.
+ *
+ * The API answers 200 whether or not the address is registered, so that the
+ * endpoint cannot be used to enumerate accounts. The UI must preserve that: on
+ * success it can only say a link was sent *if* the address exists.
+ */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (payload: { email: string }) => {
+      await api.post('/auth/forgot-password', payload, { skipAuth: true });
+    },
+  });
+}
+
+/**
+ * Completes a reset with the token from the emailed link.
+ *
+ * No session is issued — the user signs in afterwards — so there is nothing to
+ * store here and the caller drives the redirect.
+ */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: async (payload: {
+      token: string;
+      email: string;
+      password: string;
+      password_confirmation: string;
+    }) => {
+      await api.post('/auth/reset-password', payload, { skipAuth: true });
     },
   });
 }
