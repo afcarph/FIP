@@ -32,7 +32,12 @@ services:
       - --long-query-time=1
     volumes:
       - mysql-data:/var/lib/mysql
-      - ../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # database/schema.sql is deliberately NOT mounted into
+      # docker-entrypoint-initdb.d. Importing it would build the schema without
+      # populating the `migrations` table, so the documented `make bootstrap`
+      # then failed on its first migration with "table already exists". At run
+      # time the migrations own the schema; schema.sql stays the canonical
+      # reference and the ERD source.
     ports:
       - '${DB_PORT_HOST:-3306}:3306'
     healthcheck:
@@ -116,6 +121,13 @@ services:
       # Bind mount for hot reload; the vendor directory stays in the image.
       - ../backend:/var/www/html
       - /var/www/html/vendor
+      # The root .env is the single source of truth for the stack, so it is
+      # also what the app reads inside the container. Without this the bind
+      # mount brings backend/.env along -- a developer's local file, meant for
+      # running outside Docker -- and `artisan serve` re-exports its values
+      # into the request process, where it silently beats the environment
+      # compose injected.
+      - ../.env:/var/www/html/.env:ro
     ports:
       - '${API_PORT:-8000}:8000'
     depends_on:
@@ -149,6 +161,8 @@ services:
     volumes:
       - ../backend:/var/www/html
       - /var/www/html/vendor
+      # Root .env is authoritative inside the container; see the api service.
+      - ../.env:/var/www/html/.env:ro
     depends_on:
       api: { condition: service_started }
       redis: { condition: service_healthy }
@@ -168,6 +182,8 @@ services:
     volumes:
       - ../backend:/var/www/html
       - /var/www/html/vendor
+      # Root .env is authoritative inside the container; see the api service.
+      - ../.env:/var/www/html/.env:ro
     depends_on:
       api: { condition: service_started }
     networks: [fip]

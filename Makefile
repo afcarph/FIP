@@ -56,9 +56,21 @@ bootstrap: key migrate seed ## Prepare a fresh installation end to end
 	@echo "  Ready. Sign in at http://localhost:3000/login"
 	@echo "  superadmin@fip.ph / Password123!"
 
-key: ## Generate the application and JWT keys
-	$(API) php artisan key:generate --force
-	$(API) php artisan jwt:secret --force
+key: ## Generate the application and JWT keys into the root .env
+# The keys have to land in the root .env, because that is the file compose
+# feeds to every PHP service as real environment variables -- and a real
+# environment variable always beats a value in backend/.env. `artisan
+# key:generate` writes to backend/.env, which the running containers therefore
+# ignore, so generating them there looks like it worked and changes nothing.
+	@test -f .env || { echo "No .env at the repository root. Run: cp .env.example .env"; exit 1; }
+	@APP_KEY="base64:$$($(API) php -r 'echo base64_encode(random_bytes(32));' | tr -d '\r')"; \
+	 JWT_SECRET="$$($(API) php -r 'echo bin2hex(random_bytes(32));' | tr -d '\r')"; \
+	 sed -i.bak -e "s|^APP_KEY=.*|APP_KEY=$$APP_KEY|" -e "s|^JWT_SECRET=.*|JWT_SECRET=$$JWT_SECRET|" .env; \
+	 rm -f .env.bak; \
+	 echo "  APP_KEY and JWT_SECRET written to .env"
+# The services read the file once, at start, so they need replacing to see it.
+	@$(COMPOSE) up -d --force-recreate api queue scheduler >/dev/null 2>&1
+	@echo "  api, queue and scheduler restarted with the new keys"
 
 migrate: ## Run pending migrations
 	$(API) php artisan migrate --force

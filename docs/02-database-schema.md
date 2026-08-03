@@ -5,6 +5,13 @@ MySQL 8.0, InnoDB, `utf8mb4_0900_ai_ci`. The canonical DDL is
 `backend/database/migrations/` express the same structure through the schema
 builder so CI and production converge.
 
+**At run time the migrations are what build the database.** `schema.sql` is the
+reference and the ERD source, and is not imported into a running instance —
+doing so would create the tables without recording anything in the `migrations`
+table, leaving every later migration to fail on tables that already exist. Any
+change therefore has to be made in both places, and the two are checked against
+each other by running `migrate` on a clean database.
+
 ---
 
 ## 2.1 Conventions
