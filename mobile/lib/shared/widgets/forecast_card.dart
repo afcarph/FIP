@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -41,9 +39,10 @@ class ForecastCard extends StatelessWidget {
     };
 
     final confidencePct = (confidence * 100).round();
-    final confidenceLabel = confidence >= 0.85
-        ? 'High'
-        : confidence >= 0.65
+    final confidenceLabel =
+        confidence >= 0.85
+            ? 'High'
+            : confidence >= 0.65
             ? 'Moderate'
             : 'Low';
 
@@ -58,9 +57,9 @@ class ForecastCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     fuelType,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -97,18 +96,18 @@ class ForecastCard extends StatelessWidget {
                       ? '—'
                       : '${changeAmount > 0 ? '+' : ''}${Formatters.currency(changeAmount)}',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: tint,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: tint,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
                 if (direction != 'no_change') ...[
                   const SizedBox(width: 6),
                   Text(
                     'per litre',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ],
               ],
@@ -131,8 +130,8 @@ class ForecastCard extends StatelessWidget {
                     confidence >= 0.85
                         ? colors.priceDown
                         : confidence >= 0.65
-                            ? scheme.primary
-                            : colors.warning,
+                        ? scheme.primary
+                        : colors.warning,
                   ),
                 ),
               ),
@@ -142,10 +141,9 @@ class ForecastCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 narrative!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.35,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),

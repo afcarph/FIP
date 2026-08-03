@@ -29,8 +29,7 @@ class AuthState {
 
   bool get isAdmin => roles.contains('super_admin') || roles.contains('system_admin');
 
-  bool can(String permission) =>
-      roles.contains('super_admin') || permissions.contains(permission);
+  bool can(String permission) => roles.contains('super_admin') || permissions.contains(permission);
 
   bool hasRole(List<String> candidates) => candidates.any(roles.contains);
 
@@ -111,11 +110,7 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
 // -------------------------------------------------------------- location ---
 
 class UserLocation {
-  const UserLocation({
-    required this.latitude,
-    required this.longitude,
-    required this.isFallback,
-  });
+  const UserLocation({required this.latitude, required this.longitude, required this.isFallback});
 
   final double latitude;
   final double longitude;
@@ -169,10 +164,9 @@ final locationProvider = FutureProvider<UserLocation>((ref) async {
 // ------------------------------------------------------------------ data ---
 
 final fuelTypesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final data = await ref.watch(apiClientProvider).get<List<dynamic>>(
-        '/prices/fuel-types',
-        skipAuth: true,
-      );
+  final data = await ref
+      .watch(apiClientProvider)
+      .get<List<dynamic>>('/prices/fuel-types', skipAuth: true);
 
   return data.cast<Map<String, dynamic>>();
 });
@@ -189,24 +183,27 @@ final dashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 
 /// Nearby stations for the current position and filters.
 final nearbyStationsProvider =
-    FutureProvider.family<List<Map<String, dynamic>>, ({double radiusKm, int? fuelTypeId})>(
-  (ref, args) async {
-    final location = await ref.watch(locationProvider.future);
+    FutureProvider.family<List<Map<String, dynamic>>, ({double radiusKm, int? fuelTypeId})>((
+      ref,
+      args,
+    ) async {
+      final location = await ref.watch(locationProvider.future);
 
-    final data = await ref.watch(apiClientProvider).get<List<dynamic>>(
-      '/stations/nearby',
-      query: {
-        'latitude': location.latitude,
-        'longitude': location.longitude,
-        'radius_km': args.radiusKm,
-        'fuel_type_id': args.fuelTypeId,
-      },
-      skipAuth: true,
-    );
+      final data = await ref
+          .watch(apiClientProvider)
+          .get<List<dynamic>>(
+            '/stations/nearby',
+            query: {
+              'latitude': location.latitude,
+              'longitude': location.longitude,
+              'radius_km': args.radiusKm,
+              'fuel_type_id': args.fuelTypeId,
+            },
+            skipAuth: true,
+          );
 
-    return data.cast<Map<String, dynamic>>();
-  },
-);
+      return data.cast<Map<String, dynamic>>();
+    });
 
 final vehiclesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final data = await ref.watch(apiClientProvider).get<List<dynamic>>('/vehicles');

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -55,9 +53,9 @@ class StatTile extends StatelessWidget {
                     child: Text(
                       label.toUpperCase(),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            letterSpacing: 0.4,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                        letterSpacing: 0.4,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -77,11 +75,11 @@ class StatTile extends StatelessWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      // Tabular figures stop the layout jittering as values
-                      // refresh.
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  fontWeight: FontWeight.w600,
+                  // Tabular figures stop the layout jittering as values
+                  // refresh.
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -89,9 +87,9 @@ class StatTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   hint!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

@@ -47,8 +47,8 @@ class ErrorView extends StatelessWidget {
               apiError?.message ?? 'Please try again in a moment.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             if (apiError?.requestId != null) ...[
               const SizedBox(height: 8),
@@ -57,8 +57,8 @@ class ErrorView extends StatelessWidget {
               Text(
                 'Reference: ${apiError!.requestId}',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
             if (onRetry != null) ...[
@@ -118,8 +118,8 @@ class EmptyView extends StatelessWidget {
                 description!,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
             if (action != null) ...[const SizedBox(height: 20), action!],

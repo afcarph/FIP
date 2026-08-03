@@ -1,10 +1,7 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -15,10 +12,9 @@ final expenseSummaryProvider = FutureProvider<Map<String, dynamic>>((ref) async 
 });
 
 final expenseListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final data = await ref.watch(apiClientProvider).get<List<dynamic>>(
-        '/expenses',
-        query: {'per_page': 30},
-      );
+  final data = await ref
+      .watch(apiClientProvider)
+      .get<List<dynamic>>('/expenses', query: {'per_page': 30});
 
   return data.cast<Map<String, dynamic>>();
 });
@@ -53,51 +49,63 @@ class ExpensesScreen extends ConsumerWidget {
                 sliver: SliverToBoxAdapter(
                   child: summary.when(
                     loading: () => const SizedBox(height: 160),
-                    error: (error, _) => ErrorView(
-                      error: error,
-                      onRetry: () => ref.invalidate(expenseSummaryProvider),
-                    ),
+                    error:
+                        (error, _) => ErrorView(
+                          error: error,
+                          onRetry: () => ref.invalidate(expenseSummaryProvider),
+                        ),
                     data: (data) => _SummaryGrid(data: data),
                   ),
                 ),
               ),
-
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 sliver: SliverToBoxAdapter(
                   child: Text(
                     'Recent fill-ups',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
-
               purchases.when(
-                loading: () => const SliverToBoxAdapter(
-                  child: Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
-                ),
-                error: (error, _) => SliverToBoxAdapter(
-                  child: ErrorView(error: error, onRetry: () => ref.invalidate(expenseListProvider)),
-                ),
-                data: (data) => data.isEmpty
-                    ? const SliverToBoxAdapter(
-                        child: EmptyView(
-                          icon: LucideIcons.receipt,
-                          title: 'No fill-ups logged',
-                          description: 'Log one and we will work out your cost per kilometre.',
-                        ),
-                      )
-                    : SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
-                        sliver: SliverList.separated(
-                          itemCount: data.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (context, index) => _PurchaseRow(purchase: data[index]),
+                loading:
+                    () => const SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: CircularProgressIndicator(),
                         ),
                       ),
+                    ),
+                error:
+                    (error, _) => SliverToBoxAdapter(
+                      child: ErrorView(
+                        error: error,
+                        onRetry: () => ref.invalidate(expenseListProvider),
+                      ),
+                    ),
+                data:
+                    (data) =>
+                        data.isEmpty
+                            ? const SliverToBoxAdapter(
+                              child: EmptyView(
+                                icon: LucideIcons.receipt,
+                                title: 'No fill-ups logged',
+                                description:
+                                    'Log one and we will work out your cost per kilometre.',
+                              ),
+                            )
+                            : SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
+                              sliver: SliverList.separated(
+                                itemCount: data.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                itemBuilder:
+                                    (context, index) => _PurchaseRow(purchase: data[index]),
+                              ),
+                            ),
               ),
             ],
           ),
@@ -111,11 +119,12 @@ class ExpensesScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => Padding(
-        // Lift the sheet above the keyboard so the submit button stays visible.
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: const _LogFillUpSheet(),
-      ),
+      builder:
+          (context) => Padding(
+            // Lift the sheet above the keyboard so the submit button stays visible.
+            padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+            child: const _LogFillUpSheet(),
+          ),
     );
   }
 }
@@ -152,9 +161,10 @@ class _SummaryGrid extends StatelessWidget {
         ),
         StatTile(
           label: 'Cost per km',
-          value: summary['avg_cost_per_km'] != null
-              ? '${Formatters.currency(summary['avg_cost_per_km'] as num?)}/km'
-              : '—',
+          value:
+              summary['avg_cost_per_km'] != null
+                  ? '${Formatters.currency(summary['avg_cost_per_km'] as num?)}/km'
+                  : '—',
           icon: LucideIcons.route,
           accent: StatAccent.success,
         ),
@@ -183,15 +193,17 @@ class _PurchaseRow extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: CircleAvatar(
-          backgroundColor: isFlagged
-              ? Theme.of(context).colorScheme.errorContainer
-              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+          backgroundColor:
+              isFlagged
+                  ? Theme.of(context).colorScheme.errorContainer
+                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
           child: Icon(
             isFlagged ? LucideIcons.triangleAlert : LucideIcons.fuel,
             size: 18,
-            color: isFlagged
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.primary,
+            color:
+                isFlagged
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.primary,
           ),
         ),
         title: Text(
@@ -209,9 +221,9 @@ class _PurchaseRow extends StatelessWidget {
         trailing: Text(
           Formatters.currency(purchase['total_cost'] as num?),
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+            fontWeight: FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
       ),
     );
@@ -264,18 +276,20 @@ class _LogFillUpSheetState extends ConsumerState<_LogFillUpSheet> {
     });
 
     try {
-      await ref.read(apiClientProvider).post<Map<String, dynamic>>(
-        '/expenses',
-        body: {
-          'vehicle_id': _vehicleId,
-          'litres': double.parse(_litres.text),
-          'price_per_litre': double.parse(_price.text),
-          'total_cost': _total,
-          if (_odometer.text.isNotEmpty) 'odometer': double.parse(_odometer.text),
-          'is_full_tank': true,
-          'purchased_at': DateTime.now().toIso8601String(),
-        },
-      );
+      await ref
+          .read(apiClientProvider)
+          .post<Map<String, dynamic>>(
+            '/expenses',
+            body: {
+              'vehicle_id': _vehicleId,
+              'litres': double.parse(_litres.text),
+              'price_per_litre': double.parse(_price.text),
+              'total_cost': _total,
+              if (_odometer.text.isNotEmpty) 'odometer': double.parse(_odometer.text),
+              'is_full_tank': true,
+              'purchased_at': DateTime.now().toIso8601String(),
+            },
+          );
 
       ref
         ..invalidate(expenseSummaryProvider)
@@ -311,18 +325,21 @@ class _LogFillUpSheetState extends ConsumerState<_LogFillUpSheet> {
             vehicles.when(
               loading: () => const LinearProgressIndicator(),
               error: (_, __) => const Text('Could not load your vehicles.'),
-              data: (data) => DropdownButtonFormField<int>(
-                value: _vehicleId ?? (data.length == 1 ? data.first['id'] as int : null),
-                decoration: const InputDecoration(labelText: 'Vehicle'),
-                items: [
-                  for (final vehicle in data)
-                    DropdownMenuItem(
-                      value: vehicle['id'] as int,
-                      child: Text(vehicle['display_name'] as String? ?? vehicle['plate_number'] as String),
-                    ),
-                ],
-                onChanged: (value) => setState(() => _vehicleId = value),
-              ),
+              data:
+                  (data) => DropdownButtonFormField<int>(
+                    initialValue: _vehicleId ?? (data.length == 1 ? data.first['id'] as int : null),
+                    decoration: const InputDecoration(labelText: 'Vehicle'),
+                    items: [
+                      for (final vehicle in data)
+                        DropdownMenuItem(
+                          value: vehicle['id'] as int,
+                          child: Text(
+                            vehicle['display_name'] as String? ?? vehicle['plate_number'] as String,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _vehicleId = value),
+                  ),
             ),
 
             const SizedBox(height: 12),
@@ -388,9 +405,9 @@ class _LogFillUpSheetState extends ConsumerState<_LogFillUpSheet> {
                   Text(
                     Formatters.currency(_total),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ],
               ),
@@ -408,9 +425,14 @@ class _LogFillUpSheetState extends ConsumerState<_LogFillUpSheet> {
 
             FilledButton(
               onPressed: _submitting ? null : _submit,
-              child: _submitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Save'),
+              child:
+                  _submitting
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Text('Save'),
             ),
           ],
         ),

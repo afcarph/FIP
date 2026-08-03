@@ -20,8 +20,8 @@ import 'api_exception.dart';
 ///   and replayed with the new token rather than failing the screen.
 class ApiClient {
   ApiClient({FlutterSecureStorage? storage, Dio? dio})
-      : _storage = storage ?? const FlutterSecureStorage(),
-        _dio = dio ?? Dio() {
+    : _storage = storage ?? const FlutterSecureStorage(),
+      _dio = dio ?? Dio() {
     _configure();
   }
 
@@ -107,9 +107,7 @@ class ApiClient {
     );
 
     if (!AppConfig.isProduction) {
-      _dio.interceptors.add(
-        PrettyDioLogger(requestBody: true, responseBody: false, compact: true),
-      );
+      _dio.interceptors.add(PrettyDioLogger(requestBody: true, responseBody: false, compact: true));
     }
   }
 
@@ -135,7 +133,8 @@ class ApiClient {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      final newToken = (response.data as Map<String, dynamic>?)?['data']?['access_token'] as String?;
+      final newToken =
+          (response.data as Map<String, dynamic>?)?['data']?['access_token'] as String?;
 
       if (newToken != null) {
         await _storage.write(key: _tokenKey, value: newToken);
@@ -166,7 +165,8 @@ class ApiClient {
     var uuid = await _storage.read(key: _deviceKey);
 
     if (uuid == null) {
-      uuid = DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
+      uuid =
+          DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
           (100000 + DateTime.now().millisecond * 7).toRadixString(36);
       await _storage.write(key: _deviceKey, value: uuid);
     }
@@ -176,11 +176,7 @@ class ApiClient {
 
   // ------------------------------------------------------------ requests ---
 
-  Future<T> get<T>(
-    String path, {
-    Map<String, dynamic>? query,
-    bool skipAuth = false,
-  }) async {
+  Future<T> get<T>(String path, {Map<String, dynamic>? query, bool skipAuth = false}) async {
     return _unwrap<T>(
       () => _dio.get<dynamic>(
         path,
@@ -214,7 +210,10 @@ class ApiClient {
       () => _dio.post<dynamic>(
         path,
         data: formData,
-        options: Options(sendTimeout: AppConfig.uploadTimeout, receiveTimeout: AppConfig.uploadTimeout),
+        options: Options(
+          sendTimeout: AppConfig.uploadTimeout,
+          receiveTimeout: AppConfig.uploadTimeout,
+        ),
       ),
     );
   }
@@ -238,8 +237,6 @@ class ApiClient {
     if (query == null) return null;
 
     // Dio serialises nulls as empty parameters, which the API then rejects.
-    return Map<String, dynamic>.fromEntries(
-      query.entries.where((entry) => entry.value != null),
-    );
+    return Map<String, dynamic>.fromEntries(query.entries.where((entry) => entry.value != null));
   }
 }

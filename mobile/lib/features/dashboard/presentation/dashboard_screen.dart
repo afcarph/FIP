@@ -24,11 +24,12 @@ class DashboardScreen extends ConsumerWidget {
           onRefresh: () async => ref.invalidate(dashboardProvider),
           child: dashboard.when(
             loading: () => const _DashboardSkeleton(),
-            error: (error, _) => ErrorView(
-              error: error,
-              onRetry: () => ref.invalidate(dashboardProvider),
-            ),
-            data: (data) => _DashboardBody(data: data, firstName: auth.user?['first_name'] as String?),
+            error:
+                (error, _) =>
+                    ErrorView(error: error, onRetry: () => ref.invalidate(dashboardProvider)),
+            data:
+                (data) =>
+                    _DashboardBody(data: data, firstName: auth.user?['first_name'] as String?),
           ),
         ),
       ),
@@ -48,7 +49,8 @@ class _DashboardBody extends StatelessWidget {
     final savings = data['savings'] as Map<String, dynamic>? ?? {};
     final forecasts = (data['forecasts'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
     final vehicles = (data['vehicles'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-    final maintenance = (data['maintenance_due'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    final maintenance =
+        (data['maintenance_due'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
 
     return CustomScrollView(
       // Always scrollable so pull-to-refresh works even on a short page.
@@ -62,16 +64,16 @@ class _DashboardBody extends StatelessWidget {
               children: [
                 Text(
                   '${_greeting()}${firstName != null ? ', $firstName' : ''}',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Your fuel spend and this week’s outlook',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -109,9 +111,10 @@ class _DashboardBody extends StatelessWidget {
                 value: Formatters.compactCurrency(savings['potential_savings'] as num?),
                 icon: LucideIcons.piggyBank,
                 accent: StatAccent.danger,
-                hint: savings['savings_pct'] != null
-                    ? '${(savings['savings_pct'] as num).toStringAsFixed(1)}% of spend'
-                    : null,
+                hint:
+                    savings['savings_pct'] != null
+                        ? '${(savings['savings_pct'] as num).toStringAsFixed(1)}% of spend'
+                        : null,
               ),
             ],
           ),
@@ -211,8 +214,7 @@ class _SectionHeader extends StatelessWidget {
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            if (action != null)
-              TextButton(onPressed: onAction, child: Text(action!)),
+            if (action != null) TextButton(onPressed: onAction, child: Text(action!)),
           ],
         ),
       ),
@@ -249,7 +251,10 @@ class _VehicleRow extends StatelessWidget {
           children: [
             Text(
               Formatters.efficiency(vehicle['avg_km_per_litre'] as num?),
-              style: const TextStyle(fontWeight: FontWeight.w600, fontFeatures: [FontFeature.tabularFigures()]),
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
             ),
             if (deviation != null)
               Text(
@@ -258,9 +263,10 @@ class _VehicleRow extends StatelessWidget {
                   fontSize: 11,
                   // A drop below baseline is the actionable case, so only that
                   // gets a warning colour.
-                  color: deviation < -5
-                      ? context.fipColors.priceUp
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                  color:
+                      deviation < -5
+                          ? context.fipColors.priceUp
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
           ],
@@ -291,12 +297,15 @@ class _MaintenanceRow extends StatelessWidget {
         subtitle: Text(item['vehicle'] as String? ?? ''),
         trailing: Chip(
           label: Text(
-            isOverdue ? 'Overdue' : Formatters.date(DateTime.tryParse(item['due_at'] as String? ?? '')),
+            isOverdue
+                ? 'Overdue'
+                : Formatters.date(DateTime.tryParse(item['due_at'] as String? ?? '')),
             style: const TextStyle(fontSize: 11),
           ),
-          backgroundColor: isOverdue
-              ? Theme.of(context).colorScheme.errorContainer
-              : context.fipColors.warning.withValues(alpha: 0.15),
+          backgroundColor:
+              isOverdue
+                  ? Theme.of(context).colorScheme.errorContainer
+                  : context.fipColors.warning.withValues(alpha: 0.15),
           visualDensity: VisualDensity.compact,
         ),
       ),
@@ -312,7 +321,11 @@ class _DashboardSkeleton extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Container(height: 28, width: 180, color: Theme.of(context).colorScheme.surfaceContainerHighest),
+        Container(
+          height: 28,
+          width: 180,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        ),
         const SizedBox(height: 24),
         GridView.count(
           shrinkWrap: true,
@@ -321,10 +334,7 @@ class _DashboardSkeleton extends StatelessWidget {
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
           childAspectRatio: 1.55,
-          children: List.generate(
-            4,
-            (_) => Card(child: Container(color: Colors.transparent)),
-          ),
+          children: List.generate(4, (_) => Card(child: Container(color: Colors.transparent))),
         ),
       ],
     );

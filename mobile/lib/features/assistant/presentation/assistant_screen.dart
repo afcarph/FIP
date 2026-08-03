@@ -61,15 +61,17 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     try {
       final location = await ref.read(locationProvider.future);
 
-      final reply = await ref.read(apiClientProvider).post<Map<String, dynamic>>(
-        '/assistant/chat',
-        body: {
-          'question': trimmed,
-          if (_sessionId != null) 'session_id': _sessionId,
-          'latitude': location.latitude,
-          'longitude': location.longitude,
-        },
-      );
+      final reply = await ref
+          .read(apiClientProvider)
+          .post<Map<String, dynamic>>(
+            '/assistant/chat',
+            body: {
+              'question': trimmed,
+              if (_sessionId != null) 'session_id': _sessionId,
+              'latitude': location.latitude,
+              'longitude': location.longitude,
+            },
+          );
 
       setState(() {
         _sessionId = reply['session_id'] as int?;
@@ -110,20 +112,20 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         child: Column(
           children: [
             Expanded(
-              child: _turns.isEmpty
-                  ? _EmptyConversation(onPick: _send, suggestions: _suggestions)
-                  : ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _turns.length + (_sending ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index >= _turns.length) return const _TypingBubble();
+              child:
+                  _turns.isEmpty
+                      ? _EmptyConversation(onPick: _send, suggestions: _suggestions)
+                      : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _turns.length + (_sending ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index >= _turns.length) return const _TypingBubble();
 
-                        return _MessageBubble(turn: _turns[index]);
-                      },
-                    ),
+                          return _MessageBubble(turn: _turns[index]);
+                        },
+                      ),
             ),
-
             if (_turns.isNotEmpty && _suggestions.isNotEmpty && !_sending)
               SizedBox(
                 height: 44,
@@ -142,7 +144,6 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                   ],
                 ),
               ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
               child: Row(
@@ -199,7 +200,6 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(width: 10),
           ],
-
           Flexible(
             child: Column(
               crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -222,9 +222,9 @@ class _MessageBubble extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Based on: ${turn.sources.join(' · ')}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ],
               ],
@@ -304,9 +304,9 @@ class _EmptyConversation extends StatelessWidget {
           Text(
             'I work from your own data — your vehicles, your fill-ups and live prices around you.',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 28),
           for (final suggestion in suggestions)

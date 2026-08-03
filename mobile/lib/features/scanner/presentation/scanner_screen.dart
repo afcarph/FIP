@@ -71,10 +71,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         'image': await MultipartFile.fromFile(image.path, filename: 'board.jpg'),
       });
 
-      final result = await ref.read(apiClientProvider).upload<Map<String, dynamic>>(
-            '/ocr/scan',
-            formData,
-          );
+      final result = await ref
+          .read(apiClientProvider)
+          .upload<Map<String, dynamic>>('/ocr/scan', formData);
 
       setState(() => _result = result);
     } on ApiException catch (error) {
@@ -95,9 +94,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Preview(image: _image, scanning: _scanning),
-
               const SizedBox(height: 16),
-
               Row(
                 children: [
                   Expanded(
@@ -117,12 +114,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                   ),
                 ],
               ),
-
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                _ErrorBanner(message: _error!),
-              ],
-
+              if (_error != null) ...[const SizedBox(height: 16), _ErrorBanner(message: _error!)],
               if (_result != null) ...[
                 const SizedBox(height: 20),
                 _ScanResult(result: _result!),
@@ -155,46 +147,47 @@ class _Preview extends StatelessWidget {
           border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         clipBehavior: Clip.antiAlias,
-        child: image == null
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      LucideIcons.scanLine,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Point at the price board',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              )
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.file(image!, fit: BoxFit.cover),
-                  if (scanning)
-                    ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(color: Colors.white),
-                            SizedBox(height: 12),
-                            Text('Reading the board…', style: TextStyle(color: Colors.white)),
-                          ],
+        child:
+            image == null
+                ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.scanLine,
+                        size: 40,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Point at the price board',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    ),
-                ],
-              ),
+                    ],
+                  ),
+                )
+                : Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(image!, fit: BoxFit.cover),
+                    if (scanning)
+                      ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        child: const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 12),
+                              Text('Reading the board…', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
       ),
     );
   }
@@ -232,9 +225,7 @@ class _ScanResult extends StatelessWidget {
             ),
           ],
         ),
-
         const SizedBox(height: 12),
-
         if (valid.isEmpty)
           Card(
             child: Padding(
@@ -254,14 +245,13 @@ class _ScanResult extends StatelessWidget {
           )
         else
           ...valid.map((line) => _LineRow(line: line)),
-
         if (rejected.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
             'Skipped lines',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 6),
           // Showing what was rejected and why is what lets a user fix their
@@ -272,15 +262,13 @@ class _ScanResult extends StatelessWidget {
               child: Text(
                 '${line['label'] ?? 'Unreadable'} — ${_reasonLabel(line['rejection_reason'] as String?)}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ),
         ],
-
         const SizedBox(height: 16),
-
         if (status == 'approved')
           Card(
             color: context.fipColors.priceDown.withValues(alpha: 0.1),
@@ -298,20 +286,20 @@ class _ScanResult extends StatelessWidget {
         else
           Text(
             'Your scan has been submitted for review. Approved prices usually appear within minutes.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
       ],
     );
   }
 
   static String _reasonLabel(String? reason) => switch (reason) {
-        'unrecognised_fuel_label' => 'fuel type not recognised',
-        'implausible_price' => 'price outside the plausible range',
-        'price_out_of_local_band' => 'too far from local prices',
-        _ => 'could not be validated',
-      };
+    'unrecognised_fuel_label' => 'fuel type not recognised',
+    'implausible_price' => 'price outside the plausible range',
+    'price_out_of_local_band' => 'too far from local prices',
+    _ => 'could not be validated',
+  };
 }
 
 class _LineRow extends StatelessWidget {
@@ -379,9 +367,21 @@ class _Tips extends StatelessWidget {
   const _Tips();
 
   static const _tips = [
-    (LucideIcons.sun, 'Avoid glare', 'Stand slightly off-axis so the board is not reflecting the sun.'),
-    (LucideIcons.maximize, 'Fill the frame', 'Get close enough that the digits are large and sharp.'),
-    (LucideIcons.mapPin, 'Be at the station', 'Scans are geotagged so other drivers can trust the price.'),
+    (
+      LucideIcons.sun,
+      'Avoid glare',
+      'Stand slightly off-axis so the board is not reflecting the sun.',
+    ),
+    (
+      LucideIcons.maximize,
+      'Fill the frame',
+      'Get close enough that the digits are large and sharp.',
+    ),
+    (
+      LucideIcons.mapPin,
+      'Be at the station',
+      'Scans are geotagged so other drivers can trust the price.',
+    ),
   ];
 
   @override
@@ -410,8 +410,8 @@ class _Tips extends StatelessWidget {
                       Text(
                         body,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),

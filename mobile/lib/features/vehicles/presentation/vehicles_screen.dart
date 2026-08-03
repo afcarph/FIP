@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -23,20 +21,24 @@ class VehiclesScreen extends ConsumerWidget {
           onRefresh: () async => ref.invalidate(vehiclesProvider),
           child: vehicles.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => ErrorView(error: error, onRetry: () => ref.invalidate(vehiclesProvider)),
-            data: (data) => data.isEmpty
-                ? const EmptyView(
-                    icon: LucideIcons.car,
-                    title: 'No vehicles yet',
-                    description: 'Add a vehicle to track its efficiency and running costs.',
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: data.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) => _VehicleCard(vehicle: data[index]),
-                  ),
+            error:
+                (error, _) =>
+                    ErrorView(error: error, onRetry: () => ref.invalidate(vehiclesProvider)),
+            data:
+                (data) =>
+                    data.isEmpty
+                        ? const EmptyView(
+                          icon: LucideIcons.car,
+                          title: 'No vehicles yet',
+                          description: 'Add a vehicle to track its efficiency and running costs.',
+                        )
+                        : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: data.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) => _VehicleCard(vehicle: data[index]),
+                        ),
           ),
         ),
       ),
@@ -81,9 +83,9 @@ class _VehicleCard extends StatelessWidget {
                     children: [
                       Text(
                         vehicle['display_name'] as String? ?? 'Vehicle',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       Text(
                         [
@@ -91,17 +93,15 @@ class _VehicleCard extends StatelessWidget {
                           (vehicle['fuel_type'] as Map<String, dynamic>?)?['name'],
                         ].where((part) => part != null).join(' · '),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Row(
               children: [
                 Expanded(
@@ -116,7 +116,8 @@ class _VehicleCard extends StatelessWidget {
                     value: Formatters.efficiency(efficiency['avg_km_per_litre'] as num?),
                     // Only a meaningful drop is worth colouring; small
                     // variation between tanks is normal.
-                    valueColor: deviation != null && deviation < -5 ? context.fipColors.priceUp : null,
+                    valueColor:
+                        deviation != null && deviation < -5 ? context.fipColors.priceUp : null,
                   ),
                 ),
                 Expanded(
@@ -127,7 +128,6 @@ class _VehicleCard extends StatelessWidget {
                 ),
               ],
             ),
-
             if (_isExpiringSoon(registrationDays) || _isExpiringSoon(insuranceDays)) ...[
               const SizedBox(height: 14),
               const Divider(height: 1),
@@ -148,11 +148,11 @@ class _VehicleCard extends StatelessWidget {
   static bool _isExpiringSoon(num? days) => days != null && days <= 60;
 
   static IconData _iconFor(String? type) => switch (type) {
-        'motorcycle' => LucideIcons.bike,
-        'truck' || 'trailer' => LucideIcons.truck,
-        'van' => LucideIcons.busFront,
-        _ => LucideIcons.car,
-      };
+    'motorcycle' => LucideIcons.bike,
+    'truck' || 'trailer' => LucideIcons.truck,
+    'van' => LucideIcons.busFront,
+    _ => LucideIcons.car,
+  };
 }
 
 class _Metric extends StatelessWidget {
@@ -169,18 +169,18 @@ class _Metric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 2),
         Text(
           value,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: valueColor,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+            fontWeight: FontWeight.w600,
+            color: valueColor,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
       ],
     );
@@ -203,9 +203,7 @@ class _ExpiryChip extends StatelessWidget {
         Icon(isOverdue ? LucideIcons.circleAlert : LucideIcons.clock, size: 14, color: colour),
         const SizedBox(width: 8),
         Text(
-          isOverdue
-              ? '$label expired ${days.abs()} days ago'
-              : '$label expires in $days days',
+          isOverdue ? '$label expired ${days.abs()} days ago' : '$label expires in $days days',
           style: TextStyle(fontSize: 12, color: colour),
         ),
       ],

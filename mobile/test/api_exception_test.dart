@@ -77,7 +77,11 @@ void main() {
     final malformed = ApiException.fromDio(
       DioException(
         requestOptions: options,
-        response: Response<dynamic>(requestOptions: options, statusCode: 500, data: '<html>oops</html>'),
+        response: Response<dynamic>(
+          requestOptions: options,
+          statusCode: 500,
+          data: '<html>oops</html>',
+        ),
         type: DioExceptionType.badResponse,
       ),
     );

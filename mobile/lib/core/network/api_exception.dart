@@ -49,9 +49,8 @@ class ApiException implements Exception {
         code: envelope?['code'] as String? ?? 'request_failed',
         message: envelope?['message'] as String? ?? 'Something went wrong.',
         statusCode: error.response?.statusCode,
-        fieldErrors: details?.map(
-              (key, value) => MapEntry(key, (value as List<dynamic>).cast<String>()),
-            ) ??
+        fieldErrors:
+            details?.map((key, value) => MapEntry(key, (value as List<dynamic>).cast<String>())) ??
             const {},
         requestId: (body['meta'] as Map<String, dynamic>?)?['request_id'] as String?,
       );

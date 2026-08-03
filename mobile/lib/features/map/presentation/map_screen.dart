@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -51,49 +49,48 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onFuelChanged: (id) => setState(() => _fuelTypeId = id),
               onRadiusChanged: (radius) => setState(() => _radiusKm = radius),
             ),
-
             Expanded(
               child: location.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => ErrorView(
-                  error: error,
-                  onRetry: () => ref.invalidate(locationProvider),
-                ),
-                data: (position) => Column(
-                  children: [
-                    if (position.isFallback) const _FallbackNotice(),
-
-                    SizedBox(
-                      height: 260,
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: LatLng(position.latitude, position.longitude),
-                          zoom: 13.5,
+                error:
+                    (error, _) =>
+                        ErrorView(error: error, onRetry: () => ref.invalidate(locationProvider)),
+                data:
+                    (position) => Column(
+                      children: [
+                        if (position.isFallback) const _FallbackNotice(),
+                        SizedBox(
+                          height: 260,
+                          child: GoogleMap(
+                            initialCameraPosition: CameraPosition(
+                              target: LatLng(position.latitude, position.longitude),
+                              zoom: 13.5,
+                            ),
+                            onMapCreated: (controller) => _controller = controller,
+                            myLocationEnabled: !position.isFallback,
+                            myLocationButtonEnabled: true,
+                            zoomControlsEnabled: false,
+                            markers: _markers(stations.valueOrNull ?? const []),
+                          ),
                         ),
-                        onMapCreated: (controller) => _controller = controller,
-                        myLocationEnabled: !position.isFallback,
-                        myLocationButtonEnabled: true,
-                        zoomControlsEnabled: false,
-                        markers: _markers(stations.valueOrNull ?? const []),
-                      ),
+                        Expanded(
+                          child: stations.when(
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error:
+                                (error, _) => ErrorView(
+                                  error: error,
+                                  onRetry: () => ref.invalidate(nearbyStationsProvider),
+                                ),
+                            data:
+                                (data) => _StationList(
+                                  stations: _rank(data),
+                                  fuelTypeId: _fuelTypeId,
+                                  onRefresh: () async => ref.invalidate(nearbyStationsProvider),
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
-
-                    Expanded(
-                      child: stations.when(
-                        loading: () => const Center(child: CircularProgressIndicator()),
-                        error: (error, _) => ErrorView(
-                          error: error,
-                          onRetry: () => ref.invalidate(nearbyStationsProvider),
-                        ),
-                        data: (data) => _StationList(
-                          stations: _rank(data),
-                          fuelTypeId: _fuelTypeId,
-                          onRefresh: () async => ref.invalidate(nearbyStationsProvider),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ],
@@ -114,9 +111,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
         infoWindow: InfoWindow(
           title: station['name'] as String? ?? 'Station',
-          snippet: price != null
-              ? '${Formatters.currency(price)}/L · ${Formatters.distance(station['distance_km'] as num?)}'
-              : 'No price reported',
+          snippet:
+              price != null
+                  ? '${Formatters.currency(price)}/L · ${Formatters.distance(station['distance_km'] as num?)}'
+                  : 'No price reported',
         ),
       );
     }).toSet();
@@ -145,9 +143,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     if (prices.isEmpty) return null;
 
-    final match = fuelTypeId == null
-        ? prices.first
-        : prices.where((price) => price['fuel_type_id'] == fuelTypeId).firstOrNull;
+    final match =
+        fuelTypeId == null
+            ? prices.first
+            : prices.where((price) => price['fuel_type_id'] == fuelTypeId).firstOrNull;
 
     return (match?['price'] as num?)?.toDouble();
   }
@@ -197,7 +196,6 @@ class _Filters extends StatelessWidget {
             ],
           ),
         ),
-
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -253,11 +251,7 @@ class _FallbackNotice extends StatelessWidget {
 }
 
 class _StationList extends StatelessWidget {
-  const _StationList({
-    required this.stations,
-    required this.fuelTypeId,
-    required this.onRefresh,
-  });
+  const _StationList({required this.stations, required this.fuelTypeId, required this.onRefresh});
 
   final List<Map<String, dynamic>> stations;
   final int? fuelTypeId;
@@ -282,9 +276,10 @@ class _StationList extends StatelessWidget {
         itemBuilder: (context, index) {
           final station = stations[index];
           final prices = (station['prices'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-          final match = fuelTypeId == null
-              ? prices.firstOrNull
-              : prices.where((price) => price['fuel_type_id'] == fuelTypeId).firstOrNull;
+          final match =
+              fuelTypeId == null
+                  ? prices.firstOrNull
+                  : prices.where((price) => price['fuel_type_id'] == fuelTypeId).firstOrNull;
 
           return Card(
             child: ListTile(
@@ -306,9 +301,9 @@ class _StationList extends StatelessWidget {
                   Text(
                     Formatters.currency(match?['price'] as num?),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                   if (match?['is_stale'] == true)
                     Text(

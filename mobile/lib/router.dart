@@ -36,7 +36,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-
       ShellRoute(
         builder: (context, state, child) => _AppScaffold(child: child),
         routes: [
@@ -49,25 +48,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LucideIcons.circleAlert, size: 40),
-            const SizedBox(height: 12),
-            Text('Page not found', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(state.matchedLocation, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => context.go('/dashboard'),
-              child: const Text('Back to dashboard'),
+    errorBuilder:
+        (context, state) => Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(LucideIcons.circleAlert, size: 40),
+                const SizedBox(height: 12),
+                Text('Page not found', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(state.matchedLocation, style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.go('/dashboard'),
+                  child: const Text('Back to dashboard'),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    ),
   );
 });
 
