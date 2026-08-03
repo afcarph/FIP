@@ -6,6 +6,8 @@ namespace App\Providers;
 
 use App\Services\External\AiServiceClient;
 use App\Services\External\FcmClient;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -35,6 +37,25 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Models live in App\Domain\<Context>\Models, but factories stay flat in
+        // Database\Factories. Laravel's default guess would look for
+        // Database\Factories\Domain\<Context>\Models\<Name>Factory, so map on
+        // the class basename instead.
+        Factory::guessFactoryNamesUsing(
+            static fn (string $modelName): string => 'Database\\Factories\\'.class_basename($modelName).'Factory',
+        );
+
+        // There is no server-rendered reset page — the API is headless — so the
+        // notification must link at the SPA, which posts the token back to
+        // POST /api/v1/auth/reset-password. Without this the mailer would try to
+        // resolve a `password.reset` route that does not exist here.
+        ResetPassword::createUrlUsing(static fn (object $notifiable, string $token): string => sprintf(
+            '%s/reset-password?token=%s&email=%s',
+            rtrim((string) config('app.frontend_url'), '/'),
+            $token,
+            urlencode($notifiable->getEmailForPasswordReset()),
+        ));
+
         // Fail loudly in development on lazy loading and mass-assignment slips.
         Model::preventLazyLoading(! $this->app->isProduction());
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());

@@ -19,7 +19,11 @@ class RegisterRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:80'],
             'last_name' => ['required', 'string', 'max:80'],
-            'email' => ['required', 'email:rfc,dns', 'max:180', 'unique:users,email'],
+            // `rfc` only, deliberately not `dns`: a resolver lookup on the
+            // signup path rejects valid addresses whenever DNS hiccups and adds
+            // latency to every attempt. Deliverability is proven by the
+            // verification email instead.
+            'email' => ['required', 'email:rfc', 'max:180', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:32', 'regex:/^\+?[0-9\s\-()]{7,32}$/'],
             'password' => [
                 'required',

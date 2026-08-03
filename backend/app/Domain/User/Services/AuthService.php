@@ -27,6 +27,13 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  */
 final readonly class AuthService
 {
+    /**
+     * A valid cost-12 bcrypt digest of a discarded random string, compared
+     * against when the email is unknown so that "no such user" and "wrong
+     * password" take indistinguishable time.
+     */
+    private const TIMING_EQUALISATION_HASH = '$2y$12$yhhopS8ixp0XECUTW8pQQ.6nyCHMh2.lRnCRblmQRS/TBQdgcV9iW';
+
     public function __construct(
         private UserRepository $users,
         private MfaService $mfa,
@@ -42,8 +49,11 @@ final readonly class AuthService
         $user = $this->users->findByEmail($email);
 
         if ($user === null) {
-            // Burn comparable time to a real bcrypt verification.
-            Hash::check($password, '$2y$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv');
+            // Burn comparable time to a real bcrypt verification. This must be a
+            // genuine cost-12 hash (of a random string nobody holds): Laravel's
+            // hasher rejects a malformed digest outright, which would both skip
+            // the work and surface a 500 instead of the intended 401.
+            Hash::check($password, self::TIMING_EQUALISATION_HASH);
             LoginAttempt::record($email, null, false, 'unknown_email');
 
             throw $this->invalidCredentials();
