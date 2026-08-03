@@ -78,7 +78,7 @@ class AssistantService:
                 temperature=0.3,          # low: this is advice, not creative writing
                 timeout=self.settings.openai_timeout,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("assistant_completion_failed", error=str(exc))
 
             return self._answer_without_model(request)

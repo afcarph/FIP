@@ -27,7 +27,7 @@ with every term first converted to pesos per litre.
 from __future__ import annotations
 
 import warnings
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -161,7 +161,9 @@ class ForecastService:
             )
 
             prediction = float(self._booster.predict(features)[0])
-        except Exception as exc:  # noqa: BLE001 — never let a model kill the request
+        # Broad by design: a model failure must never kill the request, it just
+        # drops this signal from the blend.
+        except Exception as exc:
             logger.warning("booster_prediction_failed", error=str(exc))
             return None
 
@@ -197,7 +199,7 @@ class ForecastService:
             confidence = float(np.clip(1.0 - (interval_width / 4.0), 0.3, 0.9))
 
             return projected - current, confidence
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("prophet_failed", error=str(exc))
             return None
 
@@ -453,7 +455,7 @@ class ForecastService:
 
             self._booster = joblib.load(path)
             logger.info("booster_loaded", path=str(path))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("booster_load_failed", path=str(path), error=str(exc))
             self._booster = None
 

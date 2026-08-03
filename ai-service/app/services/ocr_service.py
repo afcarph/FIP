@@ -184,7 +184,7 @@ class OcrService:
                     config=config,
                     output_type=pytesseract.Output.DICT,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("tesseract_variant_failed", variant=name, error=str(exc))
                 continue
 
@@ -198,7 +198,6 @@ class OcrService:
                 continue
 
             mean_confidence = sum(confidences) / len(confidences) / 100.0
-            text = " ".join(token for token in data["text"] if token.strip())
 
             if mean_confidence > best_confidence:
                 best_confidence = mean_confidence

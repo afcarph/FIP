@@ -8,6 +8,8 @@ ignore = [
     "E501",    # line length is handled by the formatter
     "B008",    # FastAPI's Depends() in defaults is idiomatic
     "N818",    # exception naming
+    "RUF002",  # en dashes are deliberate in prose docstrings and comments —
+    "RUF003",  # they are typography, not a homoglyph mistake in identifiers
 ]
 
 [tool.ruff.lint.per-file-ignores]
