@@ -54,7 +54,9 @@ final class ApiExceptionRenderer
             ];
         }
 
-        return new JsonResponse($payload, $status);
+        // Same float-preserving encoding as ApiResponse, so error payloads that
+        // echo numeric context keep their declared types.
+        return new JsonResponse($payload, $status, [], JSON_PRESERVE_ZERO_FRACTION);
     }
 
     /** @return array{int, string, string, array} */

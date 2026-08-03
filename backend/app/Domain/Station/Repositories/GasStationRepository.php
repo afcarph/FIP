@@ -99,7 +99,7 @@ class GasStationRepository extends BaseRepository
      */
     public function heatMap(?int $fuelTypeId = null, ?int $regionId = null): array
     {
-        $query = DB::connection('mysql_read')
+        $query = DB::connection()
             ->table('station_prices as sp')
             ->join('gas_stations as gs', 'gs.id', '=', 'sp.station_id')
             ->join('cities as c', 'c.id', '=', 'gs.city_id')

@@ -15,6 +15,15 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  */
 final class ApiResponse
 {
+    /**
+     * Keep the decimal point on whole floats. Without this, json_encode() emits
+     * the price 56.0 as `56`, and a strictly typed client — Flutter's
+     * `as double`, a generated TypeScript model — rejects the integer. The flag
+     * has to be supplied at construction: setting it afterwards would re-encode
+     * data that has already lost its float-ness.
+     */
+    private const ENCODING_OPTIONS = JSON_PRESERVE_ZERO_FRACTION;
+
     public static function success(mixed $data = null, ?string $message = null, int $status = 200, array $meta = []): JsonResponse
     {
         return new JsonResponse(array_filter([
@@ -22,7 +31,7 @@ final class ApiResponse
             'message' => $message,
             'data' => $data instanceof JsonResource ? $data->resolve() : $data,
             'meta' => self::meta($meta) ?: null,
-        ], static fn ($v) => $v !== null), $status);
+        ], static fn ($v) => $v !== null), $status, [], self::ENCODING_OPTIONS);
     }
 
     public static function created(mixed $data = null, ?string $message = 'Created successfully.'): JsonResponse
@@ -32,7 +41,7 @@ final class ApiResponse
 
     public static function noContent(): JsonResponse
     {
-        return new JsonResponse(null, 204);
+        return new JsonResponse(null, 204, [], self::ENCODING_OPTIONS);
     }
 
     /** Wrap a paginator, hoisting pagination details into `meta`. */
@@ -55,7 +64,7 @@ final class ApiResponse
                     'to' => $paginator->lastItem(),
                 ],
             ])),
-        ]);
+        ], 200, [], self::ENCODING_OPTIONS);
     }
 
     public static function error(string $code, string $message, int $status = 400, array $details = []): JsonResponse
@@ -68,7 +77,7 @@ final class ApiResponse
                 'details' => $details ?: null,
             ], static fn ($v) => $v !== null),
             'meta' => self::meta(),
-        ], $status);
+        ], $status, [], self::ENCODING_OPTIONS);
     }
 
     private static function meta(array $extra = []): array

@@ -69,7 +69,7 @@ class PriceRepository extends BaseRepository
     /** Daily national average series for the trend chart. */
     public function nationalTrend(int $fuelTypeId, int $days = 90): array
     {
-        return DB::connection('mysql_read')
+        return DB::connection()
             ->table('fuel_price_history')
             ->where('fuel_type_id', $fuelTypeId)
             ->where('recorded_on', '>=', now()->subDays($days)->toDateString())
@@ -122,7 +122,7 @@ class PriceRepository extends BaseRepository
     /** Cheapest and priciest live prices per fuel type, for comparison tables. */
     public function comparisonMatrix(?int $cityId = null): array
     {
-        $query = DB::connection('mysql_read')
+        $query = DB::connection()
             ->table('station_prices as sp')
             ->join('gas_stations as gs', 'gs.id', '=', 'sp.station_id')
             ->join('brands as b', 'b.id', '=', 'gs.brand_id')
@@ -163,7 +163,7 @@ class PriceRepository extends BaseRepository
         $thisWeek = $asOf->copy()->startOfWeek()->toDateString();
         $lastWeek = $asOf->copy()->subWeek()->startOfWeek()->toDateString();
 
-        return DB::connection('mysql_read')
+        return DB::connection()
             ->table('fuel_price_history as h')
             ->join('regions as r', 'r.id', '=', 'h.region_id')
             ->where('h.fuel_type_id', $fuelTypeId)

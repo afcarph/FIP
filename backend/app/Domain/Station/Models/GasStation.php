@@ -82,21 +82,37 @@ class GasStation extends Model
 
     /**
      * Radius search. A bounding-box predicate runs first so InnoDB can prune
-     * with the lat/lng index, then ST_Distance_Sphere gives the exact figure;
-     * the computed distance is exposed as `distance_m`.
+     * with the lat/lng index, then the exact great-circle distance is computed
+     * and exposed as `distance_m`.
+     *
+     * On MySQL that exact step uses ST_Distance_Sphere against the generated
+     * `location` POINT column, which the SPATIAL index covers. Other drivers
+     * (SQLite under test) have no spatial type, so an inline Haversine over the
+     * plain lat/lng decimals produces the same figure in metres.
      */
     public function scopeWithinRadius(Builder $query, float $lat, float $lng, float $radiusKm): Builder
     {
         $box = (new static)->boundingBox($lat, $lng, $radiusKm);
 
+        if ($query->getConnection()->getDriverName() === 'mysql') {
+            $distance = 'ST_Distance_Sphere(location, ST_SRID(POINT(?, ?), 4326))';
+            $bindings = [$lng, $lat];
+        } else {
+            $distance = '(6371000 * ACOS(MIN(1.0, '
+                .'COS(RADIANS(?)) * COS(RADIANS(latitude)) * COS(RADIANS(longitude) - RADIANS(?)) '
+                .'+ SIN(RADIANS(?)) * SIN(RADIANS(latitude))'
+                .')))';
+            $bindings = [$lat, $lng, $lat];
+        }
+
+        // The radius filter repeats the expression rather than referencing the
+        // `distance_m` alias in HAVING: SQLite rejects HAVING on a non-aggregate
+        // query, and WHERE is the correct clause for a row-level predicate.
         return $query
             ->whereBetween('latitude', [$box['min_lat'], $box['max_lat']])
             ->whereBetween('longitude', [$box['min_lng'], $box['max_lng']])
-            ->selectRaw(
-                'gas_stations.*, ST_Distance_Sphere(location, ST_SRID(POINT(?, ?), 4326)) AS distance_m',
-                [$lng, $lat],
-            )
-            ->having('distance_m', '<=', $radiusKm * 1000)
+            ->selectRaw("gas_stations.*, {$distance} AS distance_m", $bindings)
+            ->whereRaw("{$distance} <= ?", [...$bindings, $radiusKm * 1000])
             ->orderBy('distance_m');
     }
 
