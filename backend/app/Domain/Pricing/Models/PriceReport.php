@@ -26,9 +26,13 @@ class PriceReport extends Model
     use SoftDeletes;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_AUTO_APPROVED = 'auto_approved';
+
     public const STATUS_REJECTED = 'rejected';
+
     public const STATUS_FLAGGED = 'flagged';
 
     protected $fillable = [

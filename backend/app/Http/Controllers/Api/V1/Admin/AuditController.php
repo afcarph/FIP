@@ -21,9 +21,11 @@ class AuditController extends Controller
     /**
      * @OA\Get(path="/admin/audit-logs", tags={"Admin — Audit"}, security={{"bearerAuth":{}}},
      *   summary="Search the audit trail",
+     *
      *   @OA\Parameter(name="event", in="query", @OA\Schema(type="string")),
      *   @OA\Parameter(name="user_id", in="query", @OA\Schema(type="integer")),
      *   @OA\Parameter(name="auditable_type", in="query", @OA\Schema(type="string")),
+     *
      *   @OA\Response(response=200, description="Audit entries"))
      */
     public function index(Request $request): JsonResponse
@@ -63,6 +65,7 @@ class AuditController extends Controller
     /**
      * @OA\Get(path="/admin/api-metrics", tags={"Admin — Audit"}, security={{"bearerAuth":{}}},
      *   summary="Endpoint latency and error-rate summary",
+     *
      *   @OA\Response(response=200, description="Slowest and most error-prone endpoints"))
      */
     public function apiMetrics(Request $request): JsonResponse

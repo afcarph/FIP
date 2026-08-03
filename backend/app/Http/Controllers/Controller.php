@@ -13,7 +13,9 @@ use Illuminate\Routing\Controller as BaseController;
  *   title="Fuel Intelligence Platform API",
  *   version="1.0.0",
  *   description="AI-powered fuel price intelligence, expense optimisation and fleet management for the Philippine market.",
+ *
  *   @OA\Contact(name="FIP Engineering", email="api@fip.ph"),
+ *
  *   @OA\License(name="MIT")
  * )
  *

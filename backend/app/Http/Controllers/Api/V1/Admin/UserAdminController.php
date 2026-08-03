@@ -12,6 +12,7 @@ use App\Support\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -57,7 +58,7 @@ class UserAdminController extends Controller
             'last_name' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'max:180', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:32'],
-            'password' => ['required', \Illuminate\Validation\Rules\Password::min(12)->mixedCase()->numbers()->symbols()],
+            'password' => ['required', Password::min(12)->mixedCase()->numbers()->symbols()],
             'company_id' => ['nullable', 'integer', 'exists:companies,id'],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['string', 'exists:roles,name'],

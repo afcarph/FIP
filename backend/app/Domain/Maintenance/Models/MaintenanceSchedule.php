@@ -26,8 +26,11 @@ class MaintenanceSchedule extends Model
     use SoftDeletes;
 
     public const STATUS_SCHEDULED = 'scheduled';
+
     public const STATUS_DUE_SOON = 'due_soon';
+
     public const STATUS_OVERDUE = 'overdue';
+
     public const STATUS_COMPLETED = 'completed';
 
     protected $fillable = [

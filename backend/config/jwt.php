@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+use Tymon\JWTAuth\Providers\Auth\Illuminate;
+use Tymon\JWTAuth\Providers\JWT\Lcobucci;
 
 return [
     'secret' => env('JWT_SECRET'),
@@ -26,8 +28,8 @@ return [
     'blacklist_grace_period' => (int) env('JWT_BLACKLIST_GRACE_PERIOD', 30),
 
     'providers' => [
-        'jwt' => Tymon\JWTAuth\Providers\JWT\Lcobucci::class,
-        'auth' => Tymon\JWTAuth\Providers\Auth\Illuminate::class,
+        'jwt' => Lcobucci::class,
+        'auth' => Illuminate::class,
         'storage' => Tymon\JWTAuth\Providers\Storage\Illuminate::class,
     ],
 ];

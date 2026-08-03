@@ -34,7 +34,7 @@ final readonly class PriceService
     /**
      * Upsert the live price and archive the movement.
      *
-     * @param  string  $source  operator|doe|crowd|ocr|import|ai_estimate
+     * @param string $source operator|doe|crowd|ocr|import|ai_estimate
      */
     public function recordPrice(
         GasStation $station,
@@ -152,7 +152,7 @@ final readonly class PriceService
     public function comparison(?int $cityId = null): array
     {
         return Cache::remember(
-            "prices:comparison:".($cityId ?? 'all'),
+            'prices:comparison:'.($cityId ?? 'all'),
             now()->addMinutes(10),
             fn () => $this->prices->comparisonMatrix($cityId),
         );

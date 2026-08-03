@@ -12,7 +12,6 @@ use App\Domain\User\Models\User;
 use App\Services\External\AiServiceClient;
 use App\Support\Exceptions\DomainException;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**

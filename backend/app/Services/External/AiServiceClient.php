@@ -72,7 +72,7 @@ class AiServiceClient
     /**
      * Run OCR over a price-board photograph.
      *
-     * @param  string  $contents  raw image bytes
+     * @param string $contents raw image bytes
      */
     public function scanPriceBoard(string $contents, string $filename): array
     {

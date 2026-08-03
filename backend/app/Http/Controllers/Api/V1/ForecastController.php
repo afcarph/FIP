@@ -22,6 +22,7 @@ class ForecastController extends Controller
     /**
      * @OA\Get(path="/forecasts", tags={"Forecasts"},
      *   summary="Latest forecast per fuel type",
+     *
      *   @OA\Response(response=200, description="Forecasts with direction, confidence and drivers"))
      */
     public function index(): JsonResponse
@@ -34,6 +35,7 @@ class ForecastController extends Controller
     /**
      * @OA\Get(path="/forecasts/history", tags={"Forecasts"},
      *   summary="Past forecasts scored against actual DOE adjustments",
+     *
      *   @OA\Response(response=200, description="Forecast vs actual"))
      */
     public function history(Request $request): JsonResponse
@@ -57,6 +59,7 @@ class ForecastController extends Controller
     /**
      * @OA\Get(path="/forecasts/accuracy", tags={"Forecasts"},
      *   summary="Published model accuracy over the trailing period",
+     *
      *   @OA\Response(response=200, description="MAE and direction accuracy"))
      */
     public function accuracy(Request $request): JsonResponse

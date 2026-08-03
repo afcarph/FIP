@@ -50,6 +50,7 @@ class ProfileController extends Controller
     /**
      * @OA\Put(path="/profile/password", tags={"Profile"}, security={{"bearerAuth":{}}},
      *   summary="Change password",
+     *
      *   @OA\Response(response=200, description="Password changed"),
      *   @OA\Response(response=422, description="Current password incorrect"))
      */
@@ -74,6 +75,7 @@ class ProfileController extends Controller
     /**
      * @OA\Put(path="/profile/preferences", tags={"Profile"}, security={{"bearerAuth":{}}},
      *   summary="Update notification and display preferences",
+     *
      *   @OA\Response(response=200, description="Preferences"))
      */
     public function updatePreferences(Request $request): JsonResponse
@@ -99,6 +101,7 @@ class ProfileController extends Controller
     /**
      * @OA\Post(path="/profile/biometric/enrol", tags={"Profile"}, security={{"bearerAuth":{}}},
      *   summary="Enrol a device public key for biometric sign-in",
+     *
      *   @OA\Response(response=200, description="Device enrolled"))
      */
     public function enrolBiometric(Request $request): JsonResponse

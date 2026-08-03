@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Domain\Maintenance\Models\MaintenanceSchedule;
 use App\Domain\Notification\Services\NotificationService;
+use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -71,7 +72,7 @@ class SendMaintenanceReminders implements ShouldQueue
         return $sent;
     }
 
-    /** @return array<int, \App\Domain\User\Models\User> */
+    /** @return array<int, User> */
     private function recipientsFor(Vehicle $vehicle): array
     {
         $recipients = array_filter([

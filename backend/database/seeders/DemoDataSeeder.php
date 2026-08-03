@@ -27,7 +27,8 @@ use App\Domain\Vehicle\Models\VehicleAssignment;
 use App\Domain\Vehicle\Models\VehicleMake;
 use App\Domain\Vehicle\Models\VehicleModel;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * A realistic demo dataset: one account per role, three companies, a working
@@ -146,7 +147,7 @@ class DemoDataSeeder extends Seeder
         return $users;
     }
 
-    /** @return \Illuminate\Support\Collection<int, GasStation> */
+    /** @return Collection<int, GasStation> */
     private function seedStations(Company $operator)
     {
         $definitions = [
@@ -170,7 +171,7 @@ class DemoDataSeeder extends Seeder
 
         foreach ($definitions as $index => [$brandCode, $name, $address, $cityCode, $lat, $lng, $is24h, $hasEv]) {
             $station = GasStation::updateOrCreate(
-                ['slug' => \Illuminate\Support\Str::slug($name)],
+                ['slug' => Str::slug($name)],
                 [
                     'brand_id' => Brand::where('code', $brandCode)->value('id'),
                     'operator_id' => $index === 0 ? $operator->getKey() : null,
@@ -222,7 +223,7 @@ class DemoDataSeeder extends Seeder
         }
     }
 
-    /** @param \Illuminate\Support\Collection<int, GasStation> $stations */
+    /** @param Collection<int, GasStation> $stations */
     private function seedPrices($stations): void
     {
         $fuelTypes = FuelType::whereIn('code', ['gasoline_ron91', 'gasoline_ron95', 'diesel'])->get();
@@ -326,7 +327,7 @@ class DemoDataSeeder extends Seeder
         }
     }
 
-    /** @return \Illuminate\Support\Collection<int, Vehicle> */
+    /** @return Collection<int, Vehicle> */
     private function seedFleet(array $companies, array $users)
     {
         $fleet = Fleet::updateOrCreate(

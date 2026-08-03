@@ -12,6 +12,7 @@ use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Concerns\Auditable;
 use App\Support\Concerns\HasCompanyScope;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,7 +43,7 @@ class Fleet extends Model
             return null;
         }
 
-        $period = $month ? \Carbon\Carbon::instance($month) : now();
+        $period = $month ? Carbon::instance($month) : now();
 
         $spend = $this->fuelPurchases()
             ->whereBetween('purchased_at', [$period->copy()->startOfMonth(), $period->copy()->endOfMonth()])

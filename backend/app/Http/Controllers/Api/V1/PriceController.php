@@ -28,6 +28,7 @@ class PriceController extends Controller
 
     /**
      * @OA\Get(path="/prices/fuel-types", tags={"Prices"}, summary="Fuel types reference",
+     *
      *   @OA\Response(response=200, description="Active fuel types"))
      */
     public function fuelTypes(): JsonResponse
@@ -40,7 +41,9 @@ class PriceController extends Controller
     /**
      * @OA\Get(path="/prices/comparison", tags={"Prices"},
      *   summary="Min / average / max price per fuel type",
+     *
      *   @OA\Parameter(name="city_id", in="query", @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="Comparison matrix"))
      */
     public function comparison(Request $request): JsonResponse
@@ -52,8 +55,10 @@ class PriceController extends Controller
 
     /**
      * @OA\Get(path="/prices/trend", tags={"Prices"}, summary="National daily average series",
+     *
      *   @OA\Parameter(name="fuel_type_id", in="query", required=true, @OA\Schema(type="integer")),
      *   @OA\Parameter(name="days", in="query", @OA\Schema(type="integer", default=90, maximum=730)),
+     *
      *   @OA\Response(response=200, description="Time series"))
      */
     public function trend(Request $request): JsonResponse
@@ -72,8 +77,10 @@ class PriceController extends Controller
     /**
      * @OA\Get(path="/prices/advisories", tags={"Prices"},
      *   summary="Weekly DOE adjustment history",
+     *
      *   @OA\Parameter(name="fuel_type_id", in="query", required=true, @OA\Schema(type="integer")),
      *   @OA\Parameter(name="weeks", in="query", @OA\Schema(type="integer", default=12)),
+     *
      *   @OA\Response(response=200, description="Advisory history"))
      */
     public function advisories(Request $request): JsonResponse
@@ -94,6 +101,7 @@ class PriceController extends Controller
     /**
      * @OA\Get(path="/prices/heat-map", tags={"Prices"},
      *   summary="City-level average prices for map shading",
+     *
      *   @OA\Response(response=200, description="Heat map cells"))
      */
     public function heatMap(Request $request): JsonResponse
@@ -111,6 +119,7 @@ class PriceController extends Controller
     /**
      * @OA\Get(path="/prices/regional-movement", tags={"Prices"},
      *   summary="Week-on-week price movement by region",
+     *
      *   @OA\Response(response=200, description="Regional movement"))
      */
     public function regionalMovement(Request $request): JsonResponse
@@ -123,6 +132,7 @@ class PriceController extends Controller
     /**
      * @OA\Get(path="/stations/{station}/prices/history", tags={"Prices"},
      *   summary="Price history for one station and fuel type",
+     *
      *   @OA\Response(response=200, description="Time series"))
      */
     public function stationHistory(Request $request, GasStation $station): JsonResponse
@@ -142,6 +152,7 @@ class PriceController extends Controller
     /**
      * @OA\Put(path="/stations/{station}/prices", tags={"Prices"}, security={{"bearerAuth":{}}},
      *   summary="Operator updates a station's board price",
+     *
      *   @OA\Response(response=200, description="Price recorded"),
      *   @OA\Response(response=403, description="Not your station"))
      */

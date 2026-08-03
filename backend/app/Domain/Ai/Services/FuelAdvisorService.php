@@ -33,7 +33,7 @@ final readonly class FuelAdvisorService
     /**
      * Handle one conversational turn.
      *
-     * @param  array{latitude?: float, longitude?: float, vehicle_id?: int}  $context
+     * @param array{latitude?: float, longitude?: float, vehicle_id?: int} $context
      */
     public function ask(User $user, string $question, ?AiChatSession $session = null, array $context = []): array
     {

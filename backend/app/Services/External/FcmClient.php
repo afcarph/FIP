@@ -23,8 +23,8 @@ class FcmClient
     ) {}
 
     /**
-     * @param  list<string>  $tokens
-     * @param  array{title: string, body: string, data?: array, priority?: string}  $message
+     * @param list<string> $tokens
+     * @param array{title: string, body: string, data?: array, priority?: string} $message
      * @return list<string> tokens FCM reported as permanently invalid
      */
     public function sendToTokens(array $tokens, array $message): array

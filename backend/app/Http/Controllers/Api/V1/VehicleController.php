@@ -28,6 +28,7 @@ class VehicleController extends Controller
     /**
      * @OA\Get(path="/vehicles", tags={"Vehicles"}, security={{"bearerAuth":{}}},
      *   summary="List vehicles visible to the caller",
+     *
      *   @OA\Response(response=200, description="Paginated vehicles"))
      */
     public function index(Request $request): JsonResponse
@@ -106,6 +107,7 @@ class VehicleController extends Controller
     /**
      * @OA\Post(path="/vehicles/{vehicle}/odometer", tags={"Vehicles"}, security={{"bearerAuth":{}}},
      *   summary="Record an odometer reading",
+     *
      *   @OA\Response(response=201, description="Reading recorded"),
      *   @OA\Response(response=422, description="Reading lower than the last one"))
      */
@@ -148,6 +150,7 @@ class VehicleController extends Controller
     /**
      * @OA\Get(path="/vehicles/{vehicle}/efficiency", tags={"Vehicles"}, security={{"bearerAuth":{}}},
      *   summary="Efficiency trend and baseline deviation",
+     *
      *   @OA\Response(response=200, description="Efficiency analytics"))
      */
     public function efficiency(Vehicle $vehicle): JsonResponse

@@ -25,9 +25,11 @@ class ExpenseController extends Controller
     /**
      * @OA\Get(path="/expenses", tags={"Expenses"}, security={{"bearerAuth":{}}},
      *   summary="List fuel purchases",
+     *
      *   @OA\Parameter(name="vehicle_id", in="query", @OA\Schema(type="integer")),
      *   @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
      *   @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *
      *   @OA\Response(response=200, description="Paginated purchases"))
      */
     public function index(Request $request): JsonResponse
@@ -46,6 +48,7 @@ class ExpenseController extends Controller
     /**
      * @OA\Post(path="/expenses", tags={"Expenses"}, security={{"bearerAuth":{}}},
      *   summary="Log a fill-up",
+     *
      *   @OA\Response(response=201, description="Recorded, with derived efficiency metrics"),
      *   @OA\Response(response=422, description="Inconsistent totals or odometer rollback"))
      */
@@ -90,6 +93,7 @@ class ExpenseController extends Controller
     /**
      * @OA\Get(path="/expenses/summary", tags={"Expenses"}, security={{"bearerAuth":{}}},
      *   summary="Spend, litres, km/L and cost/km for a period",
+     *
      *   @OA\Response(response=200, description="Summary with monthly series and savings"))
      */
     public function summary(Request $request): JsonResponse

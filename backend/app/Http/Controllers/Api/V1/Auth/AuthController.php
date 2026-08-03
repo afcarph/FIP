@@ -27,14 +27,17 @@ class AuthController extends Controller
     /**
      * @OA\Post(
      *   path="/auth/register", tags={"Authentication"}, summary="Create an account",
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(
      *     required={"first_name","last_name","email","password","password_confirmation"},
+     *
      *     @OA\Property(property="first_name", type="string", example="Ella"),
      *     @OA\Property(property="last_name", type="string", example="Santos"),
      *     @OA\Property(property="email", type="string", format="email"),
      *     @OA\Property(property="password", type="string", format="password", minLength=12),
      *     @OA\Property(property="password_confirmation", type="string", format="password")
      *   )),
+     *
      *   @OA\Response(response=201, description="Account created and signed in"),
      *   @OA\Response(response=409, description="Email already registered")
      * )
@@ -49,12 +52,15 @@ class AuthController extends Controller
     /**
      * @OA\Post(
      *   path="/auth/login", tags={"Authentication"}, summary="Sign in with email and password",
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(
      *     required={"email","password"},
+     *
      *     @OA\Property(property="email", type="string", format="email"),
      *     @OA\Property(property="password", type="string", format="password"),
      *     @OA\Property(property="device", type="object")
      *   )),
+     *
      *   @OA\Response(response=200, description="Signed in, or an MFA challenge"),
      *   @OA\Response(response=401, description="Invalid credentials"),
      *   @OA\Response(response=423, description="Account temporarily locked")
@@ -78,6 +84,7 @@ class AuthController extends Controller
     /**
      * @OA\Post(
      *   path="/auth/mfa/verify", tags={"Authentication"}, summary="Complete an MFA challenge",
+     *
      *   @OA\Response(response=200, description="Signed in")
      * )
      */
@@ -96,6 +103,7 @@ class AuthController extends Controller
      * @OA\Post(
      *   path="/auth/biometric", tags={"Authentication"},
      *   summary="Sign in with a device-bound biometric key",
+     *
      *   @OA\Response(response=200, description="Signed in")
      * )
      */
@@ -126,7 +134,9 @@ class AuthController extends Controller
     /**
      * @OA\Get(path="/auth/{provider}/redirect", tags={"Authentication"},
      *   summary="Begin Google or Apple sign-in",
+     *
      *   @OA\Parameter(name="provider", in="path", required=true, @OA\Schema(type="string", enum={"google","apple"})),
+     *
      *   @OA\Response(response=200, description="Provider authorisation URL"))
      */
     public function socialRedirect(string $provider): JsonResponse
@@ -141,6 +151,7 @@ class AuthController extends Controller
     /**
      * @OA\Get(path="/auth/{provider}/callback", tags={"Authentication"},
      *   summary="Complete Google or Apple sign-in",
+     *
      *   @OA\Response(response=200, description="Signed in"))
      */
     public function socialCallback(string $provider): JsonResponse
@@ -162,6 +173,7 @@ class AuthController extends Controller
     /**
      * @OA\Post(path="/auth/refresh", tags={"Authentication"}, security={{"bearerAuth":{}}},
      *   summary="Exchange a valid token for a fresh one",
+     *
      *   @OA\Response(response=200, description="New access token"))
      */
     public function refresh(Request $request): JsonResponse
@@ -186,6 +198,7 @@ class AuthController extends Controller
     /**
      * @OA\Get(path="/auth/me", tags={"Authentication"}, security={{"bearerAuth":{}}},
      *   summary="Current user profile, roles and permissions",
+     *
      *   @OA\Response(response=200, description="Profile"))
      */
     public function me(Request $request): JsonResponse
@@ -202,6 +215,7 @@ class AuthController extends Controller
     /**
      * @OA\Post(path="/auth/forgot-password", tags={"Authentication"},
      *   summary="Email a password reset link",
+     *
      *   @OA\Response(response=200, description="Sent if the address exists"))
      */
     public function forgotPassword(Request $request): JsonResponse
@@ -217,6 +231,7 @@ class AuthController extends Controller
     /**
      * @OA\Post(path="/auth/reset-password", tags={"Authentication"},
      *   summary="Complete a password reset",
+     *
      *   @OA\Response(response=200, description="Password updated"),
      *   @OA\Response(response=422, description="Invalid or expired token"))
      */

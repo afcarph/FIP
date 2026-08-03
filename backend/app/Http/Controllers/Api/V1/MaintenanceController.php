@@ -33,6 +33,7 @@ class MaintenanceController extends Controller
     /**
      * @OA\Get(path="/vehicles/{vehicle}/maintenance", tags={"Maintenance"}, security={{"bearerAuth":{}}},
      *   summary="Schedules and history for a vehicle",
+     *
      *   @OA\Response(response=200, description="Schedule, upcoming items and history"))
      */
     public function index(Request $request, Vehicle $vehicle): JsonResponse
@@ -88,6 +89,7 @@ class MaintenanceController extends Controller
     /**
      * @OA\Post(path="/vehicles/{vehicle}/maintenance/predict", tags={"Maintenance"}, security={{"bearerAuth":{}}},
      *   summary="Refresh AI predictions for a vehicle's service items",
+     *
      *   @OA\Response(response=200, description="Predictions with confidence"))
      */
     public function predict(Vehicle $vehicle): JsonResponse
@@ -102,6 +104,7 @@ class MaintenanceController extends Controller
     /**
      * @OA\Get(path="/maintenance/due", tags={"Maintenance"}, security={{"bearerAuth":{}}},
      *   summary="Everything due across the caller's vehicles",
+     *
      *   @OA\Response(response=200, description="Due and overdue items"))
      */
     public function due(Request $request): JsonResponse

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Reporting\Services;
 
+use App\Domain\Ai\Models\FraudAlert;
 use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\Reporting\Models\ReportDefinition;
 use App\Domain\Reporting\Models\ReportRun;
@@ -14,6 +15,7 @@ use App\Support\Exceptions\DomainException;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Excel;
 
 /**
  * Report generation for PDF, Excel, CSV and JSON.
@@ -220,7 +222,7 @@ final readonly class ReportService
 
     private function fraudRegister(User $user, Carbon $from, Carbon $to): array
     {
-        $rows = \App\Domain\Ai\Models\FraudAlert::query()
+        $rows = FraudAlert::query()
             ->where('company_id', $user->company_id)
             ->whereBetween('detected_at', [$from, $to])
             ->with(['vehicle', 'driver'])
@@ -330,9 +332,9 @@ final readonly class ReportService
 
     private function toXlsx(array $dataset): string
     {
-        $export = new \App\Domain\Reporting\Services\ArrayExport($dataset);
+        $export = new ArrayExport($dataset);
 
-        return \Maatwebsite\Excel\Facades\Excel::raw($export, \Maatwebsite\Excel\Excel::XLSX);
+        return \Maatwebsite\Excel\Facades\Excel::raw($export, Excel::XLSX);
     }
 
     // ------------------------------------------------------------ internals

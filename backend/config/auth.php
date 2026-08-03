@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Domain\User\Models\User;
 
 return [
     'defaults' => [
@@ -22,7 +23,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Domain\User\Models\User::class,
+            'model' => User::class,
         ],
     ],
 

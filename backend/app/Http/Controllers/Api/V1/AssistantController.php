@@ -21,13 +21,16 @@ class AssistantController extends Controller
     /**
      * @OA\Post(path="/assistant/chat", tags={"AI Advisor"}, security={{"bearerAuth":{}}},
      *   summary="Ask the fuel advisor a question",
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(
      *     required={"question"},
+     *
      *     @OA\Property(property="question", type="string", example="Should I refuel today?"),
      *     @OA\Property(property="session_id", type="integer"),
      *     @OA\Property(property="latitude", type="number", format="float"),
      *     @OA\Property(property="longitude", type="number", format="float")
      *   )),
+     *
      *   @OA\Response(response=200, description="Grounded answer with sources and follow-ups"),
      *   @OA\Response(response=503, description="AI service unavailable"))
      */
@@ -63,6 +66,7 @@ class AssistantController extends Controller
     /**
      * @OA\Get(path="/assistant/should-i-refuel", tags={"AI Advisor"}, security={{"bearerAuth":{}}},
      *   summary="Deterministic refuel-now-or-wait recommendation",
+     *
      *   @OA\Response(response=200, description="Recommendation with peso impact"))
      */
     public function shouldRefuel(Request $request): JsonResponse
@@ -82,6 +86,7 @@ class AssistantController extends Controller
     /**
      * @OA\Get(path="/assistant/consumption-explainer", tags={"AI Advisor"}, security={{"bearerAuth":{}}},
      *   summary="Explain a change in fuel consumption",
+     *
      *   @OA\Response(response=200, description="Attributed factors"))
      */
     public function explainConsumption(Request $request): JsonResponse

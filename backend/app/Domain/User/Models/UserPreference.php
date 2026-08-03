@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Models;
 
 use App\Domain\Pricing\Models\FuelType;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,7 +49,7 @@ class UserPreference extends Model
             return false;
         }
 
-        $now = ($at ? \Carbon\Carbon::instance($at) : now())->format('H:i:s');
+        $now = ($at ? Carbon::instance($at) : now())->format('H:i:s');
         $start = $this->quiet_hours_start;
         $end = $this->quiet_hours_end;
 

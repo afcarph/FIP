@@ -21,7 +21,9 @@ use PragmaRX\Google2FA\Google2FA;
 final readonly class MfaService
 {
     private const CHALLENGE_PREFIX = 'mfa:challenge:';
+
     private const CHALLENGE_TTL = 300;
+
     private const RECOVERY_CODE_COUNT = 8;
 
     public function __construct(private Google2FA $google2fa) {}

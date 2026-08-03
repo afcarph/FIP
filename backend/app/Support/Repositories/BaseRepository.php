@@ -104,7 +104,7 @@ abstract class BaseRepository implements RepositoryInterface
     /**
      * Apply allow-listed filters, free-text search, sorting and eager loads.
      *
-     * @param  Builder<TModel>  $query
+     * @param Builder<TModel> $query
      * @return Builder<TModel>
      */
     protected function applyFilters(Builder $query, array $filters): Builder
@@ -143,7 +143,7 @@ abstract class BaseRepository implements RepositoryInterface
     }
 
     /**
-     * @param  Builder<TModel>  $query
+     * @param Builder<TModel> $query
      * @return Builder<TModel>
      */
     protected function applySort(Builder $query, string $sort): Builder

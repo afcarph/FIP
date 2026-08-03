@@ -20,6 +20,7 @@ class MfaController extends Controller
     /**
      * @OA\Post(path="/auth/mfa/enrol", tags={"MFA"}, security={{"bearerAuth":{}}},
      *   summary="Start TOTP enrolment",
+     *
      *   @OA\Response(response=200, description="Secret and provisioning URI"))
      */
     public function enrol(Request $request): JsonResponse
@@ -33,6 +34,7 @@ class MfaController extends Controller
     /**
      * @OA\Post(path="/auth/mfa/confirm", tags={"MFA"}, security={{"bearerAuth":{}}},
      *   summary="Confirm enrolment and receive recovery codes",
+     *
      *   @OA\Response(response=200, description="Recovery codes — shown once"))
      */
     public function confirm(Request $request): JsonResponse

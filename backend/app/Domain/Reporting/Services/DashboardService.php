@@ -11,8 +11,10 @@ use App\Domain\Expense\Services\FuelExpenseService;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Maintenance\Models\MaintenanceSchedule;
 use App\Domain\Pricing\Models\PriceReport;
+use App\Domain\Pricing\Models\StationPrice;
 use App\Domain\Pricing\Repositories\PriceRepository;
 use App\Domain\Station\Models\GasStation;
+use App\Domain\User\Models\Company;
 use App\Domain\User\Models\User;
 use App\Domain\User\Repositories\UserRepository;
 use App\Domain\Vehicle\Models\Vehicle;
@@ -138,7 +140,7 @@ final readonly class DashboardService
                 'platform' => [
                     'users' => $this->users->query()->count(),
                     'active_users_30d' => $this->users->query()->where('last_login_at', '>=', now()->subDays(30))->count(),
-                    'companies' => \App\Domain\User\Models\Company::count(),
+                    'companies' => Company::count(),
                     'vehicles' => Vehicle::count(),
                     'stations' => GasStation::active()->count(),
                     'fill_ups_30d' => FuelPurchase::where('purchased_at', '>=', now()->subDays(30))->count(),
@@ -253,7 +255,7 @@ final readonly class DashboardService
             ->selectRaw('COUNT(*) AS fill_ups, SUM(total_cost) AS spend, SUM(litres) AS litres, AVG(price_per_litre) AS avg_paid')
             ->first();
 
-        $marketAverage = (float) (\App\Domain\Pricing\Models\StationPrice::avg('price') ?? 0);
+        $marketAverage = (float) (StationPrice::avg('price') ?? 0);
         $litres = (float) $row->litres;
 
         return [

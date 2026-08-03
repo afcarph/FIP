@@ -12,6 +12,7 @@ use App\Services\External\AiServiceClient;
 use App\Support\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * @OA\Tag(name="Admin — AI", description="Model registry, health and manual runs")
@@ -51,6 +52,7 @@ class AiModelController extends Controller
     /**
      * @OA\Patch(path="/admin/ai/models/{model}/activate", tags={"Admin — AI"}, security={{"bearerAuth":{}}},
      *   summary="Promote a model version to active",
+     *
      *   @OA\Response(response=200, description="Activated; the previous version is retired"))
      */
     public function activate(AiModel $model): JsonResponse
@@ -66,6 +68,7 @@ class AiModelController extends Controller
     /**
      * @OA\Post(path="/admin/ai/forecast/run", tags={"Admin — AI"}, security={{"bearerAuth":{}}},
      *   summary="Trigger the weekly forecast run out of band",
+     *
      *   @OA\Response(response=200, description="Forecasts generated"))
      */
     public function runForecast(Request $request): JsonResponse
@@ -73,7 +76,7 @@ class AiModelController extends Controller
         $this->authorize('manageAiModels', User::class);
 
         $forecasts = $this->forecasts->generateWeekly(
-            $request->has('week') ? \Illuminate\Support\Carbon::parse($request->string('week')->toString()) : null,
+            $request->has('week') ? Carbon::parse($request->string('week')->toString()) : null,
         );
 
         return ApiResponse::success([
@@ -90,6 +93,7 @@ class AiModelController extends Controller
     /**
      * @OA\Post(path="/admin/ai/forecast/score", tags={"Admin — AI"}, security={{"bearerAuth":{}}},
      *   summary="Score published forecasts against actual DOE adjustments",
+     *
      *   @OA\Response(response=200, description="Scoring summary"))
      */
     public function scoreForecasts(Request $request): JsonResponse
@@ -97,7 +101,7 @@ class AiModelController extends Controller
         $this->authorize('manageAiModels', User::class);
 
         return ApiResponse::success($this->forecasts->scoreAgainstActuals(
-            $request->has('week') ? \Illuminate\Support\Carbon::parse($request->string('week')->toString()) : null,
+            $request->has('week') ? Carbon::parse($request->string('week')->toString()) : null,
         ));
     }
 }

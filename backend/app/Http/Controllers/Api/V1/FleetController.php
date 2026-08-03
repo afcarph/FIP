@@ -52,7 +52,9 @@ class FleetController extends Controller
     /**
      * @OA\Get(path="/fleet/dashboard", tags={"Fleet"}, security={{"bearerAuth":{}}},
      *   summary="Fleet operations dashboard",
+     *
      *   @OA\Parameter(name="fleet_id", in="query", @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="Vehicles, drivers, spend, fraud and maintenance"))
      */
     public function dashboard(Request $request): JsonResponse
@@ -86,6 +88,7 @@ class FleetController extends Controller
     /**
      * @OA\Post(path="/fleet/assignments", tags={"Fleet"}, security={{"bearerAuth":{}}},
      *   summary="Assign a driver to a vehicle",
+     *
      *   @OA\Response(response=201, description="Assigned; any previous assignment is released"))
      */
     public function assign(Request $request): JsonResponse
@@ -125,6 +128,7 @@ class FleetController extends Controller
     /**
      * @OA\Get(path="/fleet/fraud-alerts", tags={"Fleet"}, security={{"bearerAuth":{}}},
      *   summary="Fuel fraud alerts for the caller's company",
+     *
      *   @OA\Response(response=200, description="Alerts with evidence"))
      */
     public function fraudAlerts(Request $request): JsonResponse

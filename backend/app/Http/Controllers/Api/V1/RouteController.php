@@ -22,8 +22,10 @@ class RouteController extends Controller
     /**
      * @OA\Post(path="/routes/optimize", tags={"Routes"}, security={{"bearerAuth":{}}},
      *   summary="Plan a route optimised for cost, time or fuel",
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(
      *     required={"origin_lat","origin_lng","destination_lat","destination_lng","origin_label","destination_label"},
+     *
      *     @OA\Property(property="origin_label", type="string", example="Makati CBD"),
      *     @OA\Property(property="destination_label", type="string", example="Clark, Pampanga"),
      *     @OA\Property(property="origin_lat", type="number", format="float"),
@@ -33,6 +35,7 @@ class RouteController extends Controller
      *     @OA\Property(property="optimize_for", type="string", enum={"cost","time","fuel","balanced"}),
      *     @OA\Property(property="vehicle_id", type="integer")
      *   )),
+     *
      *   @OA\Response(response=201, description="Ranked alternatives with fuel, toll and refuelling stop"))
      */
     public function optimize(Request $request): JsonResponse

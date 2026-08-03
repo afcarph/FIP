@@ -14,8 +14,11 @@ use Illuminate\Support\Facades\Storage;
 class ReportRun extends Model
 {
     public const STATUS_QUEUED = 'queued';
+
     public const STATUS_RUNNING = 'running';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_FAILED = 'failed';
 
     protected $fillable = [

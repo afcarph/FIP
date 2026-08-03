@@ -35,14 +35,17 @@ class ReportController extends Controller
     /**
      * @OA\Post(path="/reports/generate", tags={"Reports"}, security={{"bearerAuth":{}}},
      *   summary="Generate a report",
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(
      *     required={"code"},
+     *
      *     @OA\Property(property="code", type="string", example="fuel_expense_summary"),
      *     @OA\Property(property="format", type="string", enum={"pdf","xlsx","csv","json"}),
      *     @OA\Property(property="period", type="string", enum={"daily","weekly","monthly","annual"}),
      *     @OA\Property(property="from", type="string", format="date"),
      *     @OA\Property(property="to", type="string", format="date")
      *   )),
+     *
      *   @OA\Response(response=202, description="Queued — poll the run for completion"),
      *   @OA\Response(response=201, description="Generated inline with a download URL"))
      */
@@ -88,6 +91,7 @@ class ReportController extends Controller
     /**
      * @OA\Get(path="/reports/runs/{run}", tags={"Reports"}, security={{"bearerAuth":{}}},
      *   summary="Report run status and download link",
+     *
      *   @OA\Response(response=200, description="Run with a signed URL when complete"))
      */
     public function show(Request $request, ReportRun $run): JsonResponse

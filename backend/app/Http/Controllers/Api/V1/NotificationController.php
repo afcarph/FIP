@@ -22,7 +22,9 @@ class NotificationController extends Controller
     /**
      * @OA\Get(path="/notifications", tags={"Notifications"}, security={{"bearerAuth":{}}},
      *   summary="Notification centre",
+     *
      *   @OA\Parameter(name="unread", in="query", @OA\Schema(type="boolean")),
+     *
      *   @OA\Response(response=200, description="Paginated notifications"))
      */
     public function index(Request $request): JsonResponse
@@ -107,6 +109,7 @@ class NotificationController extends Controller
     /**
      * @OA\Post(path="/notifications/devices", tags={"Notifications"}, security={{"bearerAuth":{}}},
      *   summary="Register or refresh an FCM device token",
+     *
      *   @OA\Response(response=200, description="Device registered"))
      */
     public function registerDevice(Request $request): JsonResponse

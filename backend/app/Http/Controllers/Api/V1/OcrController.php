@@ -23,10 +23,14 @@ class OcrController extends Controller
     /**
      * @OA\Post(path="/ocr/scan", tags={"OCR"}, security={{"bearerAuth":{}}},
      *   summary="Upload a price board photo for extraction",
+     *
      *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data",
+     *
      *     @OA\Schema(required={"image"},
+     *
      *       @OA\Property(property="image", type="string", format="binary"),
      *       @OA\Property(property="station_id", type="integer")))),
+     *
      *   @OA\Response(response=201, description="Scan result with per-line confidence"),
      *   @OA\Response(response=422, description="Unsupported or oversized image"),
      *   @OA\Response(response=503, description="AI service unavailable"))

@@ -23,10 +23,15 @@ class OcrScan extends Model
     use SoftDeletes;
 
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_PARSED = 'parsed';
+
     public const STATUS_NEEDS_REVIEW = 'needs_review';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_REJECTED = 'rejected';
+
     public const STATUS_FAILED = 'failed';
 
     protected $fillable = [

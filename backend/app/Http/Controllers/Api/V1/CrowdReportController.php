@@ -23,8 +23,10 @@ class CrowdReportController extends Controller
 
     /**
      * @OA\Get(path="/reports", tags={"Crowd Reports"}, summary="Recent community reports",
+     *
      *   @OA\Parameter(name="station_id", in="query", @OA\Schema(type="integer")),
      *   @OA\Parameter(name="report_type", in="query", @OA\Schema(type="string")),
+     *
      *   @OA\Response(response=200, description="Paginated reports"))
      */
     public function index(Request $request): JsonResponse
@@ -43,8 +45,10 @@ class CrowdReportController extends Controller
     /**
      * @OA\Post(path="/reports", tags={"Crowd Reports"}, security={{"bearerAuth":{}}},
      *   summary="Submit a community report",
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(
      *     required={"station_id","report_type"},
+     *
      *     @OA\Property(property="station_id", type="integer"),
      *     @OA\Property(property="report_type", type="string", enum={"price","shortage","closure","long_queue","wrong_info"}),
      *     @OA\Property(property="fuel_type_id", type="integer"),
@@ -52,6 +56,7 @@ class CrowdReportController extends Controller
      *     @OA\Property(property="latitude", type="number", format="float"),
      *     @OA\Property(property="longitude", type="number", format="float")
      *   )),
+     *
      *   @OA\Response(response=201, description="Submitted; may be published immediately"),
      *   @OA\Response(response=422, description="Outside the geofence or price band"))
      */
@@ -89,6 +94,7 @@ class CrowdReportController extends Controller
     /**
      * @OA\Get(path="/reports/mine", tags={"Crowd Reports"}, security={{"bearerAuth":{}}},
      *   summary="The caller's own submissions and their moderation state",
+     *
      *   @OA\Response(response=200, description="Reports"))
      */
     public function mine(Request $request): JsonResponse

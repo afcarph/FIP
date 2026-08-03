@@ -10,6 +10,7 @@ use App\Domain\Fleet\Models\Driver;
 use App\Domain\Notification\Models\Notification;
 use App\Domain\Notification\Models\PriceAlert;
 use App\Domain\Pricing\Models\PriceReport;
+use App\Domain\Station\Models\City;
 use App\Domain\Station\Models\GasStation;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Concerns\Auditable;
@@ -185,7 +186,7 @@ class User extends Authenticatable implements JWTSubject
 
     public function homeCity(): BelongsTo
     {
-        return $this->belongsTo(\App\Domain\Station\Models\City::class, 'home_city_id');
+        return $this->belongsTo(City::class, 'home_city_id');
     }
 
     public function preferences(): HasOne

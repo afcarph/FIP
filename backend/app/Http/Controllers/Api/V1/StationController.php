@@ -23,12 +23,14 @@ class StationController extends Controller
 
     /**
      * @OA\Get(path="/stations", tags={"Stations"}, summary="Browse the station directory",
+     *
      *   @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *   @OA\Parameter(name="brand_id", in="query", @OA\Schema(type="integer")),
      *   @OA\Parameter(name="city_id", in="query", @OA\Schema(type="integer")),
      *   @OA\Parameter(name="fuel_type_id", in="query", @OA\Schema(type="integer")),
      *   @OA\Parameter(name="has_ev_charging", in="query", @OA\Schema(type="boolean")),
      *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", maximum=100)),
+     *
      *   @OA\Response(response=200, description="Paginated stations"))
      */
     public function index(Request $request): JsonResponse
@@ -44,10 +46,12 @@ class StationController extends Controller
     /**
      * @OA\Get(path="/stations/nearby", tags={"Stations"},
      *   summary="Stations within a radius, nearest first",
+     *
      *   @OA\Parameter(name="latitude", in="query", required=true, @OA\Schema(type="number", format="float")),
      *   @OA\Parameter(name="longitude", in="query", required=true, @OA\Schema(type="number", format="float")),
      *   @OA\Parameter(name="radius_km", in="query", @OA\Schema(type="number", default=5, maximum=50)),
      *   @OA\Parameter(name="fuel_type_id", in="query", @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="Nearby stations with distance and live prices"))
      */
     public function nearby(NearbyStationRequest $request): JsonResponse
@@ -68,7 +72,9 @@ class StationController extends Controller
     /**
      * @OA\Get(path="/stations/cheapest", tags={"Stations"},
      *   summary="Cheapest stations nearby for one fuel type",
+     *
      *   @OA\Parameter(name="fuel_type_id", in="query", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="Ranked by price then distance"))
      */
     public function cheapest(NearbyStationRequest $request): JsonResponse
@@ -98,7 +104,9 @@ class StationController extends Controller
 
     /**
      * @OA\Get(path="/stations/{slug}", tags={"Stations"}, summary="Station detail",
+     *
      *   @OA\Parameter(name="slug", in="path", required=true, @OA\Schema(type="string")),
+     *
      *   @OA\Response(response=200, description="Station"),
      *   @OA\Response(response=404, description="Not found"))
      */
@@ -114,6 +122,7 @@ class StationController extends Controller
     /**
      * @OA\Post(path="/stations", tags={"Stations"}, security={{"bearerAuth":{}}},
      *   summary="Create a station (admin or station operator)",
+     *
      *   @OA\Response(response=201, description="Created"),
      *   @OA\Response(response=403, description="Forbidden"))
      */

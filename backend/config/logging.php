@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 
 return [
@@ -40,6 +41,6 @@ return [
             'level' => 'info',
             'days' => 365,
         ],
-        'null' => ['driver' => 'monolog', 'handler' => Monolog\Handler\NullHandler::class],
+        'null' => ['driver' => 'monolog', 'handler' => NullHandler::class],
     ],
 ];

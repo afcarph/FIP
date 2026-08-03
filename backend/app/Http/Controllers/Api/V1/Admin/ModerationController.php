@@ -44,6 +44,7 @@ class ModerationController extends Controller
     /**
      * @OA\Post(path="/admin/moderation/reports/{report}/approve", tags={"Admin — Moderation"},
      *   security={{"bearerAuth":{}}}, summary="Approve a report and publish its price",
+     *
      *   @OA\Response(response=200, description="Approved"))
      */
     public function approve(Request $request, PriceReport $report): JsonResponse
@@ -59,6 +60,7 @@ class ModerationController extends Controller
     /**
      * @OA\Post(path="/admin/moderation/reports/{report}/reject", tags={"Admin — Moderation"},
      *   security={{"bearerAuth":{}}}, summary="Reject a report",
+     *
      *   @OA\Response(response=200, description="Rejected"))
      */
     public function reject(Request $request, PriceReport $report): JsonResponse
@@ -92,6 +94,7 @@ class ModerationController extends Controller
      * @OA\Post(path="/admin/moderation/ocr/{scan}/approve", tags={"Admin — Moderation"},
      *   security={{"bearerAuth":{}}},
      *   summary="Approve an OCR scan, optionally correcting the extracted lines",
+     *
      *   @OA\Response(response=200, description="Approved and prices published"))
      */
     public function approveOcr(Request $request, OcrScan $scan): JsonResponse
@@ -118,6 +121,7 @@ class ModerationController extends Controller
     /**
      * @OA\Post(path="/admin/moderation/ocr/{scan}/reject", tags={"Admin — Moderation"},
      *   security={{"bearerAuth":{}}}, summary="Reject an OCR scan",
+     *
      *   @OA\Response(response=200, description="Rejected"))
      */
     public function rejectOcr(Request $request, OcrScan $scan): JsonResponse

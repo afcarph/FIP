@@ -70,7 +70,7 @@ final readonly class NotificationService
     /**
      * Send the same notification to many users, batching push delivery.
      *
-     * @param  Collection<int, User>  $users
+     * @param Collection<int, User> $users
      */
     public function sendMany(Collection $users, string $type, string $category, array $payload): int
     {
