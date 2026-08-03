@@ -10,6 +10,7 @@ use App\Domain\Fleet\Models\Fleet;
 use App\Domain\User\Models\Company;
 use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
+use App\Support\Casts\NumericJson;
 use App\Support\Concerns\Auditable;
 use App\Support\Concerns\HasCompanyScope;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,8 +25,11 @@ class FraudAlert extends Model
     use HasFactory;
 
     public const STATUS_OPEN = 'open';
+
     public const STATUS_INVESTIGATING = 'investigating';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_DISMISSED = 'dismissed';
 
     protected $fillable = [
@@ -37,7 +41,9 @@ class FraudAlert extends Model
     protected function casts(): array
     {
         return [
-            'evidence' => 'array',
+            // Evidence carries measured quantities (litres, prices, deltas), so
+            // it needs a cast that does not flatten 85.0 into 85.
+            'evidence' => NumericJson::class,
             'score' => 'float',
             'detected_at' => 'datetime',
             'resolved_at' => 'datetime',

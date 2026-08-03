@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Ai\Services;
 
 use App\Domain\Ai\Models\FraudAlert;
+use App\Domain\Expense\Contracts\FraudScreener;
 use App\Domain\Expense\Models\FuelPurchase;
 use App\Services\External\AiServiceClient;
 use App\Support\Concerns\GeoDistance;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,7 +27,7 @@ use Illuminate\Support\Facades\Log;
  * Each rule contributes a weighted score; the combined score decides both
  * whether an alert is raised and how severe it is.
  */
-final readonly class FraudDetectionService
+final readonly class FraudDetectionService implements FraudScreener
 {
     use GeoDistance;
 
@@ -197,7 +199,7 @@ final readonly class FraudDetectionService
      * Tier 2 — hand a fleet's recent transactions to the unsupervised model
      * and raise alerts for anything the rules did not already flag.
      *
-     * @param  \Illuminate\Support\Collection<int, FuelPurchase>  $purchases
+     * @param Collection<int, FuelPurchase> $purchases
      * @return array<int, FraudAlert>
      */
     public function screenBatch($purchases): array

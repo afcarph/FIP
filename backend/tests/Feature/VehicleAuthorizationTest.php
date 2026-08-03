@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domain\Pricing\Models\FuelType;
 use App\Domain\User\Models\Company;
 use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
@@ -89,10 +90,9 @@ class VehicleAuthorizationTest extends TestCase
         $response = $this->postJson('/api/v1/vehicles', [
             'plate_number' => 'ABC 1234',
             'vehicle_type' => 'car',
-            'fuel_type_id' => \App\Domain\Pricing\Models\FuelType::first()->id,
+            'fuel_type_id' => FuelType::first()->id,
         ]);
 
-        $this->assertApiError($response, 'validation_failed', 422);
-        $response->assertJsonValidationErrors('plate_number');
+        $this->assertApiValidationErrors($response, 'plate_number');
     }
 }

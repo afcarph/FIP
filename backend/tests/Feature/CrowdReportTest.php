@@ -102,8 +102,7 @@ class CrowdReportTest extends TestCase
             'report_type' => 'price',
         ]);
 
-        $this->assertApiError($response, 'validation_failed', 422);
-        $response->assertJsonValidationErrors(['fuel_type_id', 'price', 'latitude', 'longitude']);
+        $this->assertApiValidationErrors($response, 'fuel_type_id', 'price', 'latitude', 'longitude');
     }
 
     public function test_an_operational_report_needs_no_price(): void

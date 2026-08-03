@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Expense\Services;
 
-use App\Domain\Ai\Services\FraudDetectionService;
+use App\Domain\Expense\Contracts\FraudScreener;
 use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\OdometerReading;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Exceptions\DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class FuelExpenseService
 {
-    public function __construct(private FraudDetectionService $fraud) {}
+    public function __construct(private FraudScreener $fraud) {}
 
     public function record(User $user, Vehicle $vehicle, array $data): FuelPurchase
     {
@@ -119,7 +120,7 @@ final readonly class FuelExpenseService
     /**
      * Headline expense figures for a period.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<FuelPurchase>  $scope
+     * @param Builder<FuelPurchase> $scope
      */
     public function summary($scope, Carbon $from, Carbon $to): array
     {

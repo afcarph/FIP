@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Domain\Ai\Services\FraudDetectionService;
+use App\Domain\Expense\Contracts\FraudScreener;
 use App\Domain\Expense\Services\FuelExpenseService;
 use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
@@ -32,7 +32,7 @@ class FuelExpenseServiceTest extends TestCase
         parent::setUp();
         $this->seedPlatform();
 
-        $fraud = Mockery::mock(FraudDetectionService::class);
+        $fraud = Mockery::mock(FraudScreener::class);
         $fraud->shouldReceive('screen')->andReturnNull();
 
         $this->service = new FuelExpenseService($fraud);

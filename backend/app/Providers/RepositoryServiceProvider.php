@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Ai\Services\FraudDetectionService;
+use App\Domain\Expense\Contracts\FraudScreener;
 use App\Domain\Pricing\Repositories\PriceRepository;
 use App\Domain\Station\Repositories\GasStationRepository;
 use App\Domain\User\Repositories\UserRepository;
@@ -30,10 +32,14 @@ class RepositoryServiceProvider extends ServiceProvider
         foreach (self::REPOSITORIES as $repository) {
             $this->app->singleton($repository);
         }
+
+        // Expense screens fill-ups through its own port; the Ai context supplies
+        // the implementation.
+        $this->app->bind(FraudScreener::class, FraudDetectionService::class);
     }
 
     public function provides(): array
     {
-        return self::REPOSITORIES;
+        return [...self::REPOSITORIES, FraudScreener::class];
     }
 }

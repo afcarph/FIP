@@ -50,15 +50,14 @@ class PriceIntelligenceTest extends TestCase
     {
         $response = $this->getJson('/api/v1/stations/nearby?latitude=999&longitude=121.02');
 
-        $this->assertApiError($response, 'validation_failed', 422);
-        $response->assertJsonValidationErrors('latitude');
+        $this->assertApiValidationErrors($response, 'latitude');
     }
 
     public function test_the_radius_is_capped(): void
     {
         $max = (float) config('fip.pricing.max_radius_km');
 
-        $response = $this->getJson("/api/v1/stations/nearby?latitude=14.55&longitude=121.02&radius_km=".($max + 100));
+        $response = $this->getJson('/api/v1/stations/nearby?latitude=14.55&longitude=121.02&radius_km='.($max + 100));
 
         $this->assertApiError($response, 'validation_failed', 422);
     }
