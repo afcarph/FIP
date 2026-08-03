@@ -28,11 +28,27 @@ trait HasCompanyScope
             return $query->where($this->getTable().'.company_id', $user->company_id);
         }
 
-        return $query->where($this->ownerColumn(), $user->getKey());
+        $owner = $this->ownerColumn();
+
+        // No personal ownership column means the record cannot belong to a user
+        // outside a company, so there is nothing for them to see.
+        return $owner === null
+            ? $query->whereRaw('1 = 0')
+            : $query->where($owner, $user->getKey());
     }
 
-    protected function ownerColumn(): string
+    /**
+     * The column tying a row to an individual owner, or null when the model has
+     * none.
+     *
+     * Deliberately null by default rather than guessing `<table>.user_id`: the
+     * guess produced a SQL error on every model without that column — Fleet
+     * keys on `manager_id`, FraudAlert has no personal owner at all — which
+     * surfaced as a 500 instead of an empty result. A tenancy guard rail should
+     * fail closed.
+     */
+    protected function ownerColumn(): ?string
     {
-        return $this->getTable().'.user_id';
+        return null;
     }
 }

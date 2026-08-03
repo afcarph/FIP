@@ -37,6 +37,11 @@ class Fleet extends Model
     }
 
     /** Spend against the monthly budget, as a percentage. */
+    protected function ownerColumn(): ?string
+    {
+        return 'fleets.manager_id';
+    }
+
     public function budgetUtilisation(?\DateTimeInterface $month = null): ?float
     {
         if (! $this->monthly_fuel_budget) {

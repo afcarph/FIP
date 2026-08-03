@@ -48,6 +48,11 @@ class Driver extends Model
         return trim("{$this->first_name} {$this->last_name}");
     }
 
+    protected function ownerColumn(): ?string
+    {
+        return 'drivers.user_id';
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
