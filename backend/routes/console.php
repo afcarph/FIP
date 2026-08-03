@@ -59,7 +59,7 @@ Schedule::call(function (): void {
     Company::where('is_active', true)->pluck('id')->each(
         fn (int $companyId) => ScreenFleetForFraud::dispatch($companyId)->onQueue('ai'),
     );
-})->dailyAt('02:30')->timezone('Asia/Manila')->onOneServer();
+})->name('fip:fraud-sweep')->dailyAt('02:30')->timezone('Asia/Manila')->onOneServer();
 
 // Housekeeping.
 Schedule::command('queue:prune-failed --hours=336')->weekly()->onOneServer();

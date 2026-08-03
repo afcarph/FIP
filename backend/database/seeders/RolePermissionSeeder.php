@@ -133,7 +133,7 @@ class RolePermissionSeeder extends Seeder
                 ['label' => $definition['label'], 'level' => $definition['level']],
             );
 
-            $role->syncPermissions($this->resolve($definition['permissions'], $all));
+            $role->syncPermissions($this->resolvePermissions($definition['permissions'], $all));
         }
 
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
@@ -146,11 +146,11 @@ class RolePermissionSeeder extends Seeder
     }
 
     /**
-     * @param  list<string>|string  $spec
-     * @param  list<string>  $all
+     * @param list<string>|string $spec
+     * @param list<string> $all
      * @return list<string>
      */
-    private function resolve(array|string $spec, array $all): array
+    private function resolvePermissions(array|string $spec, array $all): array
     {
         if ($spec === '*') {
             return $all;

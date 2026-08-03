@@ -19,10 +19,7 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
-    'providers' => [
-        App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
-        App\Providers\RepositoryServiceProvider::class,
-        App\Providers\RouteServiceProvider::class,
-    ],
+    // Application service providers live in bootstrap/providers.php. Declaring an
+    // 'app.providers' key here would override — not extend — the framework
+    // defaults (see Illuminate\Foundation\Bootstrap\RegisterProviders).
 ];
