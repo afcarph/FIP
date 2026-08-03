@@ -23,7 +23,7 @@ interface RepositoryInterface
     /** @return Collection<int, TModel> */
     public function all(array $columns = ['*']): Collection;
 
-    /** @return LengthAwarePaginator<TModel> */
+    /** @return LengthAwarePaginator<int, TModel> */
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator;
 
     /** @return TModel|null */

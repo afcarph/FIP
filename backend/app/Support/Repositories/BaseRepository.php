@@ -41,7 +41,12 @@ abstract class BaseRepository implements RepositoryInterface
     /** @return Builder<TModel> */
     public function query(): Builder
     {
-        return $this->model()::query();
+        // The static call is on a class-string<TModel>, which PHPStan cannot
+        // follow back to the concrete builder type on its own.
+        /** @var Builder<TModel> $query */
+        $query = $this->model()::query();
+
+        return $query;
     }
 
     /** @return TModel */
@@ -54,7 +59,10 @@ abstract class BaseRepository implements RepositoryInterface
 
     public function all(array $columns = ['*']): Collection
     {
-        return $this->query()->get($columns);
+        /** @var Collection<int, TModel> $models */
+        $models = $this->query()->get($columns);
+
+        return $models;
     }
 
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator

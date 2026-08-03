@@ -12,6 +12,7 @@ use App\Domain\User\Models\User;
 use App\Services\External\AiServiceClient;
 use App\Support\Exceptions\DomainException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -191,7 +192,7 @@ final readonly class OcrScanService
      * names ("XTRA UNLEADED", "V-Power", "Silver") rather than the codes we
      * store, so the match is on tokens plus a small alias table.
      */
-    private function matchFuelType(string $label, $fuelTypes): ?FuelType
+    private function matchFuelType(string $label, Collection $fuelTypes): ?FuelType
     {
         $normalised = mb_strtolower(preg_replace('/[^a-z0-9 ]/i', ' ', $label) ?? '');
 

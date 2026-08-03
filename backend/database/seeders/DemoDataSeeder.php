@@ -410,7 +410,7 @@ class DemoDataSeeder extends Seeder
      * service. One vehicle is given a deliberately anomalous last fill so the
      * fraud dashboard has something to show.
      */
-    private function seedFillUps($vehicles, array $users, $stations): void
+    private function seedFillUps(Collection $vehicles, array $users, Collection $stations): void
     {
         foreach ($vehicles as $vehicle) {
             $actor = $vehicle->owner_id !== null

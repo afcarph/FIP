@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Expense\StoreFuelPurchaseRequest;
 use App\Http\Resources\FuelPurchaseResource;
 use App\Support\Http\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -112,7 +113,8 @@ class ExpenseController extends Controller
     }
 
     /** Restrict the query to what this caller may see. */
-    private function scope(Request $request)
+    /** @return Builder<FuelPurchase> */
+    private function scope(Request $request): Builder
     {
         $user = $request->user();
 

@@ -122,7 +122,7 @@ final readonly class FuelExpenseService
      *
      * @param Builder<FuelPurchase> $scope
      */
-    public function summary($scope, Carbon $from, Carbon $to): array
+    public function summary(Builder $scope, Carbon $from, Carbon $to): array
     {
         $row = (clone $scope)
             ->betweenPeriod($from, $to)
@@ -150,7 +150,7 @@ final readonly class FuelExpenseService
     }
 
     /** Month-by-month spend series for the expense chart. */
-    public function monthlySeries($scope, int $months = 12): array
+    public function monthlySeries(Builder $scope, int $months = 12): array
     {
         return (clone $scope)
             ->where('purchased_at', '>=', now()->subMonths($months)->startOfMonth())
@@ -177,7 +177,7 @@ final readonly class FuelExpenseService
      * What the user would have paid at the cheapest station they passed,
      * versus what they actually paid. Drives the "savings" headline.
      */
-    public function savingsAnalysis($scope, Carbon $from, Carbon $to): array
+    public function savingsAnalysis(Builder $scope, Carbon $from, Carbon $to): array
     {
         $purchases = (clone $scope)
             ->betweenPeriod($from, $to)
