@@ -20,6 +20,15 @@ services:
   # from it. GTID keeps the replica's position self-describing, so it can be
   # rebuilt without hunting for log coordinates.
   mysql:
+    healthcheck:
+      # --protocol=TCP deliberately: during initialisation MySQL runs a
+      # socket-only server on port 0, so a ping over the socket reports healthy
+      # while nothing is listening on 3306. Dependants then start too early.
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '--protocol=TCP', '-p${DB_ROOT_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
     environment:
       # The official image creates root@localhost only, so the init container's
       # connection is refused with ERROR 1130. Staging-only: production uses a
@@ -65,11 +74,14 @@ services:
     volumes:
       - mysql-replica-data:/var/lib/mysql
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-p${DB_ROOT_PASSWORD}']
+      # --protocol=TCP deliberately: during initialisation MySQL runs a
+      # socket-only server on port 0, so a ping over the socket reports healthy
+      # while nothing is listening on 3306. Dependants then start too early.
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '--protocol=TCP', '-p${DB_ROOT_PASSWORD}']
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 40s
+      retries: 18
+      start_period: 60s
     networks: [fip]
 
   # One-shot, mirroring the minio-init pattern: point the replica at the

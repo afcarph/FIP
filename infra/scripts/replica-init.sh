@@ -31,14 +31,14 @@ replica() { mysql -h "$REPLICA_HOST" -uroot -p"$DB_ROOT_PASSWORD" "$@"; }
 wait_for() {
     host="$1"
     i=0
-    while [ "$i" -lt 30 ]; do
+    while [ "$i" -lt 90 ]; do
         if mysql -h "$host" -uroot -p"$DB_ROOT_PASSWORD" -e 'SELECT 1' >/dev/null 2>&1; then
             return 0
         fi
         i=$((i + 1))
         sleep 2
     done
-    echo "FAILED: $host did not accept connections within 60s" >&2
+    echo "FAILED: $host did not accept connections within 180s" >&2
     return 1
 }
 
