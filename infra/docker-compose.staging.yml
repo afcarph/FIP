@@ -81,31 +81,13 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
       mysql-replica: { condition: service_healthy }
-    entrypoint: >
-      /bin/sh -ec "
-      mysql -h mysql -uroot -p${DB_ROOT_PASSWORD} -e \"
-        CREATE USER IF NOT EXISTS '${DB_REPL_USER:-repl}'@'%' IDENTIFIED BY '${DB_REPL_PASSWORD:?DB_REPL_PASSWORD must be set}';
-        GRANT REPLICATION SLAVE ON *.* TO '${DB_REPL_USER:-repl}'@'%';
-        FLUSH PRIVILEGES;\";
-      if mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SHOW REPLICA STATUS\\G' | grep -q 'Replica_IO_Running: Yes'; then
-        echo 'Replication already running';
-        exit 0;
-      fi;
-      mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e \"
-        STOP REPLICA;
-        CHANGE REPLICATION SOURCE TO
-          SOURCE_HOST='mysql',
-          SOURCE_USER='${DB_REPL_USER:-repl}',
-          SOURCE_PASSWORD='${DB_REPL_PASSWORD}',
-          SOURCE_AUTO_POSITION=1,
-          GET_SOURCE_PUBLIC_KEY=1;
-        START REPLICA;\";
-      sleep 3;
-      mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SHOW REPLICA STATUS\\G' | grep -q 'Replica_IO_Running: Yes'
-        || { echo 'FAILED: replication did not start'; exit 1; };
-      mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SET PERSIST super_read_only = ON';
-      echo 'Replication configured, replica set super_read_only';
-      "
+    environment:
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set}
+      DB_REPL_USER: ${DB_REPL_USER:-repl}
+      DB_REPL_PASSWORD: ${DB_REPL_PASSWORD:?DB_REPL_PASSWORD must be set}
+    volumes:
+      - ./scripts/replica-init.sh:/replica-init.sh:ro
+    entrypoint: ['/bin/sh', '/replica-init.sh']
     networks: [fip]
 
   # The three PHP services read from the replica. DB_READ_HOST is set here
