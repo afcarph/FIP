@@ -38,6 +38,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       nearbyStationsProvider((radiusKm: _radiusKm, fuelTypeId: _fuelTypeId)),
     );
 
+    // A fixed 260 leaves a short screen with roughly 120px for the list below
+    // it, which is less than the empty state needs — the map pushed it into an
+    // 84px overflow. Proportional, and still 260 on anything reasonably tall.
+    final mapHeight = (MediaQuery.sizeOf(context).height * 0.32).clamp(160.0, 260.0);
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -60,7 +65,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       children: [
                         if (position.isFallback) const _FallbackNotice(),
                         SizedBox(
-                          height: 260,
+                          height: mapHeight,
                           child: GoogleMap(
                             initialCameraPosition: CameraPosition(
                               target: LatLng(position.latitude, position.longitude),
@@ -260,10 +265,26 @@ class _StationList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (stations.isEmpty) {
-      return const EmptyView(
-        icon: LucideIcons.mapPin,
-        title: 'No stations in range',
-        description: 'Widen the radius or clear the fuel filter.',
+      // Scrollable rather than a bare EmptyView: below the filters, the slider
+      // and the map there is not always room for its full height, and a rigid
+      // one overflowed. This also keeps pull-to-refresh working when there is
+      // nothing to show, which is exactly when a user wants to retry.
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: LayoutBuilder(
+          builder:
+              (context, constraints) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: const EmptyView(
+                    icon: LucideIcons.mapPin,
+                    title: 'No stations in range',
+                    description: 'Widen the radius or clear the fuel filter.',
+                  ),
+                ),
+              ),
+        ),
       );
     }
 

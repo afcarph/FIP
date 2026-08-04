@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -128,21 +129,28 @@ class UserLocation {
 
 /// Current position, defaulting to Metro Manila rather than failing.
 final locationProvider = FutureProvider<UserLocation>((ref) async {
-  if (!await Geolocator.isLocationServiceEnabled()) {
-    return UserLocation.fallback;
-  }
-
-  var permission = await Geolocator.checkPermission();
-
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-  }
-
-  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-    return UserLocation.fallback;
-  }
-
+  // The whole body is guarded, not just getCurrentPosition. Every branch below
+  // already degrades to a fallback position rather than failing, but the
+  // service and permission checks are themselves platform calls that can throw
+  // — and when they did, the exception escaped and took out the map, which
+  // showed "Something went wrong" and never requested a single station.
+  // Falling back to a default position is the entire point of this provider,
+  // so it should not have a path that throws instead.
   try {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      return UserLocation.fallback;
+    }
+
+    var permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      return UserLocation.fallback;
+    }
+
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
@@ -155,8 +163,15 @@ final locationProvider = FutureProvider<UserLocation>((ref) async {
       longitude: position.longitude,
       isFallback: false,
     );
-  } catch (_) {
-    // A timeout on a weak GPS fix is normal; degrade rather than error.
+  } catch (error, stackTrace) {
+    // A timeout on a weak GPS fix is normal, and a platform channel failure is
+    // survivable; both degrade to the fallback. Recorded rather than swallowed
+    // so a systematic failure is still diagnosable.
+    debugPrint('locationProvider fell back: $error');
+    FlutterError.reportError(
+      FlutterErrorDetails(exception: error, stack: stackTrace, library: 'locationProvider'),
+    );
+
     return UserLocation.fallback;
   }
 });
