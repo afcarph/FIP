@@ -1,0 +1,118 @@
+# =============================================================================
+#  Staging overlay — adds the read replica the split is meant to use.
+#
+#  The base stack ships one database, so there is nothing for DB_READ_HOST to
+#  point at and no way to observe replication lag. This adds a real replica so
+#  the soak in docs/06 §6.8 measures replication rather than two independent
+#  servers.
+#
+#    docker compose -f infra/docker-compose.yml \
+#                   -f infra/docker-compose.staging.yml \
+#                   --env-file .env up -d
+#
+#  Deliberately NOT production: docker-compose.prod.yml is the production
+#  overlay. A managed replica (RDS read replica, Cloud SQL) is the right answer
+#  there — this exists so staging can prove the application half of the design.
+# =============================================================================
+
+services:
+  # The primary needs a binary log and a server id before anything can replicate
+  # from it. GTID keeps the replica's position self-describing, so it can be
+  # rebuilt without hunting for log coordinates.
+  mysql:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+      # Halved from the base stack: staging runs two databases on one host, and
+      # a soak that OOMs measures the instance rather than the replica.
+      - --innodb-buffer-pool-size=${DB_BUFFER_POOL:-256M}
+      - --max-connections=200
+      - --slow-query-log=1
+      - --long-query-time=1
+      - --server-id=1
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+
+  mysql-replica:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+      - --innodb-buffer-pool-size=${DB_BUFFER_POOL:-256M}
+      - --max-connections=200
+      - --server-id=2
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      # super-read-only also blocks users holding SUPER, so an accidental write
+      # to the replica fails loudly instead of silently diverging from the
+      # primary and breaking replication later.
+      - --super-read-only=ON
+    volumes:
+      - mysql-replica-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-p${DB_ROOT_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [fip]
+
+  # One-shot, mirroring the minio-init pattern: point the replica at the
+  # primary and start it. Safe to re-run — CHANGE REPLICATION SOURCE on an
+  # already-configured replica is rejected while it is running, so the guard
+  # skips it.
+  mysql-replica-init:
+    image: mysql:8.4
+    depends_on:
+      mysql: { condition: service_healthy }
+      mysql-replica: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "
+      mysql -h mysql -uroot -p${DB_ROOT_PASSWORD} -e \"
+        CREATE USER IF NOT EXISTS '${DB_REPL_USER:-repl}'@'%' IDENTIFIED BY '${DB_REPL_PASSWORD:?DB_REPL_PASSWORD must be set}';
+        GRANT REPLICATION SLAVE ON *.* TO '${DB_REPL_USER:-repl}'@'%';
+        FLUSH PRIVILEGES;\";
+      if mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SHOW REPLICA STATUS\\G' | grep -q 'Replica_IO_Running: Yes'; then
+        echo 'Replication already running';
+      else
+        mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e \"
+          STOP REPLICA;
+          CHANGE REPLICATION SOURCE TO
+            SOURCE_HOST='mysql',
+            SOURCE_USER='${DB_REPL_USER:-repl}',
+            SOURCE_PASSWORD='${DB_REPL_PASSWORD}',
+            SOURCE_AUTO_POSITION=1,
+            GET_SOURCE_PUBLIC_KEY=1;
+          START REPLICA;\";
+        echo 'Replication configured';
+      fi
+      "
+    networks: [fip]
+
+  # The three PHP services read from the replica. DB_READ_HOST is set here
+  # rather than in .env so that bringing the stack up without this overlay
+  # cannot leave reads pointed at a host that does not exist — the failure mode
+  # that broke CI when .env.example hardcoded it.
+  api:
+    environment:
+      DB_READ_HOST: mysql-replica
+    depends_on:
+      mysql-replica: { condition: service_healthy }
+
+  queue:
+    environment:
+      DB_READ_HOST: mysql-replica
+
+  scheduler:
+    environment:
+      DB_READ_HOST: mysql-replica
+
+volumes:
+  mysql-replica-data:
