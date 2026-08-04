@@ -1,5 +1,8 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+# 14.0, not the commented-out 13.0 the template ships: google_maps_flutter_ios
+# requires it, and without an explicit line CocoaPods silently assumes 13.0
+# and pod install fails.
+platform :ios, '14.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
