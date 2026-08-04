@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import type {
   Advisory,
+  AppNotification,
   AssistantReply,
   CheapestStation,
   DashboardData,
@@ -22,6 +23,7 @@ import type {
   SavingsAnalysis,
   Station,
   TrendPoint,
+  User,
   Vehicle,
 } from '@/types/api';
 
@@ -266,6 +268,65 @@ export function useLogFillUp() {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
+  });
+}
+
+// --------------------------------------------------------- notifications ---
+
+export function useNotifications(unread = false) {
+  return useQuery({
+    queryKey: queryKeys.notifications(unread),
+    queryFn: async () =>
+      (await api.get<AppNotification[]>('/notifications', unread ? { unread: true } : {})).data,
+  });
+}
+
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => (await api.patch(`/notifications/${id}/read`)).data,
+    // Both the read and unread lists change, and so does the header count.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => (await api.post('/notifications/read-all')).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+// --------------------------------------------------------------- profile ---
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.put<User>('/profile', payload)).data,
+    // The header shows the name and initials, and both come from this query.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['auth', 'me'] }),
+  });
+}
+
+export function useUpdatePreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.put<User>('/profile/preferences', payload)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['auth', 'me'] }),
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.put('/profile/password', payload)).data,
   });
 }
 
