@@ -191,6 +191,33 @@ jobs:
       - name: Build a debug APK
         run: flutter build apk --debug
 
+  ios:
+    name: Mobile (iOS)
+    # Needs a macOS runner: iOS builds require Xcode and CocoaPods, neither of
+    # which exists on ubuntu. Kept separate from the Flutter job rather than
+    # moving that one to macOS, so the cheap checks stay on the cheap runner.
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.x'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # --no-codesign: this proves the project and its plugins compile. Signing
+      # needs certificates that belong in the release workflow, not in CI.
+      - name: Build the iOS app
+        run: flutter build ios --no-codesign
+
   docker:
     name: Docker images
     runs-on: ubuntu-latest
