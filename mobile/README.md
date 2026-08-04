@@ -71,6 +71,31 @@ asking — App Review rejects generic strings.
 flutter test
 ```
 
+## Google Maps key
+
+The map renders blank without one. Set it in `android/local.properties`, which
+is git-ignored — never in `AndroidManifest.xml`, which is tracked and this
+repository is public:
+
+```properties
+MAPS_API_KEY=your-key
+```
+
+Gradle reads it (or the `MAPS_API_KEY` environment variable, for CI) into a
+manifest placeholder, defaulting to empty. An empty key builds fine and shows a
+blank map, which is a better failure than a leaked key. The Dart side takes it
+separately:
+
+```bash
+flutter build apk --debug --dart-define=GOOGLE_MAPS_API_KEY=your-key
+```
+
+The key must be authorised in Google Cloud for **Maps SDK for Android**, and if
+it carries an Android restriction it needs an entry for each signing
+certificate — the debug keystore's SHA-1 as well as the release one. Without
+that, the SDK loads, draws the Google logo, and logs
+`Authorization failure` with the fingerprint and package it expected.
+
 ## Building for a device
 
 ```bash

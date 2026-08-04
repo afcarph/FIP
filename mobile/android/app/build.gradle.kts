@@ -1,7 +1,16 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val mapsApiKey: String = run {
+    val props = Properties()
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { props.load(it) }
+    props.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
 }
 
 android {
@@ -19,6 +28,11 @@ android {
     }
 
     defaultConfig {
+        // Read from android/local.properties or the environment, never checked
+        // in. Empty is a working build with a blank map, which is a better
+        // failure than a leaked key in a public repository.
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+
         applicationId = "ph.fip.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
