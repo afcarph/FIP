@@ -72,28 +72,47 @@ class StatTile extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  // Tabular figures stop the layout jittering as values
-                  // refresh.
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              // Flexible + scaleDown rather than a bare Column: the value and
+              // its hint together are taller than the height a grid's
+              // childAspectRatio allots on a small or large-text screen, and a
+              // Spacer cannot shrink past zero — so the tile overflowed by
+              // 15-18px on every tile that had a hint. Shrinking the text is
+              // worse than the intended size and better than a striped
+              // overflow banner across the card.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        value,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          // Tabular figures stop the layout jittering as values
+                          // refresh.
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (hint != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          hint!,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-              if (hint != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  hint!,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
             ],
           ),
         ),

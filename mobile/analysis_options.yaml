@@ -6,6 +6,11 @@ analyzer:
   exclude:
     - '**/*.g.dart'
     - '**/*.freezed.dart'
+    # `flutter build ios` checks out Swift Package Manager dependencies under
+    # build/ios/SourcePackages, and some of them ship Dart examples that do not
+    # compile on their own. Without this, analysing after an iOS build reports
+    # ~13,000 errors from other people's sample code.
+    - 'build/**'
   language:
     strict-casts: true
     strict-inference: true

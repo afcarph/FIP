@@ -145,7 +145,12 @@ class _SummaryGrid extends StatelessWidget {
       crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.55,
+      // 1.25, not 1.55: at the tighter ratio a tile with a hint is
+      // shorter than its own content, so every such tile scaled its
+      // text down to avoid overflowing. StatTile still guards against
+      // overflow for large text scales; this stops it triggering at the
+      // default one.
+      childAspectRatio: 1.25,
       children: [
         StatTile(
           label: 'Total spend',

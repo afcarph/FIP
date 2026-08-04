@@ -178,6 +178,13 @@ final forecastsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async
 });
 
 final dashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  // Watching the session is what makes this correct, not just fresh. The
+  // dashboard is the landing route, so this provider is first built while the
+  // login screen is still on top: that attempt has no token, returns 401, and
+  // the cached error is what the user is shown the moment they sign in.
+  // Depending on isAuthenticated re-runs the fetch when the session arrives.
+  ref.watch(authProvider.select((auth) => auth.isAuthenticated));
+
   return ref.watch(apiClientProvider).get<Map<String, dynamic>>('/dashboard');
 });
 
