@@ -216,6 +216,21 @@ export function useVehicle(id: number | undefined) {
   });
 }
 
+export function useCreateVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.post<Vehicle>('/vehicles', payload)).data,
+    onSuccess: () => {
+      // The dashboard shows a vehicles section and an empty state that depends
+      // on whether any exist, so both caches have to be dropped.
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+  });
+}
+
 // -------------------------------------------------------------- expenses ---
 
 export function useExpenses(filters: Record<string, unknown> = {}) {
