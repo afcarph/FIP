@@ -41,8 +41,16 @@ class VehicleResource extends JsonResource
                 'registration_expiry' => $this->registration_expiry?->toDateString(),
                 'insurance_provider' => $this->insurance_provider,
                 'insurance_expiry' => $this->insurance_expiry?->toDateString(),
-                'registration_expires_in_days' => $this->registration_expiry?->diffInDays(now(), false) * -1,
-                'insurance_expires_in_days' => $this->insurance_expiry?->diffInDays(now(), false) * -1,
+                // Not `?->diffInDays(...) * -1`: the null-safe call yields null,
+                // and null * -1 is 0 in PHP — so a vehicle with no registration
+                // on file reported as expiring today, and the app showed a
+                // compliance warning for a document that does not exist.
+                'registration_expires_in_days' => $this->registration_expiry
+                    ? $this->registration_expiry->diffInDays(now(), false) * -1
+                    : null,
+                'insurance_expires_in_days' => $this->insurance_expiry
+                    ? $this->insurance_expiry->diffInDays(now(), false) * -1
+                    : null,
             ],
             'assigned_driver' => $this->whenLoaded('currentAssignment', fn () => $this->currentAssignment?->driver
                 ? ['id' => $this->currentAssignment->driver->id, 'name' => $this->currentAssignment->driver->full_name]

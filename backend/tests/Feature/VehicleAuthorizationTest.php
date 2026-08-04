@@ -39,6 +39,49 @@ class VehicleAuthorizationTest extends TestCase
         $this->assertSame('MINE 001', $response->json('data.0.plate_number'));
     }
 
+    /**
+     * A vehicle with no registration or insurance on file reported both as
+     * expiring today, because `?->diffInDays(...) * -1` yields null * -1, and
+     * PHP evaluates that to 0. The app then showed two compliance warnings for
+     * documents the user had never entered.
+     */
+    public function test_absent_document_dates_report_no_expiry_rather_than_today(): void
+    {
+        $user = $this->actingAsRole('user');
+
+        Vehicle::factory()->create([
+            'owner_id' => $user->id,
+            'registration_expiry' => null,
+            'insurance_expiry' => null,
+        ]);
+
+        $response = $this->getJson('/api/v1/vehicles');
+
+        $this->assertApiSuccess($response);
+        $this->assertNull($response->json('data.0.documents.registration_expires_in_days'));
+        $this->assertNull($response->json('data.0.documents.insurance_expires_in_days'));
+    }
+
+    public function test_present_document_dates_still_report_a_day_count(): void
+    {
+        $user = $this->actingAsRole('user');
+
+        Vehicle::factory()->create([
+            'owner_id' => $user->id,
+            'registration_expiry' => now()->addDays(30),
+        ]);
+
+        $days = $this->getJson('/api/v1/vehicles')
+            ->json('data.0.documents.registration_expires_in_days');
+
+        // A float, not an int: diffInDays with absolute=false returns fractional
+        // days, and the clients truncate. Asserted as-is rather than tidied,
+        // so this test documents the shape callers actually receive.
+        $this->assertIsNumeric($days);
+        $this->assertGreaterThan(28, $days);
+        $this->assertLessThanOrEqual(30, $days);
+    }
+
     public function test_a_fleet_manager_cannot_read_another_companys_vehicle(): void
     {
         $otherCompany = Company::factory()->create();

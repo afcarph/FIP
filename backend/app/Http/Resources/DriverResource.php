@@ -21,7 +21,11 @@ class DriverResource extends JsonResource
                 'number' => $this->licence_number,
                 'type' => $this->licence_type,
                 'expiry' => $this->licence_expiry?->toDateString(),
-                'expires_in_days' => $this->licence_expiry?->diffInDays(now(), false) * -1,
+                // null * -1 is 0 in PHP, so a driver with no licence expiry on
+                // file read as expiring today. See VehicleResource.
+                'expires_in_days' => $this->licence_expiry
+                    ? $this->licence_expiry->diffInDays(now(), false) * -1
+                    : null,
             ],
             'scores' => [
                 'safety' => $this->safety_score,
