@@ -20,9 +20,10 @@
         "laravel/framework": "^12.0",
         "laravel/socialite": "^5.16",
         "laravel/tinker": "^2.10",
+        "league/flysystem-aws-s3-v3": "^3.0",
         "maatwebsite/excel": "^3.1",
-        "predis/predis": "^2.2",
         "pragmarx/google2fa": "^8.0",
+        "predis/predis": "^2.2",
         "spatie/laravel-permission": "^6.9",
         "spatie/laravel-query-builder": "^6.2",
         "tymon/jwt-auth": "^2.1"
