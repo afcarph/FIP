@@ -37,14 +37,14 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _DashboardBody extends StatelessWidget {
+class _DashboardBody extends ConsumerWidget {
   const _DashboardBody({required this.data, this.firstName});
 
   final Map<String, dynamic> data;
   final String? firstName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final summary = data['summary'] as Map<String, dynamic>? ?? {};
     final savings = data['savings'] as Map<String, dynamic>? ?? {};
     final forecasts = (data['forecasts'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
@@ -62,11 +62,26 @@ class _DashboardBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${_greeting()}${firstName != null ? ', $firstName' : ''}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${_greeting()}${firstName != null ? ', $firstName' : ''}',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    // AuthNotifier.signOut and POST /auth/logout both existed and
+                    // neither was reachable: nothing in the app called it, so a
+                    // session could not be ended on a shared or lost device.
+                    IconButton(
+                      icon: const Icon(LucideIcons.logOut, size: 20),
+                      tooltip: 'Sign out',
+                      onPressed: () => _confirmSignOut(context, ref),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -189,6 +204,31 @@ class _DashboardBody extends StatelessWidget {
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
     );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Sign out?'),
+            content: const Text('You will need to sign in again to see your fill-ups.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sign out'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed ?? false) {
+      await ref.read(authProvider.notifier).signOut();
+    }
   }
 
   static String _greeting() {
