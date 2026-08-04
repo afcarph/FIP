@@ -1,8 +1,14 @@
 {
     "name": "fip/backend",
     "type": "project",
-    "description": "Fuel Intelligence Platform — Laravel 12 API",
-    "keywords": ["fuel", "fleet", "laravel", "api", "philippines"],
+    "description": "Fuel Intelligence Platform \u2014 Laravel 12 API",
+    "keywords": [
+        "fuel",
+        "fleet",
+        "laravel",
+        "api",
+        "philippines"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.3",
@@ -67,6 +73,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.3.0"
         }
     },
     "minimum-stability": "stable",

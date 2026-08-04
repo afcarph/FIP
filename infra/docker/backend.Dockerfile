@@ -41,11 +41,15 @@ RUN if [ "$WITH_XDEBUG" = "true" ]; then \
         && apk del .build; \
     fi
 
-COPY composer.json composer.lock* ./
-RUN composer install --no-scripts --no-autoloader --prefer-dist || true
+# No `|| true` here: a dependency set that will not install is a broken image,
+# and swallowing the failure only defers it to a crash loop at run time. The
+# lock file is required rather than optional for the same reason — resolving
+# afresh inside the build would silently drift from what was tested.
+COPY composer.json composer.lock ./
+RUN composer install --no-scripts --no-autoloader --prefer-dist
 
 COPY . .
-RUN composer dump-autoload --optimize || true
+RUN composer dump-autoload --optimize
 
 RUN chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
@@ -55,7 +59,10 @@ CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=8000"]
 # --- vendor: production dependencies only ------------------------------------
 FROM base AS vendor
 
-COPY composer.json composer.lock* ./
+# The lock is required, not optional: the production image must install exactly
+# what was tested, and a `composer.lock*` glob silently falls back to resolving
+# afresh when the file is absent.
+COPY composer.json composer.lock ./
 RUN composer install \
         --no-dev \
         --no-scripts \
