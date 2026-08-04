@@ -263,6 +263,16 @@ enabling in production:
 | Failover | stop the replica | reads must fall back or fail loudly, not hang |
 | Replica saturation | watch CPU and IO on the replica while analytics run | the replica, not the primary, becomes the bottleneck |
 
+`infra/scripts/replica-soak.sh` samples the lag rows of that table and exits
+non-zero on a stop condition, so it can gate the rollout from cron:
+
+```bash
+SAMPLE_SECONDS=86400 infra/scripts/replica-soak.sh | tee soak-$(date +%F).log
+```
+
+Point `REPLICA_SQL` at a managed replica if it is not a compose service. The
+read-after-write, failover and saturation rows still need doing by hand.
+
 Roll out behind the environment variable: `DB_READ_HOST` unset is the current
 production behaviour, so enabling and reverting are both a single variable and
 a restart. Watch the read-after-write case first — it is the one with a
