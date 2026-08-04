@@ -73,51 +73,32 @@ flutter test
 
 ## Building for a device
 
-**There are no `android/` or `ios/` directories in this repository yet.** The
-app is library code and tests only, so `flutter test` and `flutter analyze`
-pass — and CI passes with them — while `flutter build` has nothing to build
-against. Generating the platform shells is a prerequisite for shipping, and it
-fixes an application ID that becomes store identity, so it is a deliberate
-decision rather than a routine `flutter create`.
-
-A debug APK has been produced from a scratch copy, so the Dart and plugin code
-is known to compile. Three changes to the generated Gradle files were needed
-beyond what `flutter create` writes; whoever commits the shells will need them
-from the first commit.
-
-**1. `compileSdk = 36` in `android/app/build.gradle.kts`.** Not
-`flutter.compileSdkVersion` — `sqflite_android` references
-`VERSION_CODES.BAKLAVA`, `Locale.of()` and `Thread.threadId()`, which android.jar
-only exposes at API 36.
-
-**2. Core library desugaring**, or `flutter_local_notifications` fails at
-`checkDebugAarMetadata`:
-
-```kotlin
-compileOptions {
-    isCoreLibraryDesugaringEnabled = true
-}
-dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-}
+```bash
+flutter build apk --debug        # Android; CI runs this on every push
+flutter build ios --no-codesign  # iOS; needs CocoaPods installed
 ```
 
-**3. A `compileSdk` override for the plugin modules** in
-`android/build.gradle.kts`. Several still declare 33 while their transitive
-AndroidX dependencies require 35+. It has to be registered *before* the
-existing `subprojects { project.evaluationDependsOn(":app") }` block, or Gradle
-fails with "Cannot run Project.afterEvaluate(Action) when the project is
-already evaluated":
+The application ID is `ph.fip.mobile`. The Android namespace stays
+`ph.fip.fip_mobile` — it only names the R class and the Kotlin package on disk,
+and is not externally visible.
 
-```kotlin
-subprojects {
-    afterEvaluate {
-        extensions.findByName("android")?.let {
-            (it as com.android.build.gradle.BaseExtension).compileSdkVersion(36)
-        }
-    }
-}
-```
+Three settings in the generated Gradle files differ from what `flutter create`
+writes, and all three are load-bearing:
 
-Raising the pinned plugin versions may remove the need for the third item; that
-has not been tried.
+- **`compileSdk = 36`** in `android/app/build.gradle.kts`, not
+  `flutter.compileSdkVersion`. `sqflite_android` references
+  `VERSION_CODES.BAKLAVA`, `Locale.of()` and `Thread.threadId()`, which
+  android.jar only exposes at API 36.
+- **Core library desugaring**, or `flutter_local_notifications` fails at
+  `checkDebugAarMetadata`.
+- **A plugin-module `compileSdk` override** in `android/build.gradle.kts`.
+  Several plugins still declare 33 while their transitive AndroidX dependencies
+  require 35+. It is registered *before* `subprojects { evaluationDependsOn(":app") }`,
+  because `afterEvaluate` on an already-evaluated project throws.
+
+Raising the pinned plugin versions may remove the need for the third; that has
+not been tried.
+
+**iOS is scaffolded but unverified.** CocoaPods was not available here, so
+`flutter build ios` has never run against this plugin set — expect it to need
+its own adjustments, and do not assume parity with Android.

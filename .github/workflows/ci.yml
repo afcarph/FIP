@@ -185,6 +185,12 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      # The job above passes without any platform code, which is exactly how
+      # the app stayed unbuildable while CI was green. Building an APK is what
+      # actually exercises the Android shell and the plugin set.
+      - name: Build a debug APK
+        run: flutter build apk --debug
+
   docker:
     name: Docker images
     runs-on: ubuntu-latest
