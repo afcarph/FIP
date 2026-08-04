@@ -75,7 +75,7 @@ graph TB
     AISVC --> FC & OCR & LLM & ANOM
 
     API --> MYSQL
-    API -.->|"analytics reads"| REPLICA
+    API -.->|"all SELECTs"| REPLICA
     API --> REDIS
     API --> S3
     QUEUE --> REDIS
@@ -276,6 +276,12 @@ client that logs a fill-up and then immediately loads the dashboard issues two
 requests: the write returns 201 from the primary, and the dashboard read can
 still land on a replica that has not caught up, so the new fill-up is missing
 from the totals. The window is however far behind the replica happens to be.
+
+One consequence to size for: a request that both reads and writes holds two
+connections rather than one, since the read and write PDOs are separate. Laravel
+opens each lazily — a read-only request still uses one — but the ceiling per
+worker doubles, which is why `max_connections` is on the alert list in
+[§6.7](06-deployment-guide.md#67-monitoring).
 
 If that matters for a given endpoint, the options are, in increasing cost:
 have the client render the write optimistically rather than refetching; pin the
