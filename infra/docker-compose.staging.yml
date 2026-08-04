@@ -56,10 +56,12 @@ services:
       - --server-id=2
       - --gtid-mode=ON
       - --enforce-gtid-consistency=ON
-      # super-read-only also blocks users holding SUPER, so an accidental write
-      # to the replica fails loudly instead of silently diverging from the
-      # primary and breaking replication later.
-      - --super-read-only=ON
+      # super_read_only is deliberately NOT a startup flag. The entrypoint's own
+      # bootstrap — creating root and setting its password — is a write, so the
+      # flag makes first initialisation fail with ERROR 1290 and leaves a
+      # database nobody can log into. It is applied by mysql-replica-init with
+      # SET PERSIST once the server is up, which survives restarts. Replication
+      # applier threads are exempt from it, so replication still works.
     volumes:
       - mysql-replica-data:/var/lib/mysql
     healthcheck:
@@ -101,7 +103,8 @@ services:
       sleep 3;
       mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SHOW REPLICA STATUS\\G' | grep -q 'Replica_IO_Running: Yes'
         || { echo 'FAILED: replication did not start'; exit 1; };
-      echo 'Replication configured';
+      mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SET PERSIST super_read_only = ON';
+      echo 'Replication configured, replica set super_read_only';
       "
     networks: [fip]
 
