@@ -278,6 +278,28 @@ production behaviour, so enabling and reverting are both a single variable and
 a restart. Watch the read-after-write case first — it is the one with a
 user-visible failure mode rather than a purely operational one.
 
+**The replica becomes a single point of failure for reads.** Measured on
+staging: with the replica stopped, every read fails with
+`getaddrinfo for mysql-replica failed`, while writes continue against the
+primary. Laravel's read/write split has no fallback — it does not retry a
+failed read against the write connection. Reads resume on their own once the
+replica returns.
+
+This matters more than the lag numbers. Before enabling `DB_READ_HOST` in
+production, the replica needs the availability of the primary — a managed
+replica with automatic failover (RDS multi-AZ, Cloud SQL HA) rather than a
+second container. Enabling it against a single self-managed replica converts
+one database outage into two, and the second one takes the whole application
+read path with it. The revert is `DB_READ_HOST` unset plus a restart, so keep
+that in the incident runbook.
+
+Staging measurements for reference, 30 minutes under continuous write load
+(~13.2M rows replicated, primary and replica identical throughout): lag max 1s,
+mean 0s across 175 samples; primary 5.8% CPU / 718MB, replica 0.6% CPU / 491MB.
+Read-after-write held — after a write, reads came from the primary and the row
+was visible; a fresh connection returned to the replica, and the row appeared
+there within 200ms.
+
 **2. Horizontal API.** `api` and `web` are stateless; raise `replicas` in the
 production overlay. Sessions live in JWTs, so no sticky routing is required.
 
