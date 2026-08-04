@@ -16,10 +16,78 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * A single fill-up. Derived metrics (distance, km/L, cost/km) are computed by
  * FuelExpenseService at write time so that reporting queries stay cheap.
+ *
+ * @property int $id
+ * @property int $vehicle_id
+ * @property int $user_id
+ * @property int|null $driver_id
+ * @property int|null $station_id
+ * @property int $fuel_type_id
+ * @property float $litres
+ * @property float $price_per_litre
+ * @property float $total_cost
+ * @property float|null $odometer
+ * @property float|null $distance_since_last
+ * @property float|null $km_per_litre
+ * @property float|null $cost_per_km
+ * @property bool $is_full_tank
+ * @property int|null $payment_method_id
+ * @property string|null $receipt_path
+ * @property string|null $notes
+ * @property float|null $latitude
+ * @property float|null $longitude
+ * @property Carbon $purchased_at
+ * @property float|null $anomaly_score
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Driver|null $driver
+ * @property-read FuelType $fuelType
+ * @property-read PaymentMethod|null $paymentMethod
+ * @property-read GasStation|null $station
+ * @property-read User|null $user
+ * @property-read Vehicle|null $vehicle
+ *
+ * @method static Builder<static>|FuelPurchase betweenPeriod(\DateTimeInterface $from, \DateTimeInterface $to)
+ * @method static \Database\Factories\FuelPurchaseFactory factory($count = null, $state = [])
+ * @method static Builder<static>|FuelPurchase newModelQuery()
+ * @method static Builder<static>|FuelPurchase newQuery()
+ * @method static Builder<static>|FuelPurchase onlyTrashed()
+ * @method static Builder<static>|FuelPurchase query()
+ * @method static Builder<static>|FuelPurchase suspicious()
+ * @method static Builder<static>|FuelPurchase whereAnomalyScore($value)
+ * @method static Builder<static>|FuelPurchase whereCostPerKm($value)
+ * @method static Builder<static>|FuelPurchase whereCreatedAt($value)
+ * @method static Builder<static>|FuelPurchase whereDeletedAt($value)
+ * @method static Builder<static>|FuelPurchase whereDistanceSinceLast($value)
+ * @method static Builder<static>|FuelPurchase whereDriverId($value)
+ * @method static Builder<static>|FuelPurchase whereFuelTypeId($value)
+ * @method static Builder<static>|FuelPurchase whereId($value)
+ * @method static Builder<static>|FuelPurchase whereIsFullTank($value)
+ * @method static Builder<static>|FuelPurchase whereKmPerLitre($value)
+ * @method static Builder<static>|FuelPurchase whereLatitude($value)
+ * @method static Builder<static>|FuelPurchase whereLitres($value)
+ * @method static Builder<static>|FuelPurchase whereLongitude($value)
+ * @method static Builder<static>|FuelPurchase whereNotes($value)
+ * @method static Builder<static>|FuelPurchase whereOdometer($value)
+ * @method static Builder<static>|FuelPurchase wherePaymentMethodId($value)
+ * @method static Builder<static>|FuelPurchase wherePricePerLitre($value)
+ * @method static Builder<static>|FuelPurchase wherePurchasedAt($value)
+ * @method static Builder<static>|FuelPurchase whereReceiptPath($value)
+ * @method static Builder<static>|FuelPurchase whereStationId($value)
+ * @method static Builder<static>|FuelPurchase whereTotalCost($value)
+ * @method static Builder<static>|FuelPurchase whereUpdatedAt($value)
+ * @method static Builder<static>|FuelPurchase whereUserId($value)
+ * @method static Builder<static>|FuelPurchase whereVehicleId($value)
+ * @method static Builder<static>|FuelPurchase withTrashed(bool $withTrashed = true)
+ * @method static Builder<static>|FuelPurchase withoutTrashed()
+ *
+ * @mixin \Eloquent
  */
 class FuelPurchase extends Model
 {

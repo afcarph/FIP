@@ -9,8 +9,46 @@ use App\Support\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
-/** A weekly DOE pump-price adjustment ("increase" / "rollback"). */
+/**
+ * A weekly DOE pump-price adjustment ("increase" / "rollback").
+ *
+ * @property int $id
+ * @property int $fuel_type_id
+ * @property int|null $region_id
+ * @property Carbon $week_start
+ * @property Carbon $effective_at
+ * @property numeric $change_amount
+ * @property string $direction
+ * @property string $source
+ * @property string|null $source_url
+ * @property string|null $notes
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read FuelType $fuelType
+ * @property-read Region|null $region
+ *
+ * @method static Builder<static>|PriceAdvisory nationwide()
+ * @method static Builder<static>|PriceAdvisory newModelQuery()
+ * @method static Builder<static>|PriceAdvisory newQuery()
+ * @method static Builder<static>|PriceAdvisory query()
+ * @method static Builder<static>|PriceAdvisory recent(int $weeks = 12)
+ * @method static Builder<static>|PriceAdvisory whereChangeAmount($value)
+ * @method static Builder<static>|PriceAdvisory whereCreatedAt($value)
+ * @method static Builder<static>|PriceAdvisory whereDirection($value)
+ * @method static Builder<static>|PriceAdvisory whereEffectiveAt($value)
+ * @method static Builder<static>|PriceAdvisory whereFuelTypeId($value)
+ * @method static Builder<static>|PriceAdvisory whereId($value)
+ * @method static Builder<static>|PriceAdvisory whereNotes($value)
+ * @method static Builder<static>|PriceAdvisory whereRegionId($value)
+ * @method static Builder<static>|PriceAdvisory whereSource($value)
+ * @method static Builder<static>|PriceAdvisory whereSourceUrl($value)
+ * @method static Builder<static>|PriceAdvisory whereUpdatedAt($value)
+ * @method static Builder<static>|PriceAdvisory whereWeekStart($value)
+ *
+ * @mixin \Eloquent
+ */
 class PriceAdvisory extends Model
 {
     use Auditable;

@@ -14,22 +14,122 @@ use App\Domain\Station\Models\City;
 use App\Domain\Station\Models\GasStation;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Concerns\Auditable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
 /**
  * @property int $id
- * @property string $email
- * @property string $status
  * @property int|null $company_id
+ * @property string $first_name
+ * @property string $last_name
+ * @property string $email
+ * @property string|null $phone
+ * @property string|null $password
+ * @property string|null $avatar_path
+ * @property string $locale
+ * @property string $timezone
+ * @property int|null $home_city_id
+ * @property string $status
+ * @property Carbon|null $email_verified_at
+ * @property Carbon|null $phone_verified_at
+ * @property bool $mfa_enabled
+ * @property string|null $mfa_secret
+ * @property string|null $mfa_recovery_codes
+ * @property bool $biometric_enabled
+ * @property Carbon|null $last_login_at
+ * @property string|null $last_login_ip
+ * @property int $failed_login_attempts
+ * @property Carbon|null $locked_until
+ * @property string|null $remember_token
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Collection<int, Notification> $appNotifications
+ * @property-read int|null $app_notifications_count
+ * @property-read Collection<int, AuditLog> $auditLogs
+ * @property-read int|null $audit_logs_count
+ * @property-read Collection<int, AiChatSession> $chatSessions
+ * @property-read int|null $chat_sessions_count
+ * @property-read Company|null $company
+ * @property-read Collection<int, UserDevice> $devices
+ * @property-read int|null $devices_count
+ * @property-read Driver|null $driverProfile
+ * @property-read Collection<int, FuelPurchase> $fuelPurchases
+ * @property-read int|null $fuel_purchases_count
+ * @property-read string $full_name
+ * @property-read string $initials
+ * @property-read City|null $homeCity
+ * @property-read Collection<int, GasStation> $managedStations
+ * @property-read int|null $managed_stations_count
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
+ * @property-read int|null $notifications_count
+ * @property-read Collection<int, OauthAccount> $oauthAccounts
+ * @property-read int|null $oauth_accounts_count
+ * @property-read Collection<int, Permission> $permissions
+ * @property-read int|null $permissions_count
+ * @property-read UserPreference|null $preferences
+ * @property-read Collection<int, PriceAlert> $priceAlerts
+ * @property-read int|null $price_alerts_count
+ * @property-read Collection<int, PriceReport> $priceReports
+ * @property-read int|null $price_reports_count
+ * @property-read Collection<int, Role> $roles
+ * @property-read int|null $roles_count
+ * @property-read Collection<int, Vehicle> $vehicles
+ * @property-read int|null $vehicles_count
+ *
+ * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User permission($permissions, $without = false)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User role($roles, $guard = null, $without = false)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereAvatarPath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereBiometricEnabled($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCompanyId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmailVerifiedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereFailedLoginAttempts($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereFirstName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereHomeCityId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLastLoginAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLastLoginIp($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLastName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLocale($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLockedUntil($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereMfaEnabled($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereMfaRecoveryCodes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereMfaSecret($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePassword($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePhone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePhoneVerifiedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRememberToken($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereTimezone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutPermission($permissions)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutRole($roles, $guard = null)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutTrashed()
+ *
+ * @mixin \Eloquent
  */
 class User extends Authenticatable implements JWTSubject
 {
@@ -41,7 +141,7 @@ class User extends Authenticatable implements JWTSubject
 
     protected $table = 'users';
 
-    protected $guard_name = 'api';
+    protected string $guard_name = 'api';
 
     protected $fillable = [
         'company_id', 'first_name', 'last_name', 'email', 'phone', 'password',
@@ -214,6 +314,7 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Vehicle::class, 'owner_id');
     }
 
+    /** @return HasMany<FuelPurchase, $this> */
     public function fuelPurchases(): HasMany
     {
         return $this->hasMany(FuelPurchase::class);

@@ -17,7 +17,58 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int|null $company_id
+ * @property int|null $fleet_id
+ * @property int|null $vehicle_id
+ * @property int|null $driver_id
+ * @property int|null $fuel_purchase_id
+ * @property string $alert_type
+ * @property string $severity
+ * @property float $score
+ * @property array|null $evidence
+ * @property string $status
+ * @property int|null $resolved_by
+ * @property Carbon|null $resolved_at
+ * @property string|null $resolution_note
+ * @property Carbon $detected_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Company|null $company
+ * @property-read Driver|null $driver
+ * @property-read Fleet|null $fleet
+ * @property-read FuelPurchase|null $purchase
+ * @property-read User|null $resolver
+ * @property-read Vehicle|null $vehicle
+ *
+ * @method static Builder<static>|FraudAlert forUser(?\App\Domain\User\Models\User $user)
+ * @method static Builder<static>|FraudAlert newModelQuery()
+ * @method static Builder<static>|FraudAlert newQuery()
+ * @method static Builder<static>|FraudAlert query()
+ * @method static Builder<static>|FraudAlert unresolved()
+ * @method static Builder<static>|FraudAlert whereAlertType($value)
+ * @method static Builder<static>|FraudAlert whereCompanyId($value)
+ * @method static Builder<static>|FraudAlert whereCreatedAt($value)
+ * @method static Builder<static>|FraudAlert whereDetectedAt($value)
+ * @method static Builder<static>|FraudAlert whereDriverId($value)
+ * @method static Builder<static>|FraudAlert whereEvidence($value)
+ * @method static Builder<static>|FraudAlert whereFleetId($value)
+ * @method static Builder<static>|FraudAlert whereFuelPurchaseId($value)
+ * @method static Builder<static>|FraudAlert whereId($value)
+ * @method static Builder<static>|FraudAlert whereResolutionNote($value)
+ * @method static Builder<static>|FraudAlert whereResolvedAt($value)
+ * @method static Builder<static>|FraudAlert whereResolvedBy($value)
+ * @method static Builder<static>|FraudAlert whereScore($value)
+ * @method static Builder<static>|FraudAlert whereSeverity($value)
+ * @method static Builder<static>|FraudAlert whereStatus($value)
+ * @method static Builder<static>|FraudAlert whereUpdatedAt($value)
+ * @method static Builder<static>|FraudAlert whereVehicleId($value)
+ *
+ * @mixin \Eloquent
+ */
 class FraudAlert extends Model
 {
     use Auditable;

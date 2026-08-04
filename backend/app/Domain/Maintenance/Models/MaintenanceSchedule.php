@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * The next occurrence of one service item for one vehicle.
@@ -18,6 +19,50 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Two independent clocks apply — calendar days and odometer kilometres —
  * and whichever falls first wins. `predicted_due_at` is the AI estimate,
  * which usually lands earlier than the fixed interval for hard-worked units.
+ *
+ * @property int $id
+ * @property int $vehicle_id
+ * @property int $maintenance_type_id
+ * @property int|null $interval_km
+ * @property int|null $interval_days
+ * @property Carbon|null $last_performed_at
+ * @property float|null $last_odometer
+ * @property Carbon|null $due_at
+ * @property float|null $due_odometer
+ * @property Carbon|null $predicted_due_at
+ * @property float|null $prediction_confidence
+ * @property string $status
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read MaintenanceType $type
+ * @property-read Vehicle|null $vehicle
+ *
+ * @method static Builder<static>|MaintenanceSchedule due()
+ * @method static Builder<static>|MaintenanceSchedule dueWithin(int $days)
+ * @method static Builder<static>|MaintenanceSchedule newModelQuery()
+ * @method static Builder<static>|MaintenanceSchedule newQuery()
+ * @method static Builder<static>|MaintenanceSchedule onlyTrashed()
+ * @method static Builder<static>|MaintenanceSchedule query()
+ * @method static Builder<static>|MaintenanceSchedule whereCreatedAt($value)
+ * @method static Builder<static>|MaintenanceSchedule whereDeletedAt($value)
+ * @method static Builder<static>|MaintenanceSchedule whereDueAt($value)
+ * @method static Builder<static>|MaintenanceSchedule whereDueOdometer($value)
+ * @method static Builder<static>|MaintenanceSchedule whereId($value)
+ * @method static Builder<static>|MaintenanceSchedule whereIntervalDays($value)
+ * @method static Builder<static>|MaintenanceSchedule whereIntervalKm($value)
+ * @method static Builder<static>|MaintenanceSchedule whereLastOdometer($value)
+ * @method static Builder<static>|MaintenanceSchedule whereLastPerformedAt($value)
+ * @method static Builder<static>|MaintenanceSchedule whereMaintenanceTypeId($value)
+ * @method static Builder<static>|MaintenanceSchedule wherePredictedDueAt($value)
+ * @method static Builder<static>|MaintenanceSchedule wherePredictionConfidence($value)
+ * @method static Builder<static>|MaintenanceSchedule whereStatus($value)
+ * @method static Builder<static>|MaintenanceSchedule whereUpdatedAt($value)
+ * @method static Builder<static>|MaintenanceSchedule whereVehicleId($value)
+ * @method static Builder<static>|MaintenanceSchedule withTrashed(bool $withTrashed = true)
+ * @method static Builder<static>|MaintenanceSchedule withoutTrashed()
+ *
+ * @mixin \Eloquent
  */
 class MaintenanceSchedule extends Model
 {

@@ -14,7 +14,68 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $vehicle_id
+ * @property int|null $driver_id
+ * @property int|null $fleet_id
+ * @property string|null $reference_no
+ * @property string|null $origin_label
+ * @property float|null $origin_lat
+ * @property float|null $origin_lng
+ * @property string|null $destination_label
+ * @property float|null $destination_lat
+ * @property float|null $destination_lng
+ * @property float|null $distance_km
+ * @property int|null $duration_minutes
+ * @property float|null $fuel_consumed_l
+ * @property float|null $fuel_cost
+ * @property float|null $toll_cost
+ * @property Carbon|null $started_at
+ * @property Carbon|null $ended_at
+ * @property string $status
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Driver|null $driver
+ * @property-read Fleet|null $fleet
+ * @property-read RoutePlan|null $routePlan
+ * @property-read Vehicle|null $vehicle
+ *
+ * @method static Builder<static>|Trip completed()
+ * @method static Builder<static>|Trip newModelQuery()
+ * @method static Builder<static>|Trip newQuery()
+ * @method static Builder<static>|Trip onlyTrashed()
+ * @method static Builder<static>|Trip query()
+ * @method static Builder<static>|Trip whereCreatedAt($value)
+ * @method static Builder<static>|Trip whereDeletedAt($value)
+ * @method static Builder<static>|Trip whereDestinationLabel($value)
+ * @method static Builder<static>|Trip whereDestinationLat($value)
+ * @method static Builder<static>|Trip whereDestinationLng($value)
+ * @method static Builder<static>|Trip whereDistanceKm($value)
+ * @method static Builder<static>|Trip whereDriverId($value)
+ * @method static Builder<static>|Trip whereDurationMinutes($value)
+ * @method static Builder<static>|Trip whereEndedAt($value)
+ * @method static Builder<static>|Trip whereFleetId($value)
+ * @method static Builder<static>|Trip whereFuelConsumedL($value)
+ * @method static Builder<static>|Trip whereFuelCost($value)
+ * @method static Builder<static>|Trip whereId($value)
+ * @method static Builder<static>|Trip whereOriginLabel($value)
+ * @method static Builder<static>|Trip whereOriginLat($value)
+ * @method static Builder<static>|Trip whereOriginLng($value)
+ * @method static Builder<static>|Trip whereReferenceNo($value)
+ * @method static Builder<static>|Trip whereStartedAt($value)
+ * @method static Builder<static>|Trip whereStatus($value)
+ * @method static Builder<static>|Trip whereTollCost($value)
+ * @method static Builder<static>|Trip whereUpdatedAt($value)
+ * @method static Builder<static>|Trip whereVehicleId($value)
+ * @method static Builder<static>|Trip withTrashed(bool $withTrashed = true)
+ * @method static Builder<static>|Trip withoutTrashed()
+ *
+ * @mixin \Eloquent
+ */
 class Trip extends Model
 {
     use Auditable;

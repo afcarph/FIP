@@ -10,6 +10,44 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $theme
+ * @property int|null $preferred_fuel_type_id
+ * @property numeric|null $price_alert_threshold
+ * @property numeric $alert_radius_km
+ * @property bool $notify_price_alerts
+ * @property bool $notify_maintenance
+ * @property bool $notify_ai_insights
+ * @property bool $notify_marketing
+ * @property string|null $quiet_hours_start
+ * @property string|null $quiet_hours_end
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read FuelType|null $preferredFuelType
+ * @property-read User|null $user
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereAlertRadiusKm($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereNotifyAiInsights($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereNotifyMaintenance($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereNotifyMarketing($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereNotifyPriceAlerts($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference wherePreferredFuelTypeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference wherePriceAlertThreshold($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereQuietHoursEnd($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereQuietHoursStart($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereTheme($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserPreference whereUserId($value)
+ *
+ * @mixin \Eloquent
+ */
 class UserPreference extends Model
 {
     use HasFactory;

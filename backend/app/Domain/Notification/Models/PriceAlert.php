@@ -13,8 +13,52 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
-/** A standing user rule: "tell me when diesel drops below ₱57.50 near me". */
+/**
+ * A standing user rule: "tell me when diesel drops below ₱57.50 near me".
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int $fuel_type_id
+ * @property int|null $station_id
+ * @property int|null $city_id
+ * @property string $condition
+ * @property float $threshold
+ * @property float|null $radius_km
+ * @property bool $is_active
+ * @property Carbon|null $last_fired_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read City|null $city
+ * @property-read FuelType $fuelType
+ * @property-read GasStation|null $station
+ * @property-read User|null $user
+ *
+ * @method static Builder<static>|PriceAlert active()
+ * @method static Builder<static>|PriceAlert newModelQuery()
+ * @method static Builder<static>|PriceAlert newQuery()
+ * @method static Builder<static>|PriceAlert onlyTrashed()
+ * @method static Builder<static>|PriceAlert query()
+ * @method static Builder<static>|PriceAlert whereCityId($value)
+ * @method static Builder<static>|PriceAlert whereCondition($value)
+ * @method static Builder<static>|PriceAlert whereCreatedAt($value)
+ * @method static Builder<static>|PriceAlert whereDeletedAt($value)
+ * @method static Builder<static>|PriceAlert whereFuelTypeId($value)
+ * @method static Builder<static>|PriceAlert whereId($value)
+ * @method static Builder<static>|PriceAlert whereIsActive($value)
+ * @method static Builder<static>|PriceAlert whereLastFiredAt($value)
+ * @method static Builder<static>|PriceAlert whereRadiusKm($value)
+ * @method static Builder<static>|PriceAlert whereStationId($value)
+ * @method static Builder<static>|PriceAlert whereThreshold($value)
+ * @method static Builder<static>|PriceAlert whereUpdatedAt($value)
+ * @method static Builder<static>|PriceAlert whereUserId($value)
+ * @method static Builder<static>|PriceAlert withTrashed(bool $withTrashed = true)
+ * @method static Builder<static>|PriceAlert withoutTrashed()
+ *
+ * @mixin \Eloquent
+ */
 class PriceAlert extends Model
 {
     use HasFactory;

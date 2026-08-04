@@ -13,19 +13,98 @@ use App\Domain\User\Models\User;
 use App\Support\Concerns\Auditable;
 use App\Support\Concerns\GeoDistance;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * A physical retail fuel outlet.
  *
+ * @property int $id
+ * @property int $brand_id
+ * @property int|null $operator_id
+ * @property int|null $managed_by
+ * @property string $name
+ * @property string $slug
+ * @property string $address_line
+ * @property int $city_id
+ * @property string|null $postal_code
  * @property float $latitude
  * @property float $longitude
+ * @property string|null $phone
+ * @property bool $is_24_hours
+ * @property bool $has_ev_charging
+ * @property string $status
+ * @property Carbon|null $verified_at
+ * @property float $rating_avg
+ * @property int $rating_count
+ * @property int|null $created_by
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Collection<int, Amenity> $amenities
+ * @property-read int|null $amenities_count
+ * @property-read Brand|null $brand
+ * @property-read City $city
+ * @property-read Collection<int, StationHour> $hours
+ * @property-read int|null $hours_count
+ * @property-read User|null $manager
+ * @property-read Collection<int, OcrScan> $ocrScans
+ * @property-read int|null $ocr_scans_count
+ * @property-read Company|null $operator
+ * @property-read Collection<int, PaymentMethod> $paymentMethods
+ * @property-read int|null $payment_methods_count
+ * @property-read Collection<int, StationPhoto> $photos
+ * @property-read int|null $photos_count
+ * @property-read Collection<int, PriceReport> $priceReports
+ * @property-read int|null $price_reports_count
+ * @property-read Collection<int, StationPrice> $prices
+ * @property-read int|null $prices_count
+ * @property-read Collection<int, FuelPurchase> $purchases
+ * @property-read int|null $purchases_count
+ * @property-read Collection<int, StationRating> $ratings
+ * @property-read int|null $ratings_count
+ *
+ * @method static Builder<static>|GasStation active()
+ * @method static \Database\Factories\GasStationFactory factory($count = null, $state = [])
+ * @method static Builder<static>|GasStation newModelQuery()
+ * @method static Builder<static>|GasStation newQuery()
+ * @method static Builder<static>|GasStation onlyTrashed()
+ * @method static Builder<static>|GasStation query()
+ * @method static Builder<static>|GasStation sellingFuel(int $fuelTypeId)
+ * @method static Builder<static>|GasStation whereAddressLine($value)
+ * @method static Builder<static>|GasStation whereBrandId($value)
+ * @method static Builder<static>|GasStation whereCityId($value)
+ * @method static Builder<static>|GasStation whereCreatedAt($value)
+ * @method static Builder<static>|GasStation whereCreatedBy($value)
+ * @method static Builder<static>|GasStation whereDeletedAt($value)
+ * @method static Builder<static>|GasStation whereHasEvCharging($value)
+ * @method static Builder<static>|GasStation whereId($value)
+ * @method static Builder<static>|GasStation whereIs24Hours($value)
+ * @method static Builder<static>|GasStation whereLatitude($value)
+ * @method static Builder<static>|GasStation whereLongitude($value)
+ * @method static Builder<static>|GasStation whereManagedBy($value)
+ * @method static Builder<static>|GasStation whereName($value)
+ * @method static Builder<static>|GasStation whereOperatorId($value)
+ * @method static Builder<static>|GasStation wherePhone($value)
+ * @method static Builder<static>|GasStation wherePostalCode($value)
+ * @method static Builder<static>|GasStation whereRatingAvg($value)
+ * @method static Builder<static>|GasStation whereRatingCount($value)
+ * @method static Builder<static>|GasStation whereSlug($value)
+ * @method static Builder<static>|GasStation whereStatus($value)
+ * @method static Builder<static>|GasStation whereUpdatedAt($value)
+ * @method static Builder<static>|GasStation whereVerifiedAt($value)
+ * @method static Builder<static>|GasStation withTrashed(bool $withTrashed = true)
+ * @method static Builder<static>|GasStation withinRadius(float $lat, float $lng, float $radiusKm)
+ * @method static Builder<static>|GasStation withoutTrashed()
+ *
+ * @mixin \Eloquent
  */
 class GasStation extends Model
 {
@@ -60,7 +139,7 @@ class GasStation extends Model
         });
     }
 
-    private static function uniqueSlug(string $name): string
+    protected static function uniqueSlug(string $name): string
     {
         $base = Str::slug($name);
         $slug = $base;
@@ -92,7 +171,7 @@ class GasStation extends Model
      */
     public function scopeWithinRadius(Builder $query, float $lat, float $lng, float $radiusKm): Builder
     {
-        $box = (new static)->boundingBox($lat, $lng, $radiusKm);
+        $box = (new self)->boundingBox($lat, $lng, $radiusKm);
 
         if ($query->getConnection()->getDriverName() === 'mysql') {
             $distance = 'ST_Distance_Sphere(location, ST_SRID(POINT(?, ?), 4326))';

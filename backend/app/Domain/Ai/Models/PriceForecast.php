@@ -10,11 +10,60 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * A weekly pump-price prediction. Once the DOE publishes the real adjustment
  * the row is back-filled with `actual_change` and `absolute_error`, which is
  * what drives the published accuracy figure.
+ *
+ * @property int $id
+ * @property int|null $ai_model_id
+ * @property int $fuel_type_id
+ * @property int|null $region_id
+ * @property Carbon $forecast_for
+ * @property Carbon $generated_at
+ * @property string $direction
+ * @property float $change_amount
+ * @property float|null $predicted_price
+ * @property float|null $lower_bound
+ * @property float|null $upper_bound
+ * @property float $confidence
+ * @property array<array-key, mixed>|null $drivers
+ * @property string|null $narrative
+ * @property float|null $actual_change
+ * @property float|null $absolute_error
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read FuelType $fuelType
+ * @property-read AiModel|null $model
+ * @property-read Region|null $region
+ *
+ * @method static Builder<static>|PriceForecast latestGeneration()
+ * @method static Builder<static>|PriceForecast newModelQuery()
+ * @method static Builder<static>|PriceForecast newQuery()
+ * @method static Builder<static>|PriceForecast query()
+ * @method static Builder<static>|PriceForecast upcoming()
+ * @method static Builder<static>|PriceForecast whereAbsoluteError($value)
+ * @method static Builder<static>|PriceForecast whereActualChange($value)
+ * @method static Builder<static>|PriceForecast whereAiModelId($value)
+ * @method static Builder<static>|PriceForecast whereChangeAmount($value)
+ * @method static Builder<static>|PriceForecast whereConfidence($value)
+ * @method static Builder<static>|PriceForecast whereCreatedAt($value)
+ * @method static Builder<static>|PriceForecast whereDirection($value)
+ * @method static Builder<static>|PriceForecast whereDrivers($value)
+ * @method static Builder<static>|PriceForecast whereForecastFor($value)
+ * @method static Builder<static>|PriceForecast whereFuelTypeId($value)
+ * @method static Builder<static>|PriceForecast whereGeneratedAt($value)
+ * @method static Builder<static>|PriceForecast whereId($value)
+ * @method static Builder<static>|PriceForecast whereLowerBound($value)
+ * @method static Builder<static>|PriceForecast whereNarrative($value)
+ * @method static Builder<static>|PriceForecast wherePredictedPrice($value)
+ * @method static Builder<static>|PriceForecast whereRegionId($value)
+ * @method static Builder<static>|PriceForecast whereUpdatedAt($value)
+ * @method static Builder<static>|PriceForecast whereUpperBound($value)
+ *
+ * @mixin \Eloquent
  */
 class PriceForecast extends Model
 {

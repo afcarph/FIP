@@ -16,19 +16,113 @@ use App\Domain\User\Models\User;
 use App\Support\Concerns\Auditable;
 use App\Support\Concerns\HasCompanyScope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * A vehicle belongs either to a private owner (`owner_id`) or to a company
  * (`company_id`) — the check constraint in the schema keeps at least one set.
  *
+ * @property int $id
+ * @property int|null $owner_id
+ * @property int|null $company_id
+ * @property int|null $fleet_id
+ * @property int|null $make_id
+ * @property int|null $model_id
+ * @property int $fuel_type_id
+ * @property string|null $nickname
+ * @property string $plate_number
+ * @property string|null $vin
+ * @property string|null $engine_number
+ * @property string $vehicle_type
+ * @property int|null $year
+ * @property string|null $color
+ * @property string|null $transmission
+ * @property int|null $engine_displacement_cc
+ * @property float|null $tank_capacity
  * @property float $current_odometer
+ * @property float|null $baseline_km_per_litre
  * @property float|null $avg_km_per_litre
+ * @property Carbon|null $registration_expiry
+ * @property string|null $insurance_provider
+ * @property string|null $insurance_policy_no
+ * @property Carbon|null $insurance_expiry
+ * @property string|null $photo_path
+ * @property string $status
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Collection<int, VehicleAssignment> $assignments
+ * @property-read int|null $assignments_count
+ * @property-read Company|null $company
+ * @property-read VehicleAssignment|null $currentAssignment
+ * @property-read Driver|null $currentDriver
+ * @property-read Collection<int, VehicleDocument> $documents
+ * @property-read int|null $documents_count
+ * @property-read Fleet|null $fleet
+ * @property-read Collection<int, FuelPurchase> $fuelPurchases
+ * @property-read int|null $fuel_purchases_count
+ * @property-read FuelType $fuelType
+ * @property-read string $display_name
+ * @property-read Collection<int, MaintenanceRecord> $maintenanceRecords
+ * @property-read int|null $maintenance_records_count
+ * @property-read Collection<int, MaintenanceSchedule> $maintenanceSchedules
+ * @property-read int|null $maintenance_schedules_count
+ * @property-read VehicleMake|null $make
+ * @property-read VehicleModel|null $model
+ * @property-read Collection<int, OdometerReading> $odometerReadings
+ * @property-read int|null $odometer_readings_count
+ * @property-read User|null $owner
+ * @property-read Collection<int, Trip> $trips
+ * @property-read int|null $trips_count
+ *
+ * @method static Builder<static>|Vehicle active()
+ * @method static Builder<static>|Vehicle documentsExpiringWithin(int $days)
+ * @method static \Database\Factories\VehicleFactory factory($count = null, $state = [])
+ * @method static Builder<static>|Vehicle forUser(?\App\Domain\User\Models\User $user)
+ * @method static Builder<static>|Vehicle newModelQuery()
+ * @method static Builder<static>|Vehicle newQuery()
+ * @method static Builder<static>|Vehicle onlyTrashed()
+ * @method static Builder<static>|Vehicle query()
+ * @method static Builder<static>|Vehicle whereAvgKmPerLitre($value)
+ * @method static Builder<static>|Vehicle whereBaselineKmPerLitre($value)
+ * @method static Builder<static>|Vehicle whereColor($value)
+ * @method static Builder<static>|Vehicle whereCompanyId($value)
+ * @method static Builder<static>|Vehicle whereCreatedAt($value)
+ * @method static Builder<static>|Vehicle whereCurrentOdometer($value)
+ * @method static Builder<static>|Vehicle whereDeletedAt($value)
+ * @method static Builder<static>|Vehicle whereEngineDisplacementCc($value)
+ * @method static Builder<static>|Vehicle whereEngineNumber($value)
+ * @method static Builder<static>|Vehicle whereFleetId($value)
+ * @method static Builder<static>|Vehicle whereFuelTypeId($value)
+ * @method static Builder<static>|Vehicle whereId($value)
+ * @method static Builder<static>|Vehicle whereInsuranceExpiry($value)
+ * @method static Builder<static>|Vehicle whereInsurancePolicyNo($value)
+ * @method static Builder<static>|Vehicle whereInsuranceProvider($value)
+ * @method static Builder<static>|Vehicle whereMakeId($value)
+ * @method static Builder<static>|Vehicle whereModelId($value)
+ * @method static Builder<static>|Vehicle whereNickname($value)
+ * @method static Builder<static>|Vehicle whereOwnerId($value)
+ * @method static Builder<static>|Vehicle wherePhotoPath($value)
+ * @method static Builder<static>|Vehicle wherePlateNumber($value)
+ * @method static Builder<static>|Vehicle whereRegistrationExpiry($value)
+ * @method static Builder<static>|Vehicle whereStatus($value)
+ * @method static Builder<static>|Vehicle whereTankCapacity($value)
+ * @method static Builder<static>|Vehicle whereTransmission($value)
+ * @method static Builder<static>|Vehicle whereUpdatedAt($value)
+ * @method static Builder<static>|Vehicle whereVehicleType($value)
+ * @method static Builder<static>|Vehicle whereVin($value)
+ * @method static Builder<static>|Vehicle whereYear($value)
+ * @method static Builder<static>|Vehicle withTrashed(bool $withTrashed = true)
+ * @method static Builder<static>|Vehicle withoutTrashed()
+ *
+ * @mixin \Eloquent
  */
 class Vehicle extends Model
 {
@@ -183,6 +277,7 @@ class Vehicle extends Model
         return $this->belongsTo(FuelType::class);
     }
 
+    /** @return HasMany<FuelPurchase, $this> */
     public function fuelPurchases(): HasMany
     {
         return $this->hasMany(FuelPurchase::class);
@@ -222,11 +317,13 @@ class Vehicle extends Model
                 ->whereNull('released_at'));
     }
 
+    /** @return HasMany<MaintenanceRecord, $this> */
     public function maintenanceRecords(): HasMany
     {
         return $this->hasMany(MaintenanceRecord::class);
     }
 
+    /** @return HasMany<MaintenanceSchedule, $this> */
     public function maintenanceSchedules(): HasMany
     {
         return $this->hasMany(MaintenanceSchedule::class);

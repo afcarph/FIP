@@ -9,10 +9,53 @@ use App\Domain\Vehicle\Models\Vehicle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * A stored route optimisation result. `options_payload` holds every candidate
  * returned by the AI service so the user can compare cost / time / fuel.
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $vehicle_id
+ * @property int|null $trip_id
+ * @property string $origin_label
+ * @property string $destination_label
+ * @property float $origin_lat
+ * @property float $origin_lng
+ * @property float $destination_lat
+ * @property float $destination_lng
+ * @property string $optimize_for
+ * @property int|null $selected_option
+ * @property array<array-key, mixed> $options_payload
+ * @property float|null $estimated_savings
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Trip|null $trip
+ * @property-read User|null $user
+ * @property-read Vehicle|null $vehicle
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereDestinationLabel($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereDestinationLat($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereDestinationLng($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereEstimatedSavings($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereOptimizeFor($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereOptionsPayload($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereOriginLabel($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereOriginLat($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereOriginLng($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereSelectedOption($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereTripId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|RoutePlan whereVehicleId($value)
+ *
+ * @mixin \Eloquent
  */
 class RoutePlan extends Model
 {

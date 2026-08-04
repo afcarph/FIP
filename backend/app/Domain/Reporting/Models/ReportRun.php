@@ -9,8 +9,57 @@ use App\Domain\User\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property int $id
+ * @property int $report_definition_id
+ * @property int $requested_by
+ * @property int|null $company_id
+ * @property array<array-key, mixed>|null $params
+ * @property string $format
+ * @property Carbon|null $period_start
+ * @property Carbon|null $period_end
+ * @property string $status
+ * @property string|null $file_path
+ * @property int|null $file_size
+ * @property int|null $row_count
+ * @property string|null $error_message
+ * @property Carbon|null $started_at
+ * @property Carbon|null $completed_at
+ * @property Carbon|null $expires_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Company|null $company
+ * @property-read ReportDefinition $definition
+ * @property-read User|null $requester
+ *
+ * @method static Builder<static>|ReportRun downloadable()
+ * @method static Builder<static>|ReportRun newModelQuery()
+ * @method static Builder<static>|ReportRun newQuery()
+ * @method static Builder<static>|ReportRun query()
+ * @method static Builder<static>|ReportRun whereCompanyId($value)
+ * @method static Builder<static>|ReportRun whereCompletedAt($value)
+ * @method static Builder<static>|ReportRun whereCreatedAt($value)
+ * @method static Builder<static>|ReportRun whereErrorMessage($value)
+ * @method static Builder<static>|ReportRun whereExpiresAt($value)
+ * @method static Builder<static>|ReportRun whereFilePath($value)
+ * @method static Builder<static>|ReportRun whereFileSize($value)
+ * @method static Builder<static>|ReportRun whereFormat($value)
+ * @method static Builder<static>|ReportRun whereId($value)
+ * @method static Builder<static>|ReportRun whereParams($value)
+ * @method static Builder<static>|ReportRun wherePeriodEnd($value)
+ * @method static Builder<static>|ReportRun wherePeriodStart($value)
+ * @method static Builder<static>|ReportRun whereReportDefinitionId($value)
+ * @method static Builder<static>|ReportRun whereRequestedBy($value)
+ * @method static Builder<static>|ReportRun whereRowCount($value)
+ * @method static Builder<static>|ReportRun whereStartedAt($value)
+ * @method static Builder<static>|ReportRun whereStatus($value)
+ * @method static Builder<static>|ReportRun whereUpdatedAt($value)
+ *
+ * @mixin \Eloquent
+ */
 class ReportRun extends Model
 {
     public const STATUS_QUEUED = 'queued';

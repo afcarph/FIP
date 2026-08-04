@@ -8,7 +8,43 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $vehicle_id
+ * @property string $type
+ * @property string|null $number
+ * @property Carbon|null $issued_on
+ * @property Carbon|null $expires_on
+ * @property string|null $file_path
+ * @property string|null $notes
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Vehicle|null $vehicle
+ *
+ * @method static Builder<static>|VehicleDocument expiringWithin(int $days)
+ * @method static Builder<static>|VehicleDocument newModelQuery()
+ * @method static Builder<static>|VehicleDocument newQuery()
+ * @method static Builder<static>|VehicleDocument onlyTrashed()
+ * @method static Builder<static>|VehicleDocument query()
+ * @method static Builder<static>|VehicleDocument whereCreatedAt($value)
+ * @method static Builder<static>|VehicleDocument whereDeletedAt($value)
+ * @method static Builder<static>|VehicleDocument whereExpiresOn($value)
+ * @method static Builder<static>|VehicleDocument whereFilePath($value)
+ * @method static Builder<static>|VehicleDocument whereId($value)
+ * @method static Builder<static>|VehicleDocument whereIssuedOn($value)
+ * @method static Builder<static>|VehicleDocument whereNotes($value)
+ * @method static Builder<static>|VehicleDocument whereNumber($value)
+ * @method static Builder<static>|VehicleDocument whereType($value)
+ * @method static Builder<static>|VehicleDocument whereUpdatedAt($value)
+ * @method static Builder<static>|VehicleDocument whereVehicleId($value)
+ * @method static Builder<static>|VehicleDocument withTrashed(bool $withTrashed = true)
+ * @method static Builder<static>|VehicleDocument withoutTrashed()
+ *
+ * @mixin \Eloquent
+ */
 class VehicleDocument extends Model
 {
     use SoftDeletes;

@@ -5,7 +5,32 @@ declare(strict_types=1);
 namespace App\Domain\User\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property string $email
+ * @property int|null $user_id
+ * @property string $ip_address
+ * @property string|null $user_agent
+ * @property bool $succeeded
+ * @property string|null $failure_reason
+ * @property Carbon $attempted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereAttemptedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereFailureReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereIpAddress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereSucceeded($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereUserAgent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LoginAttempt whereUserId($value)
+ *
+ * @mixin \Eloquent
+ */
 class LoginAttempt extends Model
 {
     public $timestamps = false;
