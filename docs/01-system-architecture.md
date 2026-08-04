@@ -261,6 +261,29 @@ and stickiness draws exactly that line.
 `DB_READ_HOST` is optional: leave it unset for a single-node database and reads
 fall back to `DB_HOST`.
 
+**Stickiness ends at the request boundary.** This was measured against a real
+replication pair with the replica's SQL thread frozen, so the lag was genuine
+rather than simulated:
+
+| | Reads from | Sees a write made moments earlier |
+|---|---|---|
+| Same request, after its own write | primary | yes |
+| A *later* request, replica still behind | replica | **no** |
+
+Both behaviours are correct — `sticky` promises read-your-writes within one
+request, not across them — but the second has a user-visible shape here. A
+client that logs a fill-up and then immediately loads the dashboard issues two
+requests: the write returns 201 from the primary, and the dashboard read can
+still land on a replica that has not caught up, so the new fill-up is missing
+from the totals. The window is however far behind the replica happens to be.
+
+If that matters for a given endpoint, the options are, in increasing cost:
+have the client render the write optimistically rather than refetching; pin the
+few read-after-write endpoints to the primary with `useWritePdo()`; or run
+those reads against a semi-synchronous replica. Do not reach for the last one
+before measuring `Seconds_Behind_Source` under real load — the whole point of
+the split is to keep analytics off the primary.
+
 ### Cache invalidation
 
 Redis caches the most-hit reads (comparison matrix, trend series, heat map).

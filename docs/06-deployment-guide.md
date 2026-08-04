@@ -245,9 +245,28 @@ Alert on:
 In the order pressure actually arrives:
 
 **1. Read replica.** Already supported — set `DB_READ_HOST` and every `SELECT`
-moves off the primary. Reads are sticky within a request that has written, so a
-caller never observes replica lag on its own write. Leave it unset on a single
-node and reads stay on `DB_HOST`.
+moves off the primary. `DB_READ_PORT` defaults to `DB_PORT`, for a replica
+reached through a proxy or tunnel. Reads are sticky within a request that has
+written, so a caller never observes replica lag on its own write. Leave it unset
+on a single node and reads stay on `DB_HOST`.
+
+Routing and stickiness are verified against a real replication pair (see
+[§1](01-system-architecture.md#read-replica)); what a lab cannot tell you is how
+far behind *your* replica runs under *your* load. Soak it in staging before
+enabling in production:
+
+| Check | How | What would stop the rollout |
+|-------|-----|------------------------------|
+| Steady-state lag | `SHOW REPLICA STATUS` → `Seconds_Behind_Source`, sampled for a full day | sustained above ~1s, or sawtoothing under normal traffic |
+| Lag under the weekly peak | sample across the Tuesday DOE import and the Monday 02:00 forecast — the two heaviest writes | lag grows without recovering after the batch ends |
+| Read-after-write | log a fill-up, then load the dashboard, as a client would | the fill-up is missing from the totals |
+| Failover | stop the replica | reads must fall back or fail loudly, not hang |
+| Replica saturation | watch CPU and IO on the replica while analytics run | the replica, not the primary, becomes the bottleneck |
+
+Roll out behind the environment variable: `DB_READ_HOST` unset is the current
+production behaviour, so enabling and reverting are both a single variable and
+a restart. Watch the read-after-write case first — it is the one with a
+user-visible failure mode rather than a purely operational one.
 
 **2. Horizontal API.** `api` and `web` are stateless; raise `replicas` in the
 production overlay. Sessions live in JWTs, so no sticky routing is required.
