@@ -20,6 +20,11 @@ services:
   # from it. GTID keeps the replica's position self-describing, so it can be
   # rebuilt without hunting for log coordinates.
   mysql:
+    environment:
+      # The official image creates root@localhost only, so the init container's
+      # connection is refused with ERROR 1130. Staging-only: production uses a
+      # managed replica and never needs remote root.
+      MYSQL_ROOT_HOST: '%'
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
@@ -41,6 +46,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set}
+      MYSQL_ROOT_HOST: '%'
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
@@ -74,25 +80,28 @@ services:
       mysql: { condition: service_healthy }
       mysql-replica: { condition: service_healthy }
     entrypoint: >
-      /bin/sh -c "
+      /bin/sh -ec "
       mysql -h mysql -uroot -p${DB_ROOT_PASSWORD} -e \"
         CREATE USER IF NOT EXISTS '${DB_REPL_USER:-repl}'@'%' IDENTIFIED BY '${DB_REPL_PASSWORD:?DB_REPL_PASSWORD must be set}';
         GRANT REPLICATION SLAVE ON *.* TO '${DB_REPL_USER:-repl}'@'%';
         FLUSH PRIVILEGES;\";
       if mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SHOW REPLICA STATUS\\G' | grep -q 'Replica_IO_Running: Yes'; then
         echo 'Replication already running';
-      else
-        mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e \"
-          STOP REPLICA;
-          CHANGE REPLICATION SOURCE TO
-            SOURCE_HOST='mysql',
-            SOURCE_USER='${DB_REPL_USER:-repl}',
-            SOURCE_PASSWORD='${DB_REPL_PASSWORD}',
-            SOURCE_AUTO_POSITION=1,
-            GET_SOURCE_PUBLIC_KEY=1;
-          START REPLICA;\";
-        echo 'Replication configured';
-      fi
+        exit 0;
+      fi;
+      mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e \"
+        STOP REPLICA;
+        CHANGE REPLICATION SOURCE TO
+          SOURCE_HOST='mysql',
+          SOURCE_USER='${DB_REPL_USER:-repl}',
+          SOURCE_PASSWORD='${DB_REPL_PASSWORD}',
+          SOURCE_AUTO_POSITION=1,
+          GET_SOURCE_PUBLIC_KEY=1;
+        START REPLICA;\";
+      sleep 3;
+      mysql -h mysql-replica -uroot -p${DB_ROOT_PASSWORD} -e 'SHOW REPLICA STATUS\\G' | grep -q 'Replica_IO_Running: Yes'
+        || { echo 'FAILED: replication did not start'; exit 1; };
+      echo 'Replication configured';
       "
     networks: [fip]
 
