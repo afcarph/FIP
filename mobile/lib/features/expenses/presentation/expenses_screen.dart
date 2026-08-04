@@ -313,7 +313,12 @@ class _LogFillUpSheetState extends ConsumerState<_LogFillUpSheet> {
   Widget build(BuildContext context) {
     final vehicles = ref.watch(vehiclesProvider);
 
-    return Padding(
+    return SingleChildScrollView(
+      // Lifting the sheet above the keyboard is not enough on a short screen:
+      // what is left is smaller than the form, and a Column with
+      // mainAxisSize.min still overflows — by 29px here, straight across the
+      // Save button, which then would not take a tap. Scrolling makes the
+      // remaining space workable instead of clipped.
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Form(
         key: _formKey,
@@ -330,21 +335,36 @@ class _LogFillUpSheetState extends ConsumerState<_LogFillUpSheet> {
             vehicles.when(
               loading: () => const LinearProgressIndicator(),
               error: (_, __) => const Text('Could not load your vehicles.'),
-              data:
-                  (data) => DropdownButtonFormField<int>(
-                    initialValue: _vehicleId ?? (data.length == 1 ? data.first['id'] as int : null),
-                    decoration: const InputDecoration(labelText: 'Vehicle'),
-                    items: [
-                      for (final vehicle in data)
-                        DropdownMenuItem(
-                          value: vehicle['id'] as int,
-                          child: Text(
-                            vehicle['display_name'] as String? ?? vehicle['plate_number'] as String,
-                          ),
+              data: (data) {
+                // Showing a default without recording it left the form insisting
+                // "Choose a vehicle." while displaying the vehicle it wanted —
+                // _vehicleId is what submit and validation read, and only
+                // onChanged ever set it. With one vehicle, which is where most
+                // people start, the fill-up could not be saved at all.
+                if (_vehicleId == null && data.length == 1) {
+                  final only = data.first['id'] as int;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && _vehicleId == null) {
+                      setState(() => _vehicleId = only);
+                    }
+                  });
+                }
+
+                return DropdownButtonFormField<int>(
+                  initialValue: _vehicleId,
+                  decoration: const InputDecoration(labelText: 'Vehicle'),
+                  items: [
+                    for (final vehicle in data)
+                      DropdownMenuItem(
+                        value: vehicle['id'] as int,
+                        child: Text(
+                          vehicle['display_name'] as String? ?? vehicle['plate_number'] as String,
                         ),
-                    ],
-                    onChanged: (value) => setState(() => _vehicleId = value),
-                  ),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _vehicleId = value),
+                );
+              },
             ),
 
             const SizedBox(height: 12),
