@@ -173,6 +173,48 @@ class _DashboardBody extends ConsumerWidget {
           ),
         ],
 
+        // Shown even when empty. Hiding it left a new user with no route to the
+        // vehicles screen at all — and therefore no way to add a first vehicle,
+        // which every other feature depends on. The web dashboard has always
+        // offered this; mobile silently did not.
+        if (vehicles.isEmpty) ...[
+          const _SectionHeader(title: 'Your vehicles'),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Text(
+                        'No vehicles yet',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Add one to track efficiency and running costs.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: () => context.go('/vehicles'),
+                        icon: const Icon(LucideIcons.plus, size: 18),
+                        label: const Text('Add a vehicle'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+
         if (vehicles.isNotEmpty) ...[
           _SectionHeader(
             title: 'Your vehicles',

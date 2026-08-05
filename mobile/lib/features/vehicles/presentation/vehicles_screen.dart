@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/providers/app_providers.dart';
@@ -16,6 +17,11 @@ class VehiclesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Vehicles')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddVehicleSheet(context),
+        icon: const Icon(LucideIcons.plus),
+        label: const Text('Add vehicle'),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async => ref.invalidate(vehiclesProvider),
@@ -27,10 +33,15 @@ class VehiclesScreen extends ConsumerWidget {
             data:
                 (data) =>
                     data.isEmpty
-                        ? const EmptyView(
+                        ? EmptyView(
                           icon: LucideIcons.car,
                           title: 'No vehicles yet',
                           description: 'Add a vehicle to track its efficiency and running costs.',
+                          action: FilledButton.icon(
+                            onPressed: () => _showAddVehicleSheet(context),
+                            icon: const Icon(LucideIcons.plus, size: 18),
+                            label: const Text('Add a vehicle'),
+                          ),
                         )
                         : ListView.separated(
                           padding: const EdgeInsets.all(16),
@@ -207,6 +218,173 @@ class _ExpiryChip extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: colour),
         ),
       ],
+    );
+  }
+}
+
+/// The screen's whole purpose is unreachable without this: there was no way to
+/// add a first vehicle from the app at all, and the dashboard only links here
+/// once one exists.
+void _showAddVehicleSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder:
+        (context) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          child: const _AddVehicleSheet(),
+        ),
+  );
+}
+
+class _AddVehicleSheet extends ConsumerStatefulWidget {
+  const _AddVehicleSheet();
+
+  @override
+  ConsumerState<_AddVehicleSheet> createState() => _AddVehicleSheetState();
+}
+
+class _AddVehicleSheetState extends ConsumerState<_AddVehicleSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _plate = TextEditingController();
+  final _nickname = TextEditingController();
+
+  String _vehicleType = 'car';
+  int? _fuelTypeId;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _plate.dispose();
+    _nickname.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      await ref
+          .read(apiClientProvider)
+          .post<Map<String, dynamic>>(
+            '/vehicles',
+            body: {
+              'plate_number': _plate.text.trim(),
+              if (_nickname.text.trim().isNotEmpty) 'nickname': _nickname.text.trim(),
+              'vehicle_type': _vehicleType,
+              'fuel_type_id': _fuelTypeId,
+            },
+          );
+
+      // The dashboard hides its vehicles section when the list is empty, so it
+      // has to be told as well as this screen.
+      ref
+        ..invalidate(vehiclesProvider)
+        ..invalidate(dashboardProvider);
+
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      setState(() => _error = error is ApiException ? error.message : error.toString());
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fuelTypes = ref.watch(fuelTypesProvider);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Add a vehicle',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _plate,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(labelText: 'Plate number'),
+              validator:
+                  (value) =>
+                      (value == null || value.trim().isEmpty) ? 'Enter the plate number.' : null,
+            ),
+            const SizedBox(height: 12),
+
+            TextFormField(
+              controller: _nickname,
+              decoration: const InputDecoration(labelText: 'Nickname (optional)'),
+            ),
+            const SizedBox(height: 12),
+
+            DropdownButtonFormField<String>(
+              initialValue: _vehicleType,
+              decoration: const InputDecoration(labelText: 'Type'),
+              items: const [
+                DropdownMenuItem(value: 'car', child: Text('Car')),
+                DropdownMenuItem(value: 'suv', child: Text('SUV')),
+                DropdownMenuItem(value: 'van', child: Text('Van')),
+                DropdownMenuItem(value: 'motorcycle', child: Text('Motorcycle')),
+                DropdownMenuItem(value: 'tricycle', child: Text('Tricycle')),
+                DropdownMenuItem(value: 'jeepney', child: Text('Jeepney')),
+                DropdownMenuItem(value: 'truck', child: Text('Truck')),
+                DropdownMenuItem(value: 'bus', child: Text('Bus')),
+                DropdownMenuItem(value: 'trailer', child: Text('Trailer')),
+                DropdownMenuItem(value: 'ev', child: Text('Electric')),
+              ],
+              onChanged: (value) => setState(() => _vehicleType = value ?? 'car'),
+            ),
+            const SizedBox(height: 12),
+
+            fuelTypes.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (_, __) => const Text('Could not load fuel types.'),
+              data:
+                  (data) => DropdownButtonFormField<int>(
+                    initialValue: _fuelTypeId,
+                    decoration: const InputDecoration(labelText: 'Fuel type'),
+                    // No silent default: the fill-up sheet displayed one it had
+                    // not recorded and then refused to save.
+                    hint: const Text('Choose a fuel type'),
+                    items: [
+                      for (final fuelType in data)
+                        DropdownMenuItem(
+                          value: fuelType['id'] as int,
+                          child: Text(fuelType['name'] as String),
+                        ),
+                    ],
+                    validator: (value) => value == null ? 'Choose a fuel type.' : null,
+                    onChanged: (value) => setState(() => _fuelTypeId = value),
+                  ),
+            ),
+
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ],
+
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _submitting ? null : _submit,
+              child: Text(_submitting ? 'Saving…' : 'Add vehicle'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
