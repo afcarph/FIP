@@ -102,6 +102,25 @@ services:
     entrypoint: ['/bin/sh', '/replica-init.sh']
     networks: [fip]
 
+  # Staging served Next.js through `npm run dev`. It was the largest CPU
+  # consumer on the box — webpack recompiling on demand, Fast Refresh rebuilds
+  # measured at 11s — and a development server is not what production runs, so
+  # a smoke test against it proves less than it appears to.
+  #
+  # The bind mounts have to go with it: they shadow the image's build output
+  # with the host's source tree, which is exactly what the production target
+  # does not want.
+  web:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+      WATCHPACK_POLLING: 'false'
+    # !reset, not []: Compose merges list fields, so an empty list leaves the
+    # base file's bind mounts in place — which would shadow the image's build
+    # output with the host's source tree and defeat the whole change.
+    volumes: !reset []
+
   # The three PHP services read from the replica. DB_READ_HOST is set here
   # rather than in .env so that bringing the stack up without this overlay
   # cannot leave reads pointed at a host that does not exist — the failure mode

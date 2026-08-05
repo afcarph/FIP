@@ -32,7 +32,11 @@ services:
   api:
     build:
       target: production
-    volumes: []            # code ships in the image
+    # !reset, not []: Compose merges lists, so an empty list keeps the base
+    # file's development bind mounts — production would serve the host's source
+    # tree over the built image, with empty anonymous volumes on node_modules
+    # and .next.
+    volumes: !reset []            # code ships in the image
     environment:
       APP_ENV: production
       APP_DEBUG: 'false'
@@ -49,7 +53,11 @@ services:
   queue:
     build:
       target: production
-    volumes: []
+    # !reset, not []: Compose merges lists, so an empty list keeps the base
+    # file's development bind mounts — production would serve the host's source
+    # tree over the built image, with empty anonymous volumes on node_modules
+    # and .next.
+    volumes: !reset []
     environment:
       APP_ENV: production
     logging: *logging
@@ -63,7 +71,11 @@ services:
   scheduler:
     build:
       target: production
-    volumes: []
+    # !reset, not []: Compose merges lists, so an empty list keeps the base
+    # file's development bind mounts — production would serve the host's source
+    # tree over the built image, with empty anonymous volumes on node_modules
+    # and .next.
+    volumes: !reset []
     environment:
       APP_ENV: production
     logging: *logging
@@ -85,7 +97,11 @@ services:
   web:
     build:
       target: production
-    volumes: []
+    # !reset, not []: Compose merges lists, so an empty list keeps the base
+    # file's development bind mounts — production would serve the host's source
+    # tree over the built image, with empty anonymous volumes on node_modules
+    # and .next.
+    volumes: !reset []
     environment:
       NODE_ENV: production
     logging: *logging
