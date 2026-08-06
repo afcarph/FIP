@@ -33,9 +33,17 @@ class ApiException implements Exception {
     }
 
     if (error.type == DioExceptionType.connectionError) {
+      // A connection error is not proof the device is offline. It also covers a
+      // server that is down, a wrong host, and a build pointing at an address
+      // that only resolves somewhere else — 10.0.2.2 reaches the host from an
+      // emulator and nothing at all from a real phone. Telling someone with
+      // full signal that they are offline sends them to check their wifi for a
+      // fault that is not theirs, so name both possibilities.
       return const ApiException(
-        code: 'offline',
-        message: 'You appear to be offline. Some data may be out of date.',
+        code: 'unreachable',
+        message:
+            'Could not reach the server. Check your connection — if it is fine, '
+            'the server may be down or the app may be pointed at the wrong address.',
       );
     }
 
@@ -63,7 +71,7 @@ class ApiException implements Exception {
     );
   }
 
-  bool get isOffline => code == 'offline' || code == 'timeout';
+  bool get isOffline => code == 'unreachable' || code == 'timeout';
   bool get isAuth => statusCode == 401 || code == 'unauthenticated';
   bool get isValidation => code == 'validation_failed';
 

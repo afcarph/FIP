@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
 import 'router.dart';
 
@@ -18,6 +19,18 @@ Future<void> main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
+
+  // Loud in the log rather than fatal: refusing to start would block a
+  // developer on an emulator, where the default is correct. An installed build
+  // that took it will fail every request, and this line is what points at why.
+  if (AppConfig.usingEmulatorDefault) {
+    debugPrint(
+      'API_BASE_URL was not set at build time, so the app is pointed at '
+      '${AppConfig.apiBaseUrl} — the Android emulator alias for the host '
+      'machine. On a physical device nothing is there. Rebuild with '
+      '--dart-define=API_BASE_URL=<reachable url>.',
+    );
+  }
 
   runApp(const ProviderScope(child: FipApp()));
 }

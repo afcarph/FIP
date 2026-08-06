@@ -6,10 +6,23 @@
 class AppConfig {
   const AppConfig._();
 
+  /// The emulator's alias for the host machine. Convenient for local work and
+  /// wrong everywhere else: on a physical device 10.0.2.2 resolves to nothing,
+  /// so a build that takes this default fails every request and — before the
+  /// error text was corrected — told the tester they were offline while their
+  /// phone had full signal.
+  static const String _emulatorHost = 'http://10.0.2.2:8000/api/v1';
+
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000/api/v1', // Android emulator → host
+    defaultValue: _emulatorHost,
   );
+
+  /// True when the build took the emulator default. Callers use this to warn
+  /// rather than to fail: a developer running on an emulator is fine, and an
+  /// installed build that took the default is broken, and the app cannot tell
+  /// the two apart at runtime.
+  static bool get usingEmulatorDefault => apiBaseUrl == _emulatorHost;
 
   static const String googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
 

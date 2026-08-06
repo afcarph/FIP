@@ -35,15 +35,18 @@ void main() {
   });
 
   test('distinguishes a connection failure from a server error', () {
-    final offline = ApiException.fromDio(
+    final unreachable = ApiException.fromDio(
       DioException(requestOptions: options, type: DioExceptionType.connectionError),
     );
 
-    // Telling a user on a weak signal that the server broke sends them
-    // hunting for the wrong problem.
-    expect(offline.isOffline, isTrue);
-    expect(offline.code, 'offline');
-    expect(offline.message, contains('offline'));
+    // Telling a user on a weak signal that the server broke sends them hunting
+    // for the wrong problem — but so does telling a user with full signal that
+    // they are offline, which is what a build pointed at an unreachable host
+    // produced. The message names both causes rather than picking one.
+    expect(unreachable.isOffline, isTrue);
+    expect(unreachable.code, 'unreachable');
+    expect(unreachable.message, contains('Could not reach the server'));
+    expect(unreachable.message, contains('wrong address'));
   });
 
   test('reports a timeout distinctly', () {
