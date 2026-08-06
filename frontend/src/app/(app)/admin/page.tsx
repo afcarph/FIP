@@ -13,13 +13,14 @@ import {
 
 import { PriceTrendChart } from '@/components/charts/price-trend-chart';
 import { PriceComparisonTable } from '@/components/dashboard/price-comparison-table';
+import { RequireRole } from '@/components/auth/require-role';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useExecutiveDashboard } from '@/hooks/use-api';
 import { formatCompactCurrency, formatCurrency, formatNumber } from '@/lib/utils';
 
-export default function AdminDashboardPage() {
+function AdminDashboardPageBody() {
   const { data, isLoading } = useExecutiveDashboard();
 
   const platform = data?.platform;
@@ -253,5 +254,15 @@ function Metric({ label, value, highlight }: { label: string; value: string; hig
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`tabular text-lg font-semibold ${highlight ? 'text-price-down' : ''}`}>{value}</p>
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    // Same roles the sidebar filters this entry on — nav and route agreeing is
+    // the point; they disagreed before.
+    <RequireRole roles={['super_admin', 'system_admin']}>
+      <AdminDashboardPageBody />
+    </RequireRole>
   );
 }

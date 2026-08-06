@@ -3,6 +3,7 @@
 import { AlertTriangle, Car, Gauge, ShieldAlert, TrendingDown, Users, Wrench } from 'lucide-react';
 
 import { ExpenseChart } from '@/components/charts/expense-chart';
+import { RequireRole } from '@/components/auth/require-role';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,7 @@ import {
   formatRelative,
 } from '@/lib/utils';
 
-export default function FleetPage() {
+function FleetPageBody() {
   const { data, isLoading } = useFleetDashboard();
 
   const severityVariant = (severity: string) =>
@@ -194,5 +195,15 @@ export default function FleetPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function FleetPage() {
+  return (
+    // Same roles the sidebar filters this entry on — nav and route agreeing is
+    // the point; they disagreed before.
+    <RequireRole roles={['fleet_manager', 'company_manager', 'super_admin', 'system_admin']}>
+      <FleetPageBody />
+    </RequireRole>
   );
 }
