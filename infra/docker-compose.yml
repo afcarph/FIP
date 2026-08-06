@@ -11,6 +11,12 @@
 
 name: fip
 
+# Published ports bind to 127.0.0.1, not 0.0.0.0. Services reach each other
+# over the compose network, so host publishing exists only for a developer at
+# the machine — and a database, cache or object store listening on every
+# interface is one permissive firewall rule away from being public. Docker
+# writes its own iptables rules and bypasses ufw, so the host firewall is not
+# a backstop. nginx is the deliberate exception: it is the front door.
 services:
   # ---------------------------------------------------------------- data ---
   mysql:
@@ -39,7 +45,7 @@ services:
       # time the migrations own the schema; schema.sql stays the canonical
       # reference and the ERD source.
     ports:
-      - '${DB_PORT_HOST:-3306}:3306'
+      - '127.0.0.1:${DB_PORT_HOST:-3306}:3306'
     healthcheck:
       # Wait for real query readiness, not just an open port — migrations
       # started too early fail with a confusing connection error.
@@ -62,7 +68,7 @@ services:
     volumes:
       - redis-data:/data
     ports:
-      - '${REDIS_PORT_HOST:-6379}:6379'
+      - '127.0.0.1:${REDIS_PORT_HOST:-6379}:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', '--no-auth-warning', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: 10s
@@ -80,8 +86,8 @@ services:
     volumes:
       - minio-data:/data
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
     healthcheck:
       test: ['CMD', 'mc', 'ready', 'local']
       interval: 15s
@@ -129,7 +135,7 @@ services:
       # compose injected.
       - ../.env:/var/www/html/.env:ro
     ports:
-      - '${API_PORT:-8000}:8000'
+      - '127.0.0.1:${API_PORT:-8000}:8000'
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -203,7 +209,7 @@ services:
       - ../ai-service/app:/app/app
       - ai-models:/app/models
     ports:
-      - '${AI_PORT:-8001}:8001'
+      - '127.0.0.1:${AI_PORT:-8001}:8001'
     depends_on:
       redis: { condition: service_healthy }
     healthcheck:
@@ -233,7 +239,7 @@ services:
       - /app/node_modules
       - /app/.next
     ports:
-      - '${WEB_PORT:-3000}:3000'
+      - '127.0.0.1:${WEB_PORT:-3000}:3000'
     depends_on:
       - api
     networks: [fip]
@@ -257,8 +263,8 @@ services:
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
-      - '8025:8025'
-      - '1025:1025'
+      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:1025:1025'
     networks: [fip]
 
 volumes:

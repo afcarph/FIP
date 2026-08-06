@@ -26,7 +26,16 @@ services:
         limits: { cpus: '1.0', memory: 512M }
 
   minio:
-    ports: ['9000:9000']   # the console stays closed in production
+    # !override, not !reset and not a plain list: a plain list merges with the
+    # base rather than replacing it, and !reset empties regardless of the value
+    # given. Getting this wrong is why the console it claims to close (9001)
+    # was still published, and why the S3 port landed on 0.0.0.0 alongside the
+    # base file's loopback binding.
+    #
+    # Loopback only: nothing outside the host should reach object storage
+    # directly. Serving media to clients is nginx's job, or real S3 — which is
+    # the documented production path anyway (docs/06 §6.8).
+    ports: !override ['127.0.0.1:9000:9000']
     logging: *logging
 
   api:
