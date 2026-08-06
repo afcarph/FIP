@@ -96,7 +96,7 @@ class DoeImportTest extends TestCase
         $this->assertContains(57.25, $prices);
     }
 
-    public function test_it_derives_direction_from_the_sign_rather_than_the_file(): void
+    public function test_a_price_cut_is_recorded_as_a_rollback(): void
     {
         $fuelType = FuelType::where('code', 'diesel')->firstOrFail();
         $this->seedCurrentPrice($this->station(), $fuelType, 56.00);
@@ -106,7 +106,8 @@ class DoeImportTest extends TestCase
 
         $advisory = PriceAdvisory::where('fuel_type_id', $fuelType->getKey())->firstOrFail();
 
-        $this->assertSame('decrease', $advisory->direction);
+        // The DOE's own word, and the one the AI service accepts.
+        $this->assertSame('rollback', $advisory->direction);
         $this->assertEqualsWithDelta(-0.40, (float) $advisory->change_amount, 0.001);
     }
 

@@ -228,9 +228,14 @@ class ImportDoeWeeklyPrices extends Command
         return [
             'fuel_code' => trim($fuelCode),
             'change_amount' => $change,
+            // 'rollback', not 'decrease'. The DOE calls a price cut a rollback
+            // and the whole system speaks that dialect — the AI service types
+            // Direction as increase|rollback|no_change and rejects anything
+            // else, so 'decrease' failed every falling fuel while the rising
+            // ones went through.
             'direction' => match (true) {
                 $change > 0 => 'increase',
-                $change < 0 => 'decrease',
+                $change < 0 => 'rollback',
                 default => 'no_change',
             },
             'notes' => $notes !== null && $notes !== '' ? $notes : null,
