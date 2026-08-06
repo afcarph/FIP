@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  BarChart3,
   Bell,
   Bot,
   Car,
@@ -55,12 +54,8 @@ const FLEET_NAV: NavItem[] = [
     icon: Truck,
     roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
   },
-  {
-    href: '/reports',
-    label: 'Reports',
-    icon: BarChart3,
-    roles: ['fleet_manager', 'company_manager', 'station_admin', 'super_admin', 'system_admin'],
-  },
+  // A Reports item pointed at /reports, which does not exist — a fleet
+  // manager would have had a sidebar entry that 404s.
 ];
 
 const ADMIN_NAV: NavItem[] = [

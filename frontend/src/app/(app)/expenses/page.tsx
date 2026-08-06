@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Download, Plus, Receipt } from 'lucide-react';
+import { AlertTriangle, Plus, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -37,12 +37,9 @@ export default function ExpensesPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/reports">
-              <Download aria-hidden="true" />
-              Export
-            </Link>
-          </Button>
+          {/* An Export button linked to /reports, which does not exist. A
+              control that 404s is worse than no control, so it is gone until
+              there is a reports page for it to open. */}
           <Button asChild size="sm">
             <Link href="/expenses/new">
               <Plus aria-hidden="true" />

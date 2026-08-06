@@ -1,12 +1,10 @@
 'use client';
 
 import { AlertTriangle, Car, Gauge, ShieldAlert, TrendingDown, Users, Wrench } from 'lucide-react';
-import Link from 'next/link';
 
 import { ExpenseChart } from '@/components/charts/expense-chart';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,17 +33,8 @@ export default function FleetPage() {
           </p>
         </div>
 
-        <Button asChild variant="outline" size="sm">
-          <Link href="/fleet/fraud-alerts">
-            <ShieldAlert aria-hidden="true" />
-            Alerts
-            {data?.fraud_alerts.open ? (
-              <span className="ml-1 rounded-full bg-destructive px-1.5 text-xs text-destructive-foreground">
-                {data.fraud_alerts.open}
-              </span>
-            ) : null}
-          </Link>
-        </Button>
+        {/* Alerts linked to /fleet/fraud-alerts, which does not exist. The
+            open-alert count is still shown in the cards below. */}
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

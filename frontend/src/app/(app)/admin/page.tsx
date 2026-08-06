@@ -10,12 +10,10 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import Link from 'next/link';
 
 import { PriceTrendChart } from '@/components/charts/price-trend-chart';
 import { PriceComparisonTable } from '@/components/dashboard/price-comparison-table';
 import { StatCard } from '@/components/dashboard/stat-card';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useExecutiveDashboard } from '@/hooks/use-api';
@@ -41,21 +39,9 @@ export default function AdminDashboardPage() {
           <p className="text-sm text-muted-foreground">Platform-wide health and market analytics</p>
         </div>
 
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/admin/moderation">
-              Moderation queue
-              {data?.crowd.pending_reports ? (
-                <span className="ml-1 rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
-                  {data.crowd.pending_reports}
-                </span>
-              ) : null}
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/admin/ai">AI models</Link>
-          </Button>
-        </div>
+        {/* Moderation queue and AI models both linked to pages that do not
+            exist. Removed rather than left to 404 — the counts they carried are
+            still visible in the cards below. */}
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
