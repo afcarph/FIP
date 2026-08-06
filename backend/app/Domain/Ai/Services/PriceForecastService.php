@@ -68,7 +68,14 @@ final readonly class PriceForecastService
             'horizon_weeks' => (int) config('fip.forecast.horizon_weeks'),
             'history' => $this->priceHistoryFeature($fuelType),
             'advisories' => $this->advisoryFeature($fuelType),
-            'indicators' => $this->indicatorFeature(),
+            // (object) matters. indicatorFeature returns a map keyed by
+            // indicator name, and PHP encodes an *empty* array as [] — a JSON
+            // list — where the service's schema requires an object. A staging
+            // box with no market indicators, or any deploy without an exchange
+            // rate key, therefore sent indicators: [] and got 422 back for
+            // every fuel type. The command reported "no forecasts produced" and
+            // the cause looked like missing data rather than a wrong shape.
+            'indicators' => (object) $this->indicatorFeature(),
         ]);
 
         return PriceForecast::updateOrCreate(
