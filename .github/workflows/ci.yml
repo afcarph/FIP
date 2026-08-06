@@ -2,7 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, 'claude/**']
+    # fip/** as well as claude/**: work branched under fip/ ran no CI at all,
+    # so every merge was validated only by whatever was run locally and CI
+    # first saw the code once it was already on the mainline. Validation
+    # belongs before the merge, not after it.
+    branches: [main, develop, 'claude/**', 'fip/**']
   pull_request:
     branches: [main, develop]
 
