@@ -149,3 +149,34 @@ php artisan db:seed --class=StagingSeeder --force
 - `fip:refresh-indicators` needs `EXCHANGE_RATE_API_KEY`. Without it there are no
   market indicators, which lowers forecast confidence but no longer breaks the
   run.
+
+---
+
+## Live DOE prices
+
+Everything above uses seeded or file-imported data, which is what a staging box
+without a route to the DOE needs. Where there *is* a route, the scraper in
+[`fip-doe-scraper/`](../fip-doe-scraper/README.md) collects the real thing.
+
+```bash
+cd fip-doe-scraper
+cp .env.example .env          # set DOE_DASHBOARD_URL and the password
+docker compose up -d          # MySQL + the 06:00 scheduler
+docker compose run --rm scraper python scraper.py --dry-run
+```
+
+It writes to its **own** database (`fip_doe`). Point Laravel at it and bring the
+prices across:
+
+```bash
+php artisan fip:sync-doe-prices --dry-run
+php artisan fip:sync-doe-prices
+php artisan fip:forecast          # regenerate from the new history
+```
+
+The sync goes through `PriceService` for the same reason `StationPriceSeeder`
+does — see [Why the prices go through the service](#why-the-prices-go-through-the-service).
+
+Needs `DOE_DB_HOST`, `DOE_DB_DATABASE`, `DOE_DB_USERNAME` and `DOE_DB_PASSWORD`
+in the backend's `.env`; without them the command says so rather than throwing a
+PDO error naming a connection nobody has heard of.
