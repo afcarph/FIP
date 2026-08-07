@@ -119,17 +119,20 @@ function TrendChart({ code, label, colour }: (typeof TRENDS)[number]) {
               {/* Three explicit series rather than a stacked band. Stacking the
                   spread on top of the minimum made the y-axis domain span the
                   *delta* as well as the prices, so it rendered from ₱-3. */}
+              {/* Straight segments. The DOE publishes one figure a week, and a
+                  curve would draw prices between those weeks that nobody
+                  measured — a smoothing artefact read as data. */}
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="Lowest"
                 stroke={colour}
                 strokeWidth={1}
                 strokeDasharray="4 3"
                 dot={false}
               />
-              <Line type="monotone" dataKey="Midpoint" stroke={colour} strokeWidth={2} dot={false} />
+              <Line type="linear" dataKey="Midpoint" stroke={colour} strokeWidth={2} dot={false} />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="Highest"
                 stroke={colour}
                 strokeWidth={1}
@@ -213,7 +216,7 @@ function WeeklyAverageChart() {
               {TRENDS.map((trend) => (
                 <Line
                   key={trend.code}
-                  type="monotone"
+                  type="linear"
                   dataKey={trend.label}
                   stroke={trend.colour}
                   strokeWidth={2}
