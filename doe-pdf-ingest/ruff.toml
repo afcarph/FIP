@@ -31,6 +31,19 @@ ignore = [
     # The plausibility bounds and epoch thresholds are the logic, not stray
     # constants — each is named and explained in config.py.
     "PLR2004",
+    # A published coverage week is a calendar date, not an instant. Making
+    # these timezone-aware would shift a report by a day either side of
+    # midnight, which is exactly the bug the rule is meant to prevent.
+    "DTZ011",
+    # The store call names six things that all belong together; bundling them
+    # into a parameter object would only move the list.
+    "PLR0913",
+    "PLR0917",
+    # The DOE prints en dashes in its date ranges and the multiplication sign
+    # describes the table's grain. Both are the real characters, not homoglyph
+    # lookalikes, and rewriting them would make the patterns stop matching.
+    "RUF001",
+    "RUF002",
 ]
 
 [lint.per-file-ignores]

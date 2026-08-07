@@ -54,9 +54,7 @@ class Settings(BaseSettings):
     #: Listing pages to crawl, as query strings against
     #: /articles/group/liquid-fuels. Price Monitoring carries the regional
     #: tables; Oil Monitor carries the weekly national summary.
-    listing_categories: list[str] = Field(
-        default=["Price Monitoring", "Oil Monitor"]
-    )
+    listing_categories: list[str] = Field(default=["Price Monitoring", "Oil Monitor"])
 
     #: How many listing pages back to walk on a normal run. One page covers
     #: roughly a fortnight, so two is enough to catch a week the scheduler
@@ -74,8 +72,7 @@ class Settings(BaseSettings):
     request_delay_s: float = Field(default=1.0, ge=0)
     user_agent: str = Field(
         default=(
-            "FIP-DOE-Ingest/1.0 (+https://github.com/nextlevelbuilder/fip; "
-            "fuel price monitoring)"
+            "FIP-DOE-Ingest/1.0 (+https://github.com/nextlevelbuilder/fip; fuel price monitoring)"
         )
     )
     #: A price monitoring PDF is ~130KB. Anything far larger is not one of

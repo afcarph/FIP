@@ -29,7 +29,7 @@ log = get_logger(__name__)
 #: The first bytes of any PDF. Checked because the DOE portal answers a missing
 #: document with an HTML error page and a 200, which would otherwise be stored
 #: as a .pdf and fail much later with an unhelpful extraction error.
-_PDF_MAGIC = b'%PDF-'
+_PDF_MAGIC = b"%PDF-"
 
 
 class DownloadError(RuntimeError):
@@ -53,7 +53,7 @@ class PdfDownloader:
     def __init__(self, settings: Settings | None = None, session: requests.Session | None = None):
         self.settings = settings or get_settings()
         self.session = session or requests.Session()
-        self.session.headers.update({'User-Agent': self.settings.user_agent})
+        self.session.headers.update({"User-Agent": self.settings.user_agent})
         self.settings.download_dir.mkdir(parents=True, exist_ok=True)
 
     def fetch(self, url: str, filename: str) -> DownloadedPdf:
@@ -62,15 +62,13 @@ class PdfDownloader:
 
         if not body.startswith(_PDF_MAGIC):
             # Almost always the portal's HTML error page returned with a 200.
-            raise DownloadError(
-                f'{url} did not return a PDF (starts with {body[:16]!r})'
-            )
+            raise DownloadError(f"{url} did not return a PDF (starts with {body[:16]!r})")
 
         checksum = hashlib.sha256(body).hexdigest()
         path = self._path_for(checksum, filename)
 
         if path.exists() and path.stat().st_size == len(body):
-            log.info('Already stored', extra={'checksum': checksum[:12], 'path': str(path)})
+            log.info("Already stored", extra={"checksum": checksum[:12], "path": str(path)})
 
             return DownloadedPdf(
                 path=path,
@@ -84,15 +82,15 @@ class PdfDownloader:
         # Written via a temporary file and moved into place, so a run
         # interrupted mid-write does not leave a truncated PDF that looks
         # stored and extracts to nonsense.
-        temporary = path.with_suffix(path.suffix + '.part')
+        temporary = path.with_suffix(path.suffix + ".part")
         temporary.write_bytes(body)
         temporary.replace(path)
 
         log.info(
-            'Downloaded %s (%d bytes)',
+            "Downloaded %s (%d bytes)",
             filename,
             len(body),
-            extra={'checksum': checksum[:12], 'url': url},
+            extra={"checksum": checksum[:12], "url": url},
         )
 
         return DownloadedPdf(
@@ -116,7 +114,7 @@ class PdfDownloader:
 
         stem = Path(filename).stem[:80]
 
-        return directory / f'{stem}-{checksum[:12]}.pdf'
+        return directory / f"{stem}-{checksum[:12]}.pdf"
 
     @retry(
         retry=retry_if_exception_type(requests.RequestException),
@@ -148,7 +146,7 @@ class PdfDownloader:
             if len(chunks) > self.settings.max_pdf_bytes:
                 response.close()
                 raise DownloadError(
-                    f'{url} exceeds {self.settings.max_pdf_bytes} bytes; not a price report'
+                    f"{url} exceeds {self.settings.max_pdf_bytes} bytes; not a price report"
                 )
 
         return bytes(chunks)
@@ -167,7 +165,7 @@ class PdfDownloader:
         cutoff = time.time() - (days * 86_400)
         removed = 0
 
-        for path in self.settings.download_dir.rglob('*.pdf'):
+        for path in self.settings.download_dir.rglob("*.pdf"):
             if path.stat().st_mtime < cutoff:
                 path.unlink()
                 removed += 1

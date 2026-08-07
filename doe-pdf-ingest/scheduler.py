@@ -28,16 +28,16 @@ from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, JobExecution
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from database import init_db, last_successful_run
 from logger import get_logger
-from scraper import run
+from pipeline import run
 from settings import get_settings
+from storage import last_successful_run
 
 log = get_logger(__name__)
 
 _shutdown = threading.Event()
 
-JOB_ID = "doe-daily-scrape"
+JOB_ID = "doe-daily-ingest"
 
 
 def scheduled_job() -> None:
@@ -90,7 +90,7 @@ def build_scheduler() -> BackgroundScheduler:
             timezone=timezone,
         ),
         id=JOB_ID,
-        name="DOE daily fuel price scrape",
+        name="DOE daily PDF ingest",
         replace_existing=True,
     )
 
@@ -110,13 +110,11 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = get_settings()
 
-    init_db()
-
     last = last_successful_run()
     if last is None:
         log.warning("No successful run on record — this is a fresh install")
     else:
-        log.info("Last successful run: %s", last.isoformat())
+        log.info("Last successful run: %s", last.started_at.isoformat())
 
     scheduler = build_scheduler()
     scheduler.start()

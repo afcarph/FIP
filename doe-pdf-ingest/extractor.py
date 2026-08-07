@@ -58,44 +58,41 @@ class ExtractionError(RuntimeError):
 #: value is not silently dropped, and the Laravel importer reports it as an
 #: unmapped grade rather than filing it under RON 97.
 PRODUCT_CODES: dict[str, str] = {
-    'RON 100': 'gasoline_ron100',
-    'RON 97': 'gasoline_ron97',
-    'RON 95': 'gasoline_ron95',
-    'RON 91': 'gasoline_ron91',
-    'DIESEL PLUS': 'diesel_premium',
-    'DIESEL': 'diesel',
-    'KEROSENE': 'kerosene',
+    "RON 100": "gasoline_ron100",
+    "RON 97": "gasoline_ron97",
+    "RON 95": "gasoline_ron95",
+    "RON 91": "gasoline_ron91",
+    "DIESEL PLUS": "diesel_premium",
+    "DIESEL": "diesel",
+    "KEROSENE": "kerosene",
 }
 
 #: Longest first, so "DIESEL PLUS" is matched before "DIESEL".
 _PRODUCT_ORDER = sorted(PRODUCT_CODES, key=len, reverse=True)
 
 #: Column headers that are not brands.
-_NON_BRAND_HEADERS = {'AREA', 'PRODUCT', 'OVERALL', 'RANGE', 'COMMON', 'PRICE'}
+_NON_BRAND_HEADERS = {"AREA", "PRODUCT", "OVERALL", "RANGE", "COMMON", "PRICE"}
 
-_MONTHS = (
-    'january|february|march|april|may|june|july|august|september|october'
-    '|november|december'
-)
+_MONTHS = "january|february|march|april|may|june|july|august|september|october|november|december"
 
 #: "(For the week of July 28 - August 3, 2026)"
 _COVERAGE = re.compile(
-    rf'week\s+of\s+({_MONTHS})\s+(\d{{1,2}})\s*[-–]\s*(?:({_MONTHS})\s+)?(\d{{1,2}}),?\s*(\d{{4}})',
+    rf"week\s+of\s+({_MONTHS})\s+(\d{{1,2}})\s*[-–]\s*(?:({_MONTHS})\s+)?(\d{{1,2}}),?\s*(\d{{4}})",
     re.IGNORECASE,
 )
 
 #: "Date of Monitoring: July 28-31, 2026"
 _MONITORING = re.compile(
-    rf'date\s+of\s+monitoring:?\s*({_MONTHS})\s+(\d{{1,2}})',
+    rf"date\s+of\s+monitoring:?\s*({_MONTHS})\s+(\d{{1,2}})",
     re.IGNORECASE,
 )
 
 #: The region line, printed under the title.
 _REGION_LINE = re.compile(
-    r'^\s*((?:NCR|CAR|BARMM|Region\s+[IVXAB\-]+(?:\s*\([^)]*\))?|[A-Z][A-Za-z\s\-]{2,40}))\s*$',
+    r"^\s*((?:NCR|CAR|BARMM|Region\s+[IVXAB\-]+(?:\s*\([^)]*\))?|[A-Z][A-Za-z\s\-]{2,40}))\s*$",
 )
 
-_NUMBER = re.compile(r'^\d{1,3}(?:\.\d{1,2})?$')
+_NUMBER = re.compile(r"^\d{1,3}(?:\.\d{1,2})?$")
 
 #: How far apart two words' baselines may be and still be one row. The DOE
 #: prints product rows ~9pt apart, so this is comfortably below a real gap
@@ -103,7 +100,7 @@ _NUMBER = re.compile(r'^\d{1,3}(?:\.\d{1,2})?$')
 _ROW_TOLERANCE = 3.0
 
 #: Values the DOE prints for "no data".
-_NULL_TOKENS = {'#N/A', 'N/A', 'NONE', '-', '--', ''}
+_NULL_TOKENS = {"#N/A", "N/A", "NONE", "-", "--", ""}
 
 
 @dataclass
@@ -134,7 +131,7 @@ class ExtractedReport:
     monitoring_date: date | None
     brands: list[str] = field(default_factory=list)
     prices: list[AreaPrice] = field(default_factory=list)
-    extractor: str = 'unknown'
+    extractor: str = "unknown"
     quality: float = 0.0
     warnings: list[str] = field(default_factory=list)
 
@@ -147,9 +144,9 @@ class ExtractedReport:
 
     def summary(self) -> str:
         return (
-            f'region={self.region} coverage={self.coverage_start}..{self.coverage_end} '
-            f'areas={len(self.areas)} rows={len(self.prices)} '
-            f'extractor={self.extractor} quality={self.quality:.2f}'
+            f"region={self.region} coverage={self.coverage_start}..{self.coverage_end} "
+            f"areas={len(self.areas)} rows={len(self.prices)} "
+            f"extractor={self.extractor} quality={self.quality:.2f}"
         )
 
 
@@ -178,7 +175,8 @@ def score(report: ExtractedReport) -> float:
         1
         for p in priced
         for value in (p.min_price, p.max_price)
-        if value is not None and settings.min_plausible_price <= value <= settings.max_plausible_price
+        if value is not None
+        and settings.min_plausible_price <= value <= settings.max_plausible_price
     )
     total_values = sum(
         1 for p in priced for value in (p.min_price, p.max_price) if value is not None
@@ -197,8 +195,18 @@ def score(report: ExtractedReport) -> float:
 
 def _month_number(name: str) -> int:
     months = [
-        'january', 'february', 'march', 'april', 'may', 'june',
-        'july', 'august', 'september', 'october', 'november', 'december',
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
     ]
     return months.index(name.strip().lower()) + 1
 
@@ -215,7 +223,7 @@ def parse_header(text: str) -> tuple[str | None, date | None, date | None, date 
     lines = [line.strip() for line in text.splitlines() if line.strip()]
 
     for index, line in enumerate(lines[:8]):
-        if 'price monitoring' in line.lower() and index + 1 < len(lines):
+        if "price monitoring" in line.lower() and index + 1 < len(lines):
             candidate = lines[index + 1]
             match = _REGION_LINE.match(candidate)
             if match:
@@ -226,7 +234,7 @@ def parse_header(text: str) -> tuple[str | None, date | None, date | None, date 
         # Some regional layouts put the region on the title line itself.
         for line in lines[:6]:
             match = re.search(
-                r'\b(NCR|CAR|BARMM|Region\s+[IVX]+(?:-[AB])?(?:\s*\([^)]*\))?)\b',
+                r"\b(NCR|CAR|BARMM|Region\s+[IVX]+(?:-[AB])?(?:\s*\([^)]*\))?)\b",
                 line,
                 re.IGNORECASE,
             )
@@ -255,7 +263,9 @@ def parse_header(text: str) -> tuple[str | None, date | None, date | None, date 
 
     if monitored and start:
         try:
-            monitoring = date(start.year, _month_number(monitored.group(1)), int(monitored.group(2)))
+            monitoring = date(
+                start.year, _month_number(monitored.group(1)), int(monitored.group(2))
+            )
         except ValueError:
             monitoring = None
 
@@ -266,7 +276,7 @@ def parse_header(text: str) -> tuple[str | None, date | None, date | None, date 
 
 
 def _to_price(token: str) -> float | None:
-    token = token.strip().replace(',', '')
+    token = token.strip().replace(",", "")
 
     if token.upper() in _NULL_TOKENS or not _NUMBER.match(token):
         return None
@@ -288,7 +298,9 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
     """
     import pdfplumber  # noqa: PLC0415 - optional at import time, required here
 
-    report = ExtractedReport(region=None, coverage_start=None, coverage_end=None, monitoring_date=None)
+    report = ExtractedReport(
+        region=None, coverage_start=None, coverage_end=None, monitoring_date=None
+    )
     all_prices: list[AreaPrice] = []
     full_text: list[str] = []
     # Spans the document, not the page. A stale label the DOE carries over from
@@ -298,7 +310,7 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
 
     with pdfplumber.open(str(path)) as pdf:
         for page in pdf.pages:
-            text = page.extract_text() or ''
+            text = page.extract_text() or ""
             full_text.append(text)
 
             words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
@@ -316,15 +328,16 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
             columns, header_top = header
 
             report.brands = report.brands or [
-                name for name, _, _ in columns
-                if name not in _NON_BRAND_HEADERS and name not in ('OVERALL RANGE', 'COMMON PRICE')
+                name
+                for name, _, _ in columns
+                if name not in _NON_BRAND_HEADERS and name not in ("OVERALL RANGE", "COMMON PRICE")
             ]
 
             all_prices.extend(
                 _rows_from_words(words, page.chars, columns, header_top, report, used_areas)
             )
 
-    joined = '\n'.join(full_text)
+    joined = "\n".join(full_text)
     region, start, end, monitoring = parse_header(joined)
 
     report.region = region
@@ -332,7 +345,7 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
     report.coverage_end = end
     report.monitoring_date = monitoring
     report.prices = all_prices
-    report.extractor = 'pdfplumber-coordinates'
+    report.extractor = "pdfplumber-coordinates"
     report.quality = score(report)
 
     return report
@@ -348,10 +361,7 @@ def _header_columns(
     becomes an area named "AREA", under which every price on the page is
     then filed.
     """
-    anchors = [
-        word for word in words
-        if word['text'].strip().upper() in {'AREA', 'PRODUCT'}
-    ]
+    anchors = [word for word in words if word["text"].strip().upper() in {"AREA", "PRODUCT"}]
 
     if not anchors:
         return None
@@ -361,8 +371,8 @@ def _header_columns(
     # lets an unknown brand form its own column — the regions do not all list
     # the same companies, and a brand we failed to anticipate must not have its
     # prices absorbed into a neighbour.
-    band_top = min(word['top'] for word in anchors)
-    band = [word for word in words if abs(word['top'] - band_top) < 6]
+    band_top = min(word["top"] for word in anchors)
+    band = [word for word in words if abs(word["top"] - band_top) < 6]
 
     if len(band) < 6:
         return None
@@ -372,21 +382,21 @@ def _header_columns(
 
     # "FLYING V", "OVERALL RANGE" and "COMMON PRICE" are two words each; merge
     # anything closer than a normal column gap.
-    band.sort(key=lambda word: word['x0'])
+    band.sort(key=lambda word: word["x0"])
     merged: list[dict[str, Any]] = []
 
     for word in band:
-        if merged and word['x0'] - merged[-1]['x1'] < 8:
+        if merged and word["x0"] - merged[-1]["x1"] < 8:
             merged[-1] = {
-                'text': f"{merged[-1]['text']} {word['text']}",
-                'x0': merged[-1]['x0'],
-                'x1': word['x1'],
-                'top': merged[-1]['top'],
+                "text": f"{merged[-1]['text']} {word['text']}",
+                "x0": merged[-1]["x0"],
+                "x1": word["x1"],
+                "top": merged[-1]["top"],
             }
         else:
             merged.append(dict(word))
 
-    centres = [((word['x0'] + word['x1']) / 2, word['text'].strip().upper()) for word in merged]
+    centres = [((word["x0"] + word["x1"]) / 2, word["text"].strip().upper()) for word in merged]
     columns: list[tuple[str, float, float]] = []
 
     for index, (centre, name) in enumerate(centres):
@@ -394,7 +404,7 @@ def _header_columns(
         right = 10_000.0 if index == len(centres) - 1 else (centre + centres[index + 1][0]) / 2
         columns.append((name, left, right))
 
-    return columns, max(word['top'] for word in band)
+    return columns, max(word["top"] for word in band)
 
 
 def _area_labels(
@@ -422,24 +432,24 @@ def _area_labels(
     lines: dict[float, list[dict[str, Any]]] = {}
 
     for char in chars:
-        if char['top'] <= header_top + 2:
+        if char["top"] <= header_top + 2:
             continue
 
-        centre = (char['x0'] + char['x1']) / 2
+        centre = (char["x0"] + char["x1"]) / 2
 
         if not (area_left <= centre < area_right):
             continue
 
         # Half a point: enough to absorb baseline jitter within one label,
         # tight enough never to join two.
-        key = round(char['top'] * 2) / 2
+        key = round(char["top"] * 2) / 2
         lines.setdefault(key, []).append(char)
 
     labels: list[tuple[float, str]] = []
 
     for top in sorted(lines):
-        ordered = sorted(lines[top], key=lambda char: char['x0'])
-        text = ''.join(char['text'] for char in ordered)
+        ordered = sorted(lines[top], key=lambda char: char["x0"])
+        text = "".join(char["text"] for char in ordered)
         cleaned = _clean_area(text)
 
         if cleaned:
@@ -464,16 +474,16 @@ def _rows_from_words(
     # y=156.81, half a point from the 156 boundary, so part of it bucketed with
     # the row above and the row lost its prices entirely. Clustering on the gap
     # between consecutive baselines has no boundaries to straddle.
-    ordered = sorted(words, key=lambda word: word['top'])
+    ordered = sorted(words, key=lambda word: word["top"])
     rows: list[list[dict[str, Any]]] = []
 
     for word in ordered:
         # Everything at or above the header is title block or the header row
         # itself, never data.
-        if word['top'] <= header_top + 2:
+        if word["top"] <= header_top + 2:
             continue
 
-        if rows and word['top'] - rows[-1][0]['top'] <= _ROW_TOLERANCE:
+        if rows and word["top"] - rows[-1][0]["top"] <= _ROW_TOLERANCE:
             rows[-1].append(word)
         else:
             rows.append([word])
@@ -486,12 +496,12 @@ def _rows_from_words(
     parsed: list[tuple[float, tuple[str, str], dict[str, str]]] = []
 
     for group in rows:
-        row = sorted(group, key=lambda word: word['x0'])
+        row = sorted(group, key=lambda word: word["x0"])
         cells = _cells(row, columns)
-        product = _product_of(cells.get('PRODUCT', ''))
+        product = _product_of(cells.get("PRODUCT", ""))
 
         if product is not None:
-            parsed.append((min(word['top'] for word in row), product, cells))
+            parsed.append((min(word["top"] for word in row), product, cells))
 
     prices: list[AreaPrice] = []
     labels = _area_labels(chars, columns, header_top)
@@ -515,12 +525,12 @@ def _rows_from_words(
 
         if area is None and candidates:
             report.warnings.append(
-                f'Block near y={top:.0f} matched only already-used labels: {candidates}'
+                f"Block near y={top:.0f} matched only already-used labels: {candidates}"
             )
 
         if area is None:
             report.warnings.append(
-                f'Skipped {len(block)} rows near y={top:.0f}: no readable area label'
+                f"Skipped {len(block)} rows near y={top:.0f}: no readable area label"
             )
             continue
 
@@ -569,16 +579,16 @@ def _block_prices(
     prices: list[AreaPrice] = []
 
     for product, cells in block:
-        common = _to_price(cells.get('COMMON PRICE', ''))
-        overall_min, overall_max = _range_of(cells.get('OVERALL RANGE', ''))
+        common = _to_price(cells.get("COMMON PRICE", ""))
+        overall_min, overall_max = _range_of(cells.get("OVERALL RANGE", ""))
 
         for name, _, _ in columns:
-            if name in _NON_BRAND_HEADERS or name in ('OVERALL RANGE', 'COMMON PRICE'):
+            if name in _NON_BRAND_HEADERS or name in ("OVERALL RANGE", "COMMON PRICE"):
                 continue
 
             numbers = [
-                value for value in
-                (_to_price(token) for token in cells.get(name, '').split())
+                value
+                for value in (_to_price(token) for token in cells.get(name, "").split())
                 if value is not None
             ]
 
@@ -588,25 +598,29 @@ def _block_prices(
                 # by coordinate rather than by counting numbers along the line.
                 continue
 
-            prices.append(AreaPrice(
-                area=area,
-                product=product[0],
-                fuel_code=product[1],
-                brand=name.title(),
-                min_price=min(numbers),
-                max_price=max(numbers),
-            ))
+            prices.append(
+                AreaPrice(
+                    area=area,
+                    product=product[0],
+                    fuel_code=product[1],
+                    brand=name.title(),
+                    min_price=min(numbers),
+                    max_price=max(numbers),
+                )
+            )
 
         if overall_min is not None or overall_max is not None or common is not None:
-            prices.append(AreaPrice(
-                area=area,
-                product=product[0],
-                fuel_code=product[1],
-                brand=None,
-                min_price=overall_min,
-                max_price=overall_max,
-                common_price=common,
-            ))
+            prices.append(
+                AreaPrice(
+                    area=area,
+                    product=product[0],
+                    fuel_code=product[1],
+                    brand=None,
+                    min_price=overall_min,
+                    max_price=overall_max,
+                    common_price=common,
+                )
+            )
 
     return prices
 
@@ -616,18 +630,18 @@ def _cells(row: list[dict[str, Any]], columns: list[tuple[str, float, float]]) -
     cells: dict[str, list[str]] = {}
 
     for word in row:
-        centre = (word['x0'] + word['x1']) / 2
+        centre = (word["x0"] + word["x1"]) / 2
 
         for name, left, right in columns:
             if left <= centre < right:
-                cells.setdefault(name, []).append(word['text'])
+                cells.setdefault(name, []).append(word["text"])
                 break
 
-    return {name: ' '.join(parts) for name, parts in cells.items()}
+    return {name: " ".join(parts) for name, parts in cells.items()}
 
 
 def _product_of(text: str) -> tuple[str, str] | None:
-    upper = ' '.join(text.upper().split())
+    upper = " ".join(text.upper().split())
 
     for product in _PRODUCT_ORDER:
         if upper.startswith(product):
@@ -645,7 +659,7 @@ def _clean_area(text: str) -> str | None:
     that is unusable, and guessing at it would file prices under a city that
     does not exist.
     """
-    cleaned = ' '.join(text.split())
+    cleaned = " ".join(text.split())
 
     if len(cleaned) < 3 or len(cleaned) > 60:
         return None
@@ -655,7 +669,7 @@ def _clean_area(text: str) -> str | None:
         return None
 
     if re.match(
-        r'^(date\s+of\s+monitoring|area|product|source|note|prepared|prevailing)',
+        r"^(date\s+of\s+monitoring|area|product|source|note|prepared|prevailing)",
         cleaned,
         re.IGNORECASE,
     ):
@@ -681,7 +695,7 @@ def _clean_area(text: str) -> str | None:
 
 def _range_of(text: str) -> tuple[float | None, float | None]:
     """Parse an "min - max" overall range cell."""
-    parts = re.split(r'\s*[-–]\s*', ' '.join(text.split()))
+    parts = re.split(r"\s*[-–]\s*", " ".join(text.split()))
     values = [_to_price(part) for part in parts]
     numbers = [value for value in values if value is not None]
 
@@ -704,16 +718,16 @@ def extract_with_camelot(path: Path, settings: Settings) -> ExtractedReport:
     """
     import camelot  # noqa: PLC0415
 
-    best = ExtractedReport(None, None, None, None, extractor='camelot')
+    best = ExtractedReport(None, None, None, None, extractor="camelot")
 
-    for flavour in ('lattice', 'stream'):
+    for flavour in ("lattice", "stream"):
         try:
-            tables = camelot.read_pdf(str(path), pages='all', flavor=flavour)
-        except Exception as exc:  # noqa: BLE001 - any failure just means "try the next"
-            log.debug('camelot %s failed: %s', flavour, exc)
+            tables = camelot.read_pdf(str(path), pages="all", flavor=flavour)
+        except Exception as exc:
+            log.debug("camelot %s failed: %s", flavour, exc)
             continue
 
-        report = _from_dataframes([table.df for table in tables], path, f'camelot-{flavour}')
+        report = _from_dataframes([table.df for table in tables], path, f"camelot-{flavour}")
 
         if report.quality > best.quality:
             best = report
@@ -725,9 +739,9 @@ def extract_with_tabula(path: Path, settings: Settings) -> ExtractedReport:
     """tabula-py. Needs a JVM; disabled by settings where there is none."""
     import tabula  # noqa: PLC0415
 
-    frames = tabula.read_pdf(str(path), pages='all', multiple_tables=True, silent=True)
+    frames = tabula.read_pdf(str(path), pages="all", multiple_tables=True, silent=True)
 
-    return _from_dataframes(frames, path, 'tabula')
+    return _from_dataframes(frames, path, "tabula")
 
 
 def _from_dataframes(frames: list[Any], path: Path, name: str) -> ExtractedReport:
@@ -739,7 +753,7 @@ def _from_dataframes(frames: list[Any], path: Path, name: str) -> ExtractedRepor
     import pdfplumber  # noqa: PLC0415
 
     with pdfplumber.open(str(path)) as pdf:
-        text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
 
     region, start, end, monitoring = parse_header(text)
     report = ExtractedReport(region, start, end, monitoring, extractor=name)
@@ -755,9 +769,12 @@ def _from_dataframes(frames: list[Any], path: Path, name: str) -> ExtractedRepor
 
         header = [str(cell).strip().upper() for cell in rows[0]]
         brand_columns = {
-            index: cell for index, cell in enumerate(header)
-            if cell and cell not in _NON_BRAND_HEADERS and not cell.startswith('OVERALL')
-            and not cell.startswith('COMMON')
+            index: cell
+            for index, cell in enumerate(header)
+            if cell
+            and cell not in _NON_BRAND_HEADERS
+            and not cell.startswith("OVERALL")
+            and not cell.startswith("COMMON")
         }
 
         for row in rows[1:]:
@@ -776,19 +793,22 @@ def _from_dataframes(frames: list[Any], path: Path, name: str) -> ExtractedRepor
                     continue
 
                 numbers = [
-                    value for value in (_to_price(token) for token in cells[index].split())
+                    value
+                    for value in (_to_price(token) for token in cells[index].split())
                     if value is not None
                 ]
 
                 if numbers:
-                    prices.append(AreaPrice(
-                        area=current_area,
-                        product=product[0],
-                        fuel_code=product[1],
-                        brand=brand.title(),
-                        min_price=min(numbers),
-                        max_price=max(numbers),
-                    ))
+                    prices.append(
+                        AreaPrice(
+                            area=current_area,
+                            product=product[0],
+                            fuel_code=product[1],
+                            brand=brand.title(),
+                            min_price=min(numbers),
+                            max_price=max(numbers),
+                        )
+                    )
 
     report.prices = prices
     report.quality = score(report)
@@ -799,9 +819,9 @@ def _from_dataframes(frames: list[Any], path: Path, name: str) -> ExtractedRepor
 # --- selection ----------------------------------------------------------------
 
 _EXTRACTORS = {
-    'pdfplumber': extract_with_pdfplumber,
-    'camelot': extract_with_camelot,
-    'tabula': extract_with_tabula,
+    "pdfplumber": extract_with_pdfplumber,
+    "camelot": extract_with_camelot,
+    "tabula": extract_with_tabula,
 }
 
 
@@ -820,29 +840,29 @@ def extract(path: Path, settings: Settings | None = None) -> ExtractedReport:
     # pdfplumber first regardless of configured order: it is the one that
     # handles the layouts actually published, and clearing the bar on the first
     # try avoids paying for a camelot run on every report.
-    order = ['pdfplumber'] + [name for name in settings.extractors if name != 'pdfplumber']
+    order = ["pdfplumber"] + [name for name in settings.extractors if name != "pdfplumber"]
 
     for name in order:
-        if name == 'tabula' and not settings.enable_tabula:
+        if name == "tabula" and not settings.enable_tabula:
             continue
 
         runner = _EXTRACTORS.get(name)
 
         if runner is None:
-            log.warning('Unknown extractor configured: %s', name)
+            log.warning("Unknown extractor configured: %s", name)
             continue
 
         try:
             report = runner(path, settings)
         except ImportError as exc:
-            log.warning('Extractor %s is not installed: %s', name, exc)
+            log.warning("Extractor %s is not installed: %s", name, exc)
             continue
-        except Exception as exc:  # noqa: BLE001 - one extractor failing is routine
-            log.warning('Extractor %s failed on %s: %s', name, path.name, exc)
+        except Exception as exc:
+            log.warning("Extractor %s failed on %s: %s", name, path.name, exc)
             continue
 
         log.info(
-            'Extractor %s scored %.2f on %s',
+            "Extractor %s scored %.2f on %s",
             report.extractor,
             report.quality,
             path.name,
@@ -853,17 +873,17 @@ def extract(path: Path, settings: Settings | None = None) -> ExtractedReport:
             break
 
     if not results:
-        raise ExtractionError(f'No extractor could read {path.name}')
+        raise ExtractionError(f"No extractor could read {path.name}")
 
     best = max(results, key=lambda report: report.quality)
 
     if best.quality < settings.min_extraction_quality:
         raise ExtractionError(
-            f'Best extraction of {path.name} scored {best.quality:.2f}, '
-            f'below the {settings.min_extraction_quality:.2f} threshold '
-            f'({best.summary()}). The layout has probably changed.'
+            f"Best extraction of {path.name} scored {best.quality:.2f}, "
+            f"below the {settings.min_extraction_quality:.2f} threshold "
+            f"({best.summary()}). The layout has probably changed."
         )
 
-    log.info('Extracted %s', best.summary())
+    log.info("Extracted %s", best.summary())
 
     return best

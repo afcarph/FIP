@@ -77,9 +77,9 @@ class DiscoveredPdf:
     @property
     def filename(self) -> str:
         """The last path segment, used as the stored filename."""
-        name = urlparse(self.url).path.rstrip('/').rsplit('/', 1)[-1]
+        name = urlparse(self.url).path.rstrip("/").rsplit("/", 1)[-1]
 
-        return name if name.lower().endswith('.pdf') else f'{name}.pdf'
+        return name if name.lower().endswith(".pdf") else f"{name}.pdf"
 
 
 class PdfDiscovery:
@@ -88,7 +88,7 @@ class PdfDiscovery:
     def __init__(self, settings: Settings | None = None, session: requests.Session | None = None):
         self.settings = settings or get_settings()
         self.session = session or requests.Session()
-        self.session.headers.update({'User-Agent': self.settings.user_agent})
+        self.session.headers.update({"User-Agent": self.settings.user_agent})
 
     # -- crawl ---------------------------------------------------------------
 
@@ -110,7 +110,7 @@ class PdfDiscovery:
                 try:
                     articles = self._article_links(url)
                 except DiscoveryError as exc:
-                    log.warning('Listing unavailable', extra={'url': url, 'error': str(exc)})
+                    log.warning("Listing unavailable", extra={"url": url, "error": str(exc)})
                     continue
 
                 if not articles:
@@ -125,7 +125,7 @@ class PdfDiscovery:
                         seen.add(pdf.url)
                         found.append(pdf)
 
-        log.info('Discovery finished', extra={'pdfs': len(found), 'pages': pages})
+        log.info("Discovery finished", extra={"pdfs": len(found), "pages": pages})
 
         return found
 
@@ -135,12 +135,12 @@ class PdfDiscovery:
         links: list[tuple[str, str]] = []
         seen: set[str] = set()
 
-        for anchor in soup.find_all('a', href=True):
-            href = str(anchor['href'])
+        for anchor in soup.find_all("a", href=True):
+            href = str(anchor["href"])
 
             # Article hrefs are /articles/{id}--{slug}. The id requirement is
             # what keeps category and pagination links out.
-            if not re.search(r'/articles/\d+--', href):
+            if not re.search(r"/articles/\d+--", href):
                 continue
 
             url = urljoin(self.settings.portal_base_url, href)
@@ -158,24 +158,26 @@ class PdfDiscovery:
         try:
             soup = self._fetch_html(article_url)
         except DiscoveryError as exc:
-            log.warning('Article unavailable', extra={'url': article_url, 'error': str(exc)})
+            log.warning("Article unavailable", extra={"url": article_url, "error": str(exc)})
             return []
 
         pdfs: list[DiscoveredPdf] = []
 
-        for anchor in soup.find_all('a', href=True):
-            href = str(anchor['href'])
+        for anchor in soup.find_all("a", href=True):
+            href = str(anchor["href"])
             label = anchor.get_text(strip=True)
 
             if not self._looks_like_document(href, label):
                 continue
 
-            pdfs.append(DiscoveredPdf(
-                url=urljoin(self.settings.cms_base_url, href),
-                label=label or title,
-                article_url=article_url,
-                article_title=title,
-            ))
+            pdfs.append(
+                DiscoveredPdf(
+                    url=urljoin(self.settings.cms_base_url, href),
+                    label=label or title,
+                    article_url=article_url,
+                    article_title=title,
+                )
+            )
 
         return pdfs
 
@@ -204,4 +206,4 @@ class PdfDiscovery:
         except requests.RequestException as exc:
             raise DiscoveryError(str(exc)) from exc
 
-        return BeautifulSoup(response.text, 'lxml')
+        return BeautifulSoup(response.text, "lxml")
