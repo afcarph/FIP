@@ -82,3 +82,40 @@ class TestRunStatus:
 
         assert "rejected=2" in result.summary()
         assert "errors=0" in result.summary()
+
+
+class TestDiscoveringNothingIsNotAQuietWeek:
+    """Zero candidates from an API that answered is a failure, not calm.
+
+    The DOE's library holds price publications continuously, so a healthy
+    first page contains several of them whatever was published this week.
+    Finding none means the query came back useless.
+
+    Observed live on 8 August 2026: the CMS document count fell from 14,898 to
+    5,470 and climbed back over the following minutes while its search index
+    rebuilt. Discovery matched nothing throughout. Under the previous rule
+    that run would have been recorded as `no_changes` — the platform quietly
+    not updating, and every signal green.
+    """
+
+    def test_no_candidates_at_all_is_a_failure(self) -> None:
+        result = PipelineResult()
+        result.discovered = 0
+
+        assert result.status() == ImportRun.STATUS_FAILED
+
+    def test_candidates_found_but_none_usable_is_still_a_failure(self) -> None:
+        result = PipelineResult()
+        result.discovered = 9
+        result.rejections = ["a.pdf: unreadable"]
+
+        assert result.status() == ImportRun.STATUS_FAILED
+
+    def test_a_genuinely_quiet_week_still_reads_as_no_changes(self) -> None:
+        # Documents found and already held. The normal outcome on six mornings
+        # out of seven, and it must stay quiet or nobody reads the status.
+        result = PipelineResult()
+        result.discovered = 9
+        result.skipped = 9
+
+        assert result.status() == ImportRun.STATUS_NO_CHANGES

@@ -181,7 +181,11 @@ def store_report(
         entry.coverage_start = report.coverage_start
         entry.pdf_filename = filename
         entry.pdf_path = pdf_path
-        entry.source_url = source_url
+        # Never downgrade provenance to nothing. A replay reads a file off
+        # disk and has no URL to offer; overwriting with None strips the link
+        # to the published document from a report that had one, and a price
+        # with no provenance is a number someone has to take on trust.
+        entry.source_url = source_url or entry.source_url
         entry.updated_at = utcnow()
         log.info(
             "Replacing %s for the week of %s (re-issued document)",

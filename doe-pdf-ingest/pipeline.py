@@ -170,10 +170,21 @@ class PipelineResult:
             if self.skipped > 0:
                 return ImportRun.STATUS_NO_CHANGES
 
-            # Candidates were found and none could be used at all. Not a quiet
-            # week — a layout change, or a discovery query returning the wrong
-            # documents.
-            return ImportRun.STATUS_FAILED if self.discovered else ImportRun.STATUS_NO_CHANGES
+            # Nothing was found at all. This is *not* a quiet week: the DOE's
+            # library holds price publications continuously, and a healthy
+            # first page contains several whatever was published this week. So
+            # zero candidates from an API that answered means the query came
+            # back useless — the CMS reindexing (its document count was
+            # observed falling from 14,898 to 5,470 and climbing back during a
+            # rebuild on 8 Aug 2026), a changed grammar, a moved site.
+            #
+            # Reading that as `no_changes` is how a platform stops updating
+            # and still looks healthy, which is the failure this whole status
+            # vocabulary exists to prevent.
+            #
+            # Candidates found but none usable is equally a failure: a layout
+            # change, or a query returning the wrong documents.
+            return ImportRun.STATUS_FAILED
 
         # Imported, but some documents were unusable. Worth seeing, not worth
         # paging for.

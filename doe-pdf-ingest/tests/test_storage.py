@@ -434,3 +434,46 @@ class TestReplayCanReimport:
         weeks = set(session.scalars(select(FuelReport.coverage_start)).all())
 
         assert date(2026, 1, 6) in weeks
+
+
+class TestProvenanceSurvivesAReplay:
+    def test_a_replay_does_not_strip_the_source_url(self, session: Session) -> None:
+        # A replay reads from disk and has no URL. Writing None over the one
+        # discovery recorded removed the link to the published PDF from every
+        # report in the archive at once.
+        store(session, a_report(), "f" * 64)
+
+        storage.store_report(
+            session,
+            a_report(),
+            checksum="f" * 64,
+            filename="f.pdf",
+            source_url=None,
+            pdf_path="/srv/doe-archive/pdfs/f/f.pdf",
+            allow_reimport=True,
+        )
+
+        stored = session.scalar(select(FuelReport).where(FuelReport.checksum == "f" * 64))
+
+        assert stored is not None
+        assert stored.source_url == "https://example.test/doc"
+        # The path, which a replay does know, is still updated.
+        assert stored.pdf_path == "/srv/doe-archive/pdfs/f/f.pdf"
+
+    def test_a_real_url_still_replaces_an_old_one(self, session: Session) -> None:
+        store(session, a_report(), "g" * 64)
+
+        storage.store_report(
+            session,
+            a_report(),
+            checksum="g" * 64,
+            filename="g.pdf",
+            source_url="https://prod-cms.doe.gov.ph/new",
+            pdf_path=None,
+            allow_reimport=True,
+        )
+
+        stored = session.scalar(select(FuelReport).where(FuelReport.checksum == "g" * 64))
+
+        assert stored is not None
+        assert stored.source_url == "https://prod-cms.doe.gov.ph/new"

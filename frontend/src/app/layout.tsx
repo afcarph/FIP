@@ -27,11 +27,14 @@ export const metadata: Metadata = {
   keywords: ['fuel prices', 'Philippines', 'DOE', 'fleet management', 'gas stations'],
   authors: [{ name: 'Fuel Intelligence Platform' }],
   manifest: '/manifest.json',
-  // One SVG for every size. A raster favicon set would need regenerating
-  // whenever the mark changes, and would drift from the header logo.
+  // Sized derivatives of fip-logo.png, generated from it rather than drawn
+  // separately, so they cannot drift from the artwork in the header.
   icons: {
-    icon: [{ url: '/fip-logo.svg', type: 'image/svg+xml' }],
-    apple: [{ url: '/fip-logo.svg' }],
+    icon: [
+      { url: '/fip-icon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/fip-icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/fip-icon-180.png', sizes: '180x180' }],
   },
   openGraph: {
     type: 'website',
