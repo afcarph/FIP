@@ -142,9 +142,16 @@ _COVERAGE = re.compile(
     re.IGNORECASE,
 )
 
-#: "Date of Monitoring: July 28-31, 2026"
+#: "Date of Monitoring: July 28-31, 2026", or "August 04-10, 2026".
+#:
+#: The trailing year is captured because the Visayas layout prints this line on
+#: its last page and states no coverage week anywhere in the document — so
+#: there is no other year to borrow. The day range is matched but discarded:
+#: the DOE monitors over several days and records the first.
 _MONITORING = re.compile(
-    rf"date\s+of\s+monitoring:?\s*({_MONTHS})\s+(\d{{1,2}})",
+    rf"date\s+of\s+monitoring:?\s*({_MONTHS})\s+(\d{{1,2}})"
+    rf"(?:\s*[-–]\s*(?:{_MONTHS}\s+)?\d{{1,2}})?"
+    rf"\s*,?\s*(\d{{4}})?",
     re.IGNORECASE,
 )
 
@@ -346,18 +353,41 @@ def parse_header(text: str) -> tuple[str | None, date | None, date | None, date 
         except ValueError:
             start = end = None
 
-    monitoring = None
+    return region, start, end, monitoring_date(text, fallback_year=start.year if start else None)
+
+
+def monitoring_date(text: str, fallback_year: int | None = None) -> date | None:
+    """The date the DOE walked the forecourts, if the document states it.
+
+    Separate from [`parse_header`] because the two layouts supply the year from
+    different places. NCR prints the coverage week and the monitoring date
+    together at the top; the Visayas report prints no coverage week at all and
+    puts the monitoring line on its last page, carrying its own year. Requiring
+    a coverage start before reading this line — as this did — silently dropped
+    the date for every Visayas report, which is where `monitoring_date` being
+    null for all of REGIONS 6-8 came from.
+    """
     monitored = _MONITORING.search(text)
 
-    if monitored and start:
-        try:
-            monitoring = date(
-                start.year, _month_number(monitored.group(1)), int(monitored.group(2))
-            )
-        except ValueError:
-            monitoring = None
+    if not monitored:
+        return None
 
-    return region, start, end, monitoring
+    year = monitored.group(3)
+
+    if year is None and fallback_year is None:
+        # Better absent than invented. A monitoring date in the wrong year
+        # fails validation against the coverage week and takes the whole
+        # report down with it.
+        return None
+
+    try:
+        return date(
+            int(year) if year else int(fallback_year),  # type: ignore[arg-type]
+            _month_number(monitored.group(1)),
+            int(monitored.group(2)),
+        )
+    except ValueError:
+        return None
 
 
 # --- the coordinate extractor -------------------------------------------------
@@ -483,6 +513,11 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
             report.warnings.append(
                 f"Coverage not stated in the document; taken from the filename: {start}..{end}"
             )
+
+            # Retried now that a year exists. A layout with no coverage week is
+            # exactly the one whose monitoring line may print no year either,
+            # and the first attempt had nothing to resolve it against.
+            monitoring = monitoring or monitoring_date(joined, fallback_year=start.year)
 
     report.region = region
     report.coverage_start = start

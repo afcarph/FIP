@@ -357,6 +357,41 @@ def replay(path: Path, settings: Settings | None = None) -> PipelineResult:
     return result
 
 
+def replay_all(directory: Path) -> PipelineResult:
+    """Re-extract every PDF under a directory.
+
+    An extractor fix only reaches data already stored if the documents it got
+    wrong are run through it again. Fixing the reader and leaving the rows
+    alone means the defect stays in the database and the tests say it is gone.
+
+    Failures do not stop the walk: one unreadable document in an archive of
+    fifty should not leave the other forty-nine unrepaired.
+    """
+    combined = PipelineResult()
+    paths = sorted(directory.rglob("*.pdf"))
+
+    log.info("Replaying %d stored PDFs under %s", len(paths), directory)
+
+    for path in paths:
+        try:
+            outcome = replay(path)
+        except Exception as exc:  # one bad document must not stop the rest
+            log.warning("Replay failed for %s: %s", path.name, exc)
+            combined.errors.append(f"{path.name}: {exc}")
+            continue
+
+        combined.discovered += outcome.discovered
+        combined.imported += outcome.imported
+        combined.skipped += outcome.skipped
+        combined.records += outcome.records
+        combined.errors.extend(outcome.errors)
+        combined.rejections.extend(outcome.rejections)
+
+    log.info("Replay of %s finished: %s", directory, combined.summary())
+
+    return combined
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pipeline",
@@ -365,7 +400,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true", help="extract and report, write nothing")
     parser.add_argument("--backfill", action="store_true", help="walk the whole listing archive")
     parser.add_argument("--url", help="ingest one PDF by URL")
-    parser.add_argument("--replay", type=Path, metavar="PATH", help="re-extract a stored PDF")
+    parser.add_argument(
+        "--replay",
+        type=Path,
+        metavar="PATH",
+        help="re-extract a stored PDF, or every PDF under a directory",
+    )
 
     return parser
 
@@ -374,7 +414,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
 
     if args.replay:
-        result = replay(args.replay)
+        result = replay_all(args.replay) if args.replay.is_dir() else replay(args.replay)
     else:
         result = run(dry_run=args.dry_run, backfill=args.backfill, url=args.url)
 
