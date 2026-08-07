@@ -127,6 +127,13 @@ services:
       # Bind mount for hot reload; the vendor directory stays in the image.
       - ../backend:/var/www/html
       - /var/www/html/vendor
+      # The PDF archive, read-only. The health endpoint reports its size so an
+      # operator can watch it grow — and see it stop. Without the mount the
+      # check inspects a path inside the container that nothing writes to and
+      # reports an empty archive while the real one holds every source
+      # document. Read-only because the API has no business writing here; the
+      # ingest owns it.
+      - ${DOE_PDF_ARCHIVE_PATH:-/srv/doe-archive/pdfs}:/srv/doe-archive/pdfs:ro
       # The root .env is the single source of truth for the stack, so it is
       # also what the app reads inside the container. Without this the bind
       # mount brings backend/.env along -- a developer's local file, meant for

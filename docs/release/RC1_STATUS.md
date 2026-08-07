@@ -3,12 +3,12 @@
 Assessed 7 August 2026 against staging (`https://fip.nelleeph.com`) and the
 working tree.
 
-**Production readiness: 5 / 10.** Revised down from 7 after inspecting the
-staging host on 8 August. Everything in RC1 is written, tested and merged, and
-none of it is running — but the larger finding is that **the ingest service has
-never been deployed anywhere**, and the PDF archive it depends on exists only
-on one developer laptop. That is not a deployment step; it is missing
-infrastructure.
+**Production readiness: 7 / 10.** RC1 is deployed to staging and running.
+`https://fip.nelleeph.com` serves the dashboard and `/api/v1/health` over TLS
+1.3; the ingest runs as a scheduled container; the PDF archive is on the server
+with verified backups and a restore test. What holds the score at 7 rather than
+higher is stated under Remaining risks: no off-site copy, no alerting on a
+region going quiet, and the branch is still not in the shared remote.
 
 ## Completed
 
@@ -66,41 +66,48 @@ Measured on staging, 7 Aug 2026.
 Per-phase breakdown is **not yet available** — the columns exist but no run has
 populated them. The first scheduled run after deployment will.
 
-## Found on inspection, 8 August
+## Deployed, 8 August
 
-Inspecting the staging host directly, rather than trusting the checklist:
+| Surface | State |
+|---|---|
+| `https://fip.nelleeph.com/doe` and the three pages under it | 200, live data |
+| `/api/v1/health` | 200 `ok` — database, scheduler, disk, archive |
+| `/api/health` | 200, shallow liveness |
+| `/api/v1/admin/system` | 401 unauthenticated, as intended |
+| TLS | 1.3, HSTS preload, CSP, X-Frame-Options DENY |
+| Rate limiting | 60/min, decrementing |
+| `fip:check-config` | all checks pass |
+| Ingest | containerised, next run 06:00 Asia/Manila |
+| Archive | `/srv/doe-archive`, 76 files, nightly snapshot, weekly restore test |
 
-**The DOE ingest is not installed on staging.** No `.env`, no cron entry, no
-container. `/opt/fip/doe-pdf-ingest` is only the source, checked out with the
-rest of the repository. The 6 reports and 3,393 prices in the staging database
-were imported by running `pipeline.py` from a laptop against the staging
-database — three manual runs, the last on 7 August.
+Data held: **43 reports, 32,100 prices**, 7 Oct 2025 → 4 Aug 2026, every report
+carrying a monitoring date.
 
-**The PDF archive is on that laptop.** 76 files, 111 MB, in a git-ignored
-directory. It exists nowhere else. The DOE does not keep superseded weeks
-accessible, so for any week they have since replaced, those files are the only
-copy in existence — and a `git clean`, a full disk or a lost machine ends them.
-Re-extraction, `--replay`, and every recovery procedure in
-[recovery.md](../runbooks/recovery.md) depend on this directory.
+### Found by deploying, and fixed
 
-**Nothing is scheduled.** The health endpoint's scheduler check would report
-`down` roughly 26 hours after that last manual run, which has now passed. It is
-reporting correctly; there is simply no scheduler.
+Three defects that only appeared once the code was running on the host.
 
-This changes the shape of the remaining work. Deploying RC1 is a morning's
-work. Standing the ingest up as a scheduled service with a persistent,
-backed-up archive is a prerequisite for calling any of this production-ready,
-and it was not on the RC1 list because the list assumed it already existed.
+**Ingest timestamps were read eight hours out.** The ingest writes naive UTC —
+MySQL DATETIME carries no zone — and Laravel cast the same digits in
+Asia/Manila. A run 56 minutes old reported as 8 hours old, and the staleness
+check that guards against a dead scheduler is built on exactly that number.
+
+**The health endpoint reported an empty archive.** It inspected a path inside
+the API container that nothing writes to, while the real archive sat on the
+host with 76 files. The archive is now mounted read-only into the container.
+
+**`fip:check-config` failed a correctly configured host**, because it tested
+the archive for write access. The API only reports on the archive; the ingest
+owns it and the read-only mount is deliberate.
 
 ## Known issues
 
 | Issue | Severity | Position |
 |---|---|---|
-| **The ingest is not deployed anywhere; no schedule** | **Critical** | Missing infrastructure, not a deploy step |
-| **The PDF archive exists only on one laptop** (76 files, 111 MB, git-ignored) | **Critical** | Irreplaceable for weeks the DOE has superseded |
-| **RC1 is not deployed to staging.** `/api/v1/health` returns 404 there | High | Deployment step. Migration + code + frontend rebuild |
-| **The deployed web client is stale.** `https://fip.nelleeph.com/doe` returns 404 | High | The build predates the DOE dashboard; needs `npm run build` and reload |
-| **`/admin/system` never rendered against a live session** | Medium | Needs an admin account, which is yours to create. The endpoint is covered by tests; the page is not |
+| **No off-site copy of the archive** | **High** | `ARCHIVE_S3_BUCKET` unset. Snapshots share a disk with the archive |
+| **The branch is not in the shared remote** | **High** | Deployed by rsync. `/opt/fip` is ahead of origin, and `/srv/fip-ingest/src` is a copy rather than a checkout |
+| **`/admin/system` never rendered against a live session** | Medium | Needs an admin account, which is yours to create. The endpoint is covered by tests and returns 401 correctly; the page is not |
+| **No alerting when a region goes quiet** | Medium | The health check covers a dead scheduler, not a region that stops updating |
 | North Luzon and Southern Luzon LPG documents rejected every run | Low | By design. Scans with an OCR text layer — see the investigation |
 | No NCR report for 4–10 Aug | None | Not a fault. Due ~9 Aug on the observed five-day lag |
 | Phase timings unpopulated on existing rows | Low | Nullable by design; older runs measured nothing |
@@ -165,6 +172,6 @@ Ordered. Stop on any failure.
 | Observability | 8 | Per-phase timings, health, operator dashboard — all built, none yet exercised |
 | Security | 8 | TLS, HSTS, CSP, rate limiting verified live; config gate added. No pen test, no secret rotation policy |
 | Operability | 7 | Two runbooks, replay path, kept originals. No alerting on a region going quiet |
-| Deployment readiness | 2 | Nothing is deployed, the live web client is stale, and the ingest has no home |
-| Data durability | 2 | The only copy of the source archive is a laptop directory that git ignores |
-| **Overall** | **5** | The software is sound. The operational base it assumes does not exist yet |
+| Deployment readiness | 7 | Deployed and verified end to end, but by rsync rather than from the shared remote |
+| Data durability | 6 | Archive on the server, snapshotted nightly, restore proven. No off-site copy |
+| **Overall** | **7** | Running and verified. The gaps left are operational, and named |

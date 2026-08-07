@@ -195,9 +195,12 @@ class CheckProductionConfig extends Command
             return;
         }
 
-        is_writable($path)
+        // Readable, not writable. The API only reports on the archive — the
+        // ingest owns it and mounts it read-only here on purpose, so checking
+        // for write access fails a correctly configured host.
+        is_readable($path)
             ? $this->ok('DOE archive', $path)
-            : $this->bad('DOE archive', "{$path} is not writable; the ingest cannot keep originals.");
+            : $this->bad('DOE archive', "{$path} is not readable; the health endpoint cannot report on it.");
     }
 
     // -- output ---------------------------------------------------------------

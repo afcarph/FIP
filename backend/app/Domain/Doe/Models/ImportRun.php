@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Doe\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -52,8 +53,9 @@ class ImportRun extends Model
     protected function casts(): array
     {
         return [
-            'started_at' => 'datetime',
-            'finished_at' => 'datetime',
+            // started_at and finished_at are deliberately absent — see the
+            // accessors below. Casting them as `datetime` reads them in the
+            // application timezone, and the ingest writes them in UTC.
             'duration_seconds' => 'float',
             'pdfs_discovered' => 'integer',
             'pdfs_downloaded' => 'integer',
@@ -71,6 +73,35 @@ class ImportRun extends Model
             'total_duration_ms' => 'integer',
             'graphql_pages' => 'integer',
         ];
+    }
+
+    /**
+     * Read as UTC, because that is how they are written.
+     *
+     * The Python ingest stores naive UTC in these columns — MySQL DATETIME
+     * carries no zone, so an aware value would read back naive anyway. The
+     * default `datetime` cast interprets the same digits in the application
+     * timezone, Asia/Manila, which moved every run eight hours into the past:
+     * a run 56 minutes old was reported as 8 hours old, and the staleness
+     * check that guards against a dead scheduler would have fired eight hours
+     * early — or, in the other direction, held its alarm eight hours too long.
+     */
+    protected function startedAt(): Attribute
+    {
+        return Attribute::make(
+            get: static fn (?string $value): ?Carbon => $value === null
+                ? null
+                : Carbon::parse($value, 'UTC'),
+        );
+    }
+
+    protected function finishedAt(): Attribute
+    {
+        return Attribute::make(
+            get: static fn (?string $value): ?Carbon => $value === null
+                ? null
+                : Carbon::parse($value, 'UTC'),
+        );
     }
 
     /**

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Domain\Doe\Models\ImportRun;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -102,6 +104,38 @@ class HealthEndpointTest extends TestCase
         $this->getJson('/api/health')
             ->assertOk()
             ->assertJsonPath('status', 'ok');
+    }
+
+    public function test_an_ingest_timestamp_is_read_as_utc(): void
+    {
+        // The ingest writes naive UTC — MySQL DATETIME carries no zone. Read
+        // in the application timezone instead, a run 56 minutes old was
+        // reported as 8 hours old, and the staleness check that guards
+        // against a dead scheduler is built on exactly that number.
+        config(['app.timezone' => 'Asia/Manila']);
+
+        $run = $this->importRun();
+        DB::table('doe_import_runs')->where('id', $run->id)->update([
+            'started_at' => CarbonImmutable::now('UTC')->subMinutes(56)->format('Y-m-d H:i:s'),
+        ]);
+
+        $reloaded = ImportRun::query()->find($run->id);
+
+        $this->assertNotNull($reloaded);
+        $this->assertSame('UTC', $reloaded->started_at->timezone->getName());
+        $this->assertLessThan(2, abs($reloaded->started_at->diffInHours(now())));
+    }
+
+    public function test_the_scheduler_age_matches_the_wall_clock(): void
+    {
+        $run = $this->importRun();
+        DB::table('doe_import_runs')->where('id', $run->id)->update([
+            'started_at' => CarbonImmutable::now('UTC')->subHours(3)->format('Y-m-d H:i:s'),
+        ]);
+
+        $this->getJson('/api/v1/health')
+            ->assertOk()
+            ->assertJsonPath('data.checks.scheduler.hours_since_last_run', 3);
     }
 
     public function test_the_system_dashboard_requires_authentication(): void
