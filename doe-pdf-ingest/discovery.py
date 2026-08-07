@@ -140,7 +140,7 @@ class PdfDiscovery:
         seen: set[str] = set()
         by_category: dict[str, list[DiscoveredPdf]] = {}
 
-        for category in self.settings.listing_categories:
+        for category in self.settings.listing_queries:
             for page in range(1, pages + 1):
                 url = self.settings.listing_url(category, page)
 

@@ -51,10 +51,24 @@ class Settings(BaseSettings):
     portal_base_url: str = Field(default="https://doe.gov.ph")
     cms_base_url: str = Field(default="https://prod-cms.doe.gov.ph")
 
-    #: Listing pages to crawl, as query strings against
-    #: /articles/group/liquid-fuels. Price Monitoring carries the regional
-    #: tables; Oil Monitor carries the weekly national summary.
-    listing_categories: list[str] = Field(default=["Price Monitoring", "Oil Monitor"])
+    #: Listings to crawl, as query strings against /articles/group/liquid-fuels.
+    #:
+    #: Two shapes, because the DOE uses two. Most sections filter on
+    #: `category`, but the regional pump price pages filter on `maincat` plus
+    #: `subcategory` — and that is where NCR lives. Building only `category=`
+    #: URLs returned 1,849 documents and not one NCR report: they are not in
+    #: that view at all, rather than under a category name we had missed.
+    #:
+    #: Held as raw query strings rather than a name per entry, so a section
+    #: with a third grammar can be added without changing this module.
+    listing_queries: list[str] = Field(
+        default=[
+            "category=Price+Monitoring",
+            "maincat=Retail+Pump+Prices&subcategory=NCR+Pump+Prices",
+            "maincat=Retail+Pump+Prices&subcategory=Regional+Pump+Prices",
+            "category=Oil+Monitor",
+        ]
+    )
 
     #: How many listing pages back to walk on a normal run. One page covers
     #: roughly a fortnight, so two is enough to catch a week the scheduler
@@ -155,12 +169,12 @@ class Settings(BaseSettings):
         """The DSN with the password removed, for logs."""
         return f"mysql+pymysql://{self.db_user}:***@{self.db_host}:{self.db_port}/{self.db_name}"
 
-    def listing_url(self, category: str, page: int = 1) -> str:
-        """A listing page for one category."""
+    def listing_url(self, query: str, page: int = 1) -> str:
+        """A listing page for one query string."""
         suffix = f"&page={page}" if page > 1 else ""
+
         return (
-            f"{self.portal_base_url}/articles/group/liquid-fuels"
-            f"?category={category.replace(' ', '+')}&display_type=Card{suffix}"
+            f"{self.portal_base_url}/articles/group/liquid-fuels?{query}&display_type=Card{suffix}"
         )
 
 
