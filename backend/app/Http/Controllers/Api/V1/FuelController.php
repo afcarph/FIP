@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Doe\Models\FuelPrice;
+use App\Domain\Doe\Models\FuelReport;
 use App\Domain\Doe\Models\ImportRun;
 use App\Domain\Doe\Services\FuelReportQuery;
 use App\Http\Controllers\Controller;
@@ -190,6 +192,17 @@ class FuelController extends Controller
             'failed_runs' => $runs->where('status', ImportRun::STATUS_FAILED)->values(),
             'latest_reports' => FuelReportResource::collection($latest),
             'latest_publication_date' => $latest->max('coverage_start')?->toDateString(),
+
+            // Everything held, not just the current week. `records_total`
+            // below sums only the latest report per region, which is the right
+            // number for "what is on screen now" and the wrong one for
+            // "how much have we imported" — a dashboard asking the second
+            // question with the first answer understates by the whole archive.
+            'reports_total' => FuelReport::query()->count(),
+            'prices_total' => FuelPrice::query()->count(),
+            'regions_total' => FuelReport::query()->distinct()->count('region'),
+            'oldest_coverage_date' => FuelReport::query()->min('coverage_start'),
+
             'records_total' => (int) $latest->sum('rows_count'),
             'runs' => $runs,
         ]);
