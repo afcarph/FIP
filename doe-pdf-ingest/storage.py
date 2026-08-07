@@ -124,24 +124,42 @@ def store_report(
     filename: str,
     source_url: str | None,
     pdf_path: str | None,
+    allow_reimport: bool = False,
 ) -> StoreResult:
     """Write a report and its prices.
 
     Assumes the report has already passed validation — this module does not
     re-check what `validator` checked, so the two cannot disagree.
+
+    `allow_reimport` is what makes a replay mean anything. The checksum guard
+    below is right for a scheduled run, where seeing the same bytes twice
+    means the document is already held — but a replay exists precisely to run
+    a *fixed extractor* over bytes that have not changed. Without this, an
+    extractor fix could never reach a document already stored, the defect
+    would stay in the database, and the run would report success.
     """
-    if is_duplicate(session, checksum):
+    if not allow_reimport and is_duplicate(session, checksum):
         return StoreResult(skipped=True, reason="This PDF has already been imported.")
 
     assert report.region is not None  # guaranteed by validation
     assert report.coverage_start is not None
     assert report.coverage_end is not None
 
-    existing = session.scalar(
-        select(FuelReport)
-        .where(FuelReport.region == report.region)
-        .where(FuelReport.coverage_start == report.coverage_start)
-    )
+    # On a replay, find the row by checksum first. The same bytes are the same
+    # report whatever the extractor now makes of them, and a fix that changes
+    # the coverage week would otherwise look like a new report and collide
+    # with the old one on the checksum unique constraint.
+    existing = None
+
+    if allow_reimport:
+        existing = session.scalar(select(FuelReport).where(FuelReport.checksum == checksum))
+
+    if existing is None:
+        existing = session.scalar(
+            select(FuelReport)
+            .where(FuelReport.region == report.region)
+            .where(FuelReport.coverage_start == report.coverage_start)
+        )
 
     replaced = 0
 
@@ -157,6 +175,10 @@ def store_report(
 
         entry = existing
         entry.checksum = checksum
+        # Re-extraction can move these, and the row found by checksum is the
+        # one that has to move with them.
+        entry.region = report.region
+        entry.coverage_start = report.coverage_start
         entry.pdf_filename = filename
         entry.pdf_path = pdf_path
         entry.source_url = source_url

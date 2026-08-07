@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from extractor import extract, monitoring_date, parse_header
+from extractor import _coverage_corrected_by_monitoring, extract, monitoring_date, parse_header
 
 NCR = Path(__file__).parent / "fixtures" / "ncr-price-monitoring-07282026.pdf"
 VISAYAS = Path(__file__).parent / "fixtures" / "vfo-lf-price-monitoring-112525.pdf"
@@ -98,3 +98,54 @@ class TestItSurvivesValidation:
             assert report.coverage_start is not None
             assert report.monitoring_date is not None
             assert report.coverage_start <= report.monitoring_date <= report.coverage_end
+
+
+class TestAMistypedFilenameYear:
+    """The DOE mistypes filenames; the document is authoritative.
+
+    `vfo-lf-price-monitoring-010625` covers January **2026** — every sibling
+    file that month ends `26`, and the document inside states the monitoring
+    week as 2026 twice. Filed under the filename's year it lands a year out in
+    an archive people query by week.
+    """
+
+    def test_the_documents_year_wins_when_it_fixes_the_disagreement(self) -> None:
+        corrected = _coverage_corrected_by_monitoring(
+            date(2025, 1, 6), date(2025, 1, 12), date(2026, 1, 6)
+        )
+
+        assert corrected == (date(2026, 1, 6), date(2026, 1, 12))
+
+    def test_a_consistent_week_is_left_alone(self) -> None:
+        assert (
+            _coverage_corrected_by_monitoring(
+                date(2026, 8, 4), date(2026, 8, 10), date(2026, 8, 4)
+            )
+            is None
+        )
+
+    def test_a_disagreement_within_the_same_year_is_not_touched(self) -> None:
+        # Two genuinely different dates, not a mistyped year. Correcting here
+        # would be guessing; the validator reports it instead.
+        assert (
+            _coverage_corrected_by_monitoring(
+                date(2026, 8, 4), date(2026, 8, 10), date(2026, 3, 2)
+            )
+            is None
+        )
+
+    def test_no_monitoring_date_means_no_correction(self) -> None:
+        assert (
+            _coverage_corrected_by_monitoring(date(2025, 1, 6), date(2025, 1, 12), None)
+            is None
+        )
+
+    def test_a_shift_that_does_not_fix_it_is_refused(self) -> None:
+        # Right year, wrong month: shifting the year still leaves the
+        # monitoring date outside the week, so nothing is changed.
+        assert (
+            _coverage_corrected_by_monitoring(
+                date(2025, 1, 6), date(2025, 1, 12), date(2026, 6, 6)
+            )
+            is None
+        )

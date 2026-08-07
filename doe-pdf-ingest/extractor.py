@@ -393,6 +393,50 @@ def monitoring_date(text: str, fallback_year: int | None = None) -> date | None:
 # --- the coordinate extractor -------------------------------------------------
 
 
+def _coverage_corrected_by_monitoring(
+    start: date, end: date, monitoring: date | None
+) -> tuple[date, date] | None:
+    """Coverage shifted onto the monitoring date's year, or None to leave it.
+
+    The DOE mistypes filenames. `vfo-lf-price-monitoring-010625` covers
+    January 2026 — every sibling file that month ends `26` — and the document
+    inside states "Date of Monitoring: January 06, 2026 - January 12, 2026"
+    twice. Taking the filename at face value files a 2026 report under 2025,
+    a year out, in an archive people query by week.
+
+    This only applies where coverage came from the filename in the first
+    place, and only when moving it *fixes* the disagreement: the corrected
+    week has to contain the monitoring date. A filename and a document that
+    disagree for any other reason are left alone and reported by the
+    validator, because a correction that fires on an unexplained mismatch is
+    worse than the mismatch.
+    """
+    if monitoring is None:
+        return None
+
+    if start - timedelta(days=7) <= monitoring <= end:
+        return None  # already consistent; nothing to correct
+
+    offset = monitoring.year - start.year
+
+    if offset == 0:
+        # Same year, still outside the week. Two different dates, not a
+        # mistyped year — not this function's business.
+        return None
+
+    try:
+        shifted_start = start.replace(year=start.year + offset)
+        shifted_end = end.replace(year=end.year + offset)
+    except ValueError:
+        # 29 February in a year that has none.
+        return None
+
+    if shifted_start - timedelta(days=7) <= monitoring <= shifted_end:
+        return shifted_start, shifted_end
+
+    return None
+
+
 def coverage_from_filename(filename: str) -> tuple[date, date] | None:
     """A coverage week derived from a filename, or None.
 
@@ -518,6 +562,16 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
             # exactly the one whose monitoring line may print no year either,
             # and the first attempt had nothing to resolve it against.
             monitoring = monitoring or monitoring_date(joined, fallback_year=start.year)
+
+            corrected = _coverage_corrected_by_monitoring(start, end, monitoring)
+
+            if corrected is not None:
+                report.warnings.append(
+                    f"Filename gave {start}..{end}, but the document states a monitoring date "
+                    f"of {monitoring}; taking the document's year: "
+                    f"{corrected[0]}..{corrected[1]}"
+                )
+                start, end = corrected
 
     report.region = region
     report.coverage_start = start

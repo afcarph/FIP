@@ -381,3 +381,56 @@ class TestValidationFilters:
         stored = session.scalars(select(FuelPrice.min_price)).all()
 
         assert [float(value) for value in stored] == [79.5]
+
+
+class TestReplayCanReimport:
+    """A replay exists to run a fixed extractor over unchanged bytes.
+
+    The checksum guard is right for a scheduled run — the same bytes mean the
+    document is already held. It is wrong for a replay, and while it applied
+    there too an extractor fix could never reach a document already stored:
+    the defect stayed in the database while the run reported success.
+    """
+
+    def test_the_checksum_guard_still_skips_a_normal_import(self, session: Session) -> None:
+        assert store(session, a_report(), "c" * 64).skipped is False
+        assert store(session, a_report(), "c" * 64).skipped is True
+
+    def test_a_replay_re_imports_the_same_bytes(self, session: Session) -> None:
+        store(session, a_report(), "d" * 64)
+
+        replayed = storage.store_report(
+            session,
+            a_report(),
+            checksum="d" * 64,
+            filename="d.pdf",
+            source_url=None,
+            pdf_path=None,
+            allow_reimport=True,
+        )
+
+        assert replayed.skipped is False
+
+    def test_a_replay_applies_a_corrected_coverage_week(self, session: Session) -> None:
+        # The case that found this. Two reports were filed a year out because
+        # the DOE mistyped the filename; the extractor was fixed, the replay
+        # reported success, and the database did not change.
+        store(
+            session,
+            a_report(coverage_start=date(2025, 1, 6), coverage_end=date(2025, 1, 12)),
+            "e" * 64,
+        )
+
+        storage.store_report(
+            session,
+            a_report(coverage_start=date(2026, 1, 6), coverage_end=date(2026, 1, 12)),
+            checksum="e" * 64,
+            filename="e.pdf",
+            source_url=None,
+            pdf_path=None,
+            allow_reimport=True,
+        )
+
+        weeks = set(session.scalars(select(FuelReport.coverage_start)).all())
+
+        assert date(2026, 1, 6) in weeks

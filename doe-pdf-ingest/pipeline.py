@@ -421,8 +421,10 @@ def replay(path: Path, settings: Settings | None = None) -> PipelineResult:
         return result
 
     with session_scope() as session:
-        # Not the duplicate guard: a replay exists precisely to re-import a
-        # document already stored, after the extractor has been fixed.
+        # allow_reimport is the point of a replay: re-read bytes that have
+        # not changed with an extractor that has. Without it the checksum
+        # guard inside store_report silently skips every document already
+        # held, which is every document a replay is aimed at.
         stored = store_report(
             session,
             report,
@@ -430,6 +432,7 @@ def replay(path: Path, settings: Settings | None = None) -> PipelineResult:
             filename=path.name,
             source_url=None,
             pdf_path=str(path),
+            allow_reimport=True,
         )
 
     if stored.skipped:

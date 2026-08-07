@@ -26,20 +26,24 @@ services:
       DOE_LOG_LEVEL: ${DOE_LOG_LEVEL:-INFO}
       DOE_LOG_JSON: ${DOE_LOG_JSON:-false}
       DOE_NOTIFY_WEBHOOK_URL: ${DOE_NOTIFY_WEBHOOK_URL:-}
+    # The container's own user owns /app, but the two directories it writes to
+    # are bind-mounted from the host and owned there. Running as the host's
+    # owner is what lets an operator read the logs and back the archive up
+    # without sudo.
+    user: "${DOE_UID:-10001}:${DOE_GID:-10001}"
     volumes:
-      - ./logs:/app/logs
-      # The stored PDFs, on a named volume so a container rebuild does not
-      # discard them. They are the only way to re-extract a past week — the DOE
-      # keeps no accessible archive of superseded publications.
-      - doe-pdfs:/app/storage/pdfs
+      - ${DOE_LOG_DIR:-./logs}:/app/logs
+      # The archive, bind-mounted from a directory outside any application
+      # checkout and covered by the nightly snapshot job. A named volume was
+      # safe from a container rebuild and invisible to the backup — and these
+      # PDFs are the only way to re-extract a past week, because the DOE keeps
+      # no accessible archive of superseded publications.
+      - ${DOE_ARCHIVE_DIR:-./storage/pdfs}:/app/storage/pdfs
     # Reaches the platform's MySQL, which runs in the main compose project.
     networks:
       - fip
 
-volumes:
-  doe-pdfs:
-
 networks:
   fip:
     external: true
-    name: ${FIP_NETWORK:-fip_default}
+    name: ${FIP_NETWORK:-fip_fip}
