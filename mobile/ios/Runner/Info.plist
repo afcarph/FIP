@@ -14,6 +14,26 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- The staging host serves plain HTTP on an IP with no certificate, so
+		     ATS blocks it outright. Scoped to that one host: NSAllowsArbitraryLoads
+		     would disable transport security for every request the app makes,
+		     including production. Remove this entry once staging has TLS. -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>54.179.40.243</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 	<key>CFBundleName</key>
 	<string>fip_mobile</string>
 	<key>CFBundlePackageType</key>

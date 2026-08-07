@@ -5,6 +5,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'features/assistant/presentation/assistant_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
+import 'features/doe/presentation/doe_history_screen.dart';
+import 'features/doe/presentation/doe_home_screen.dart';
+import 'features/doe/presentation/doe_search_screen.dart';
+import 'features/doe/presentation/doe_settings_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/expenses/presentation/expenses_screen.dart';
 import 'features/map/presentation/map_screen.dart';
@@ -20,14 +24,19 @@ final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    // The DOE section is the UAT surface and needs no account. Landing on
+    // /dashboard would bounce a signed-out tester to /login with no route to
+    // the screens they were asked to test.
+    initialLocation: '/doe',
     redirect: (context, state) {
       // Hold the splash until the stored token has been checked, otherwise a
       // signed-in user is briefly bounced to the login screen.
       if (auth.isLoading) return null;
 
       const publicRoutes = {'/login', '/register', '/map'};
-      final isPublic = publicRoutes.contains(state.matchedLocation);
+      final isPublic =
+          publicRoutes.contains(state.matchedLocation) ||
+          state.matchedLocation.startsWith('/doe');
 
       if (!auth.isAuthenticated && !isPublic) return '/login';
       if (auth.isAuthenticated && state.matchedLocation == '/login') return '/dashboard';
@@ -36,6 +45,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+
+      // The DOE section. Public, like the map: every /fuel endpoint is served
+      // without a token, so requiring an account to read the department's own
+      // published figures would impose friction the API does not.
+      ShellRoute(
+        builder: (context, state, child) => _DoeScaffold(child: child),
+        routes: [
+          GoRoute(path: '/doe', builder: (context, state) => const DoeHomeScreen()),
+          GoRoute(path: '/doe/search', builder: (context, state) => const DoeSearchScreen()),
+          GoRoute(path: '/doe/history', builder: (context, state) => const DoeHistoryScreen()),
+          GoRoute(path: '/doe/settings', builder: (context, state) => const DoeSettingsScreen()),
+        ],
+      ),
       ShellRoute(
         builder: (context, state, child) => _AppScaffold(child: child),
         routes: [
@@ -70,6 +92,48 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
   );
 });
+
+/// Bottom navigation for the DOE section.
+///
+/// Separate from [_AppScaffold] rather than folded into it: these four screens
+/// read the department's published weekly figures and are browsable signed
+/// out, while the app's own destinations all need an account. One bar covering
+/// both would offer a signed-out tester three tabs that bounce to login.
+class _DoeScaffold extends StatelessWidget {
+  const _DoeScaffold({required this.child});
+
+  final Widget child;
+
+  static const _destinations = [
+    (path: '/doe', icon: LucideIcons.house, label: 'Home'),
+    (path: '/doe/search', icon: LucideIcons.search, label: 'Search'),
+    (path: '/doe/history', icon: LucideIcons.chartLine, label: 'History'),
+    (path: '/doe/settings', icon: LucideIcons.settings, label: 'Settings'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+
+    // Longest match first, so /doe/search does not select Home.
+    var index = 0;
+    for (var i = 0; i < _destinations.length; i++) {
+      if (location == _destinations[i].path) index = i;
+    }
+
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (selected) => context.go(_destinations[selected].path),
+        destinations: [
+          for (final destination in _destinations)
+            NavigationDestination(icon: Icon(destination.icon), label: destination.label),
+        ],
+      ),
+    );
+  }
+}
 
 /// Bottom navigation shell.
 ///

@@ -19,9 +19,10 @@ import 'api_exception.dart';
 /// * **Queued retries.** Requests that hit a 401 during a refresh are held
 ///   and replayed with the new token rather than failing the screen.
 class ApiClient {
-  ApiClient({FlutterSecureStorage? storage, Dio? dio})
+  ApiClient({FlutterSecureStorage? storage, Dio? dio, String? baseUrl})
     : _storage = storage ?? const FlutterSecureStorage(),
-      _dio = dio ?? Dio() {
+      _dio = dio ?? Dio(),
+      _baseUrl = baseUrl ?? AppConfig.apiBaseUrl {
     _configure();
   }
 
@@ -30,6 +31,11 @@ class ApiClient {
 
   final Dio _dio;
   final FlutterSecureStorage _storage;
+
+  /// Resolved once at construction. A device override is applied here rather
+  /// than after the first request, so a build pointed at another host does not
+  /// fetch from the compile-time default first and swap mid-session.
+  final String _baseUrl;
 
   /// Non-null while a refresh is in flight; every concurrent 401 awaits it.
   Completer<bool>? _refreshCompleter;
@@ -41,7 +47,7 @@ class ApiClient {
 
   void _configure() {
     _dio.options = BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
+      baseUrl: _baseUrl,
       connectTimeout: AppConfig.connectTimeout,
       receiveTimeout: AppConfig.receiveTimeout,
       headers: {'Accept': 'application/json'},
@@ -203,6 +209,17 @@ class ApiClient {
     await _storage.write(key: _deviceKey, value: uuid);
 
     return uuid;
+  }
+
+  /// Repoint at a different host at run time.
+  ///
+  /// The base URL is normally a compile-time `String.fromEnvironment`, which is
+  /// right for a shipped build and impossible to change during acceptance
+  /// testing without reinstalling the app. Mutating the live Dio instance keeps
+  /// the compile-time value as the default while letting a tester move between
+  /// staging boxes.
+  void updateBaseUrl(String baseUrl) {
+    _dio.options.baseUrl = baseUrl;
   }
 
   // ------------------------------------------------------------ requests ---

@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
+import 'features/doe/data/uat_settings.dart';
 import 'router.dart';
+import 'shared/providers/app_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +34,16 @@ Future<void> main() async {
     );
   }
 
-  runApp(const ProviderScope(child: FipApp()));
+  // Resolved before the first build. A UAT tester who repointed the app is
+  // otherwise served one round of data from the compile-time host.
+  final apiBaseUrl = await resolveApiBaseUrl();
+
+  runApp(
+    ProviderScope(
+      overrides: [apiBaseUrlProvider.overrideWithValue(apiBaseUrl)],
+      child: const FipApp(),
+    ),
+  );
 }
 
 class FipApp extends ConsumerWidget {
@@ -41,14 +52,15 @@ class FipApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final settings = ref.watch(uatSettingsProvider);
 
     return MaterialApp.router(
       title: 'Fuel Intelligence Platform',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      // Follow the OS preference; a manual override lives in Settings.
-      themeMode: ThemeMode.system,
+      // Follows the OS preference until Settings says otherwise.
+      themeMode: settings.themeMode,
       routerConfig: router,
       builder: (context, child) {
         // Clamp text scaling: beyond 1.4 the dense price tables break, and

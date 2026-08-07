@@ -96,7 +96,7 @@ void main() {
     });
 
     test('an existing identifier is reused rather than regenerated', () async {
-      final storage = _RacyStorage({'fip.device_uuid': 'stored-uuid'}, {});
+      const storage = _RacyStorage({'fip.device_uuid': 'stored-uuid'}, {});
       final client = ApiClient(storage: storage);
 
       expect(await client.deviceUuid(), 'stored-uuid');

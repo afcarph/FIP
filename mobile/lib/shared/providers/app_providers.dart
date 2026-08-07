@@ -9,7 +9,15 @@ import '../../core/network/api_client.dart';
 
 /// Single client instance for the whole app — it owns the token and the
 /// shared refresh lock, so a second instance would defeat both.
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+/// The API host. Overridden in `main()` when a UAT tester has repointed the
+/// app, and otherwise the compile-time default.
+final apiBaseUrlProvider = Provider<String>((ref) => AppConfig.apiBaseUrl);
+
+// Reads rather than watches: the value is fixed for the process, and watching
+// would rebuild the client — and with it the auth notifier — on any refresh.
+final apiClientProvider = Provider<ApiClient>(
+  (ref) => ApiClient(baseUrl: ref.read(apiBaseUrlProvider)),
+);
 
 // ------------------------------------------------------------------ auth ---
 
