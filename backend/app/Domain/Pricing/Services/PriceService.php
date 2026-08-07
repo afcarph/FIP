@@ -57,6 +57,20 @@ final readonly class PriceService
                 ->lockForUpdate()
                 ->first();
 
+            // Re-recording a reading we already hold is a no-op, not an
+            // update. `supersedes()` below answers a different question —
+            // whether this source may *replace* the stored price — and for an
+            // identical reading it says yes: same rank, same effective time,
+            // equal confidence. That is correct for precedence and wrong for
+            // identity, and the result is a second, duplicate row in
+            // fuel_price_history every time the same data arrives twice.
+            //
+            // Which happens routinely: a retried job, a cron that overlapped,
+            // an import replayed from a stored payload after a parser fix.
+            if ($existing !== null && $this->isSameReading($existing, $price, $source, $effectiveAt)) {
+                return $existing;
+            }
+
             // A lower-confidence source must not overwrite a fresher, more
             // authoritative price (e.g. a crowd guess beating an operator feed).
             if ($existing !== null && ! $this->supersedes($existing, $source, $confidence, $effectiveAt)) {
@@ -183,6 +197,28 @@ final readonly class PriceService
      * newer, more confident reading wins; a stale reading never overwrites a
      * fresher one regardless of confidence.
      */
+    /**
+     * Whether this is the reading already stored, rather than a new one.
+     *
+     * Price is compared at four decimal places, the column's own scale: the
+     * stored value comes back as a decimal string and the incoming one is a
+     * float, so `==` reports 56.85 and 56.8500 as different and every replay
+     * would write history again.
+     */
+    private function isSameReading(
+        StationPrice $existing,
+        float $price,
+        string $source,
+        \DateTimeInterface $effectiveAt,
+    ): bool {
+        // Compared to the second. The column stores no microseconds, so a
+        // value read back is never exactly equal to the in-memory Carbon it
+        // was written from, and an exact comparison would never match.
+        return $existing->source === $source
+            && $existing->effective_at?->getTimestamp() === $effectiveAt->getTimestamp()
+            && round((float) $existing->price, 4) === round($price, 4);
+    }
+
     private function supersedes(StationPrice $existing, string $source, float $confidence, \DateTimeInterface $effectiveAt): bool
     {
         if ($effectiveAt < $existing->effective_at) {

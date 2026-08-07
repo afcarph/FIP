@@ -111,4 +111,50 @@ class PriceServiceTest extends TestCase
 
         $this->service->recordPrice($this->station, $this->fuelType->id, 1500.00, 'operator');
     }
+
+    public function test_recording_the_same_reading_twice_archives_it_once(): void
+    {
+        // Identity, not precedence. `supersedes()` correctly says an equal
+        // source at an equal time with equal confidence may replace the stored
+        // price — but for a reading that is byte-for-byte the one already held,
+        // "replacing" it means a second, duplicate row in fuel_price_history.
+        //
+        // This is the invariant every idempotent caller depends on: a retried
+        // job, an overlapping cron, a DOE batch replayed from its stored
+        // payload after a parser fix.
+        $effectiveAt = now()->subHour();
+
+        $this->service->recordPrice($this->station, $this->fuelType->id, 56.85, 'doe', 1.0, null, $effectiveAt);
+        $before = FuelPriceHistory::count();
+
+        $this->service->recordPrice($this->station, $this->fuelType->id, 56.85, 'doe', 1.0, null, $effectiveAt);
+
+        $this->assertSame($before, FuelPriceHistory::count());
+        $this->assertSame(1, StationPrice::count());
+    }
+
+    public function test_a_changed_price_at_the_same_time_is_still_recorded(): void
+    {
+        // The correction case. Suppressing a genuine restatement because the
+        // effective time matched would silently drop a fix.
+        $effectiveAt = now()->subHour();
+
+        $this->service->recordPrice($this->station, $this->fuelType->id, 56.85, 'doe', 1.0, null, $effectiveAt);
+        $result = $this->service->recordPrice($this->station, $this->fuelType->id, 57.10, 'doe', 1.0, null, $effectiveAt);
+
+        $this->assertSame(57.10, (float) $result->price);
+        $this->assertSame(2, FuelPriceHistory::count());
+    }
+
+    public function test_the_same_price_from_a_different_source_is_still_recorded(): void
+    {
+        // An operator confirming what the DOE published is new information —
+        // it changes which source the stored price is attributed to.
+        $effectiveAt = now()->subHour();
+
+        $this->service->recordPrice($this->station, $this->fuelType->id, 56.85, 'doe', 1.0, null, $effectiveAt);
+        $result = $this->service->recordPrice($this->station, $this->fuelType->id, 56.85, 'operator', 1.0, null, $effectiveAt);
+
+        $this->assertSame('operator', $result->source);
+    }
 }
