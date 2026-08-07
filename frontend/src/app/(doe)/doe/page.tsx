@@ -283,7 +283,10 @@ export default function DoeDashboardPage() {
               icon={Database}
               label="Fuel price records"
               value={(data?.prices_total ?? 0).toLocaleString()}
-              hint={`${(data?.records_total ?? 0).toLocaleString()} in the current week`}
+              // Not "this week": records_total counts the newest report held
+              // for each region, and those regions are not always on the same
+              // week — NCR can lag Regions 6-8 by one publication.
+              hint={`${(data?.records_total ?? 0).toLocaleString()} in the latest report per region`}
             />
             <StatCard
               icon={Globe2}
