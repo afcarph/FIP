@@ -97,6 +97,28 @@ class DiscoveredPdf:
         return name if name.lower().endswith(".pdf") else f"{name}.pdf"
 
 
+def _interleave(by_category: dict[str, list[DiscoveredPdf]]) -> list[DiscoveredPdf]:
+    """Round-robin the categories together, newest first within each.
+
+    A run processes only the first N candidates, and the listings hold the
+    whole archive — so concatenating the categories lets whichever comes first
+    spend the entire budget. On the first live import that was Price
+    Monitoring, and all forty reports were Visayas: NCR never got a look in
+    despite being published that morning.
+
+    Interleaving makes any prefix of the list proportionate across categories.
+    """
+    ordered: list[DiscoveredPdf] = []
+    queues = [list(items) for items in by_category.values()]
+
+    while any(queues):
+        for queue in queues:
+            if queue:
+                ordered.append(queue.pop(0))
+
+    return ordered
+
+
 class PdfDiscovery:
     """Crawls the DOE article listings for PDF attachments."""
 
@@ -116,7 +138,7 @@ class PdfDiscovery:
         """
         pages = pages or self.settings.listing_pages
         seen: set[str] = set()
-        found: list[DiscoveredPdf] = []
+        by_category: dict[str, list[DiscoveredPdf]] = {}
 
         for category in self.settings.listing_categories:
             for page in range(1, pages + 1):
@@ -140,9 +162,18 @@ class PdfDiscovery:
                         continue
 
                     seen.add(pdf.url)
-                    found.append(pdf)
+                    by_category.setdefault(category, []).append(pdf)
 
-        log.info("Discovery finished", extra={"pdfs": len(found), "pages": pages})
+        found = _interleave(by_category)
+
+        log.info(
+            "Discovery finished",
+            extra={
+                "pdfs": len(found),
+                "pages": pages,
+                "per_category": {name: len(items) for name, items in by_category.items()},
+            },
+        )
 
         return found
 
