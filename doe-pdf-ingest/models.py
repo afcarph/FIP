@@ -141,6 +141,12 @@ class FuelPrice(Base):
     #: City or municipality as the DOE prints it.
     area: Mapped[str] = mapped_column(String(160), nullable=False)
 
+    #: Only the layouts that publish one — the Visayas reports group cities by
+    #: province, NCR does not. Nullable for that reason, and worth storing:
+    #: two municipalities can share a name across provinces, and without it
+    #: their rows would collide on the unique key below.
+    province: Mapped[str | None] = mapped_column(String(160))
+
     #: The DOE's own product label, kept verbatim for traceability.
     product: Mapped[str] = mapped_column(String(40), nullable=False)
     #: The platform's `fuel_types.code`. Resolved at extraction so this lands
@@ -171,6 +177,7 @@ class FuelPrice(Base):
         # covers it without a sentinel brand value that every query would then
         # have to filter out.
         UniqueConstraint("report_id", "area", "product", "brand", name="uq_fuel_prices_cell"),
+        Index("ix_fuel_prices_province", "province"),
         Index("ix_fuel_prices_report", "report_id"),
         Index("ix_fuel_prices_area", "area"),
         Index("ix_fuel_prices_brand", "brand"),

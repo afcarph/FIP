@@ -204,7 +204,7 @@ class FuelController extends Controller
     {
         return array_filter(
             $request->only([
-                'region', 'area', 'brand', 'product', 'fuel_code',
+                'region', 'area', 'province', 'brand', 'product', 'fuel_code',
                 'min_price', 'max_price', 'date_from', 'date_to',
                 'sort', 'branded_only',
             ]),

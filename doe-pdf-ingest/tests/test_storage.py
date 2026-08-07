@@ -59,9 +59,9 @@ def a_report(**overrides: Any) -> ExtractedReport:
     report.prices = overrides.get(
         "prices",
         [
-            AreaPrice("Quezon City", "RON 95", "gasoline_ron95", "Petron", 79.5, 87.5),
-            AreaPrice("Quezon City", "RON 95", "gasoline_ron95", None, 71.2, 95.3, 87.1),
-            AreaPrice("Quezon City", "DIESEL", "diesel", "Shell", 92.8, 95.7),
+            AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 79.5, 87.5),
+            AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", None, 71.2, 95.3, 87.1),
+            AreaPrice("Quezon City", None, "DIESEL", "diesel", "Shell", 92.8, 95.7),
         ],
     )
     report.quality = 0.95
@@ -121,9 +121,11 @@ class TestValidation:
         result = validate(
             a_report(
                 prices=[
-                    AreaPrice("Quezon City", "RON 95", "gasoline_ron95", "Petron", 79.5, 87.5),
-                    AreaPrice("Quezon City", "RON 95", "gasoline_ron95", "Shell", 4.0, 9.0),
-                    AreaPrice("Quezon City", "DIESEL", "diesel", "Shell", 92.8, 95.7),
+                    AreaPrice(
+                        "Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 79.5, 87.5
+                    ),
+                    AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", "Shell", 4.0, 9.0),
+                    AreaPrice("Quezon City", None, "DIESEL", "diesel", "Shell", 92.8, 95.7),
                 ]
             )
         )
@@ -137,8 +139,10 @@ class TestValidation:
         result = validate(
             a_report(
                 prices=[
-                    AreaPrice("Quezon City", "RON 95", "gasoline_ron95", "Petron", 95.0, 79.0),
-                    AreaPrice("Quezon City", "DIESEL", "diesel", "Shell", 92.8, 95.7),
+                    AreaPrice(
+                        "Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 95.0, 79.0
+                    ),
+                    AreaPrice("Quezon City", None, "DIESEL", "diesel", "Shell", 92.8, 95.7),
                 ]
             )
         )
@@ -151,9 +155,9 @@ class TestValidation:
         result = validate(
             a_report(
                 prices=[
-                    AreaPrice("Quezon City", "RON 95", "gasoline_ron95", "Petron", 1.0, 2.0),
-                    AreaPrice("Quezon City", "RON 91", "gasoline_ron91", "Shell", 1.0, 2.0),
-                    AreaPrice("Quezon City", "DIESEL", "diesel", "Shell", 92.8, 95.7),
+                    AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 1.0, 2.0),
+                    AreaPrice("Quezon City", None, "RON 91", "gasoline_ron91", "Shell", 1.0, 2.0),
+                    AreaPrice("Quezon City", None, "DIESEL", "diesel", "Shell", 92.8, 95.7),
                 ]
             )
         )
@@ -191,7 +195,7 @@ class TestStorage:
 
         corrected = a_report(
             prices=[
-                AreaPrice("Quezon City", "RON 95", "gasoline_ron95", "Petron", 80.0, 88.0),
+                AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 80.0, 88.0),
             ]
         )
         result = store(session, corrected, "b" * 64)
@@ -209,7 +213,9 @@ class TestStorage:
             session,
             a_report(
                 prices=[
-                    AreaPrice("Quezon City", "RON 95", "gasoline_ron95", "Petron", 80.0, 88.0),
+                    AreaPrice(
+                        "Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 80.0, 88.0
+                    ),
                 ]
             ),
             "b" * 64,

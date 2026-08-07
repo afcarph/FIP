@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -70,8 +70,34 @@ PRODUCT_CODES: dict[str, str] = {
 #: Longest first, so "DIESEL PLUS" is matched before "DIESEL".
 _PRODUCT_ORDER = sorted(PRODUCT_CODES, key=len, reverse=True)
 
-#: Column headers that are not brands.
-_NON_BRAND_HEADERS = {"AREA", "PRODUCT", "OVERALL", "RANGE", "COMMON", "PRICE"}
+#: Column headers that are not brands. Both layouts are represented: NCR leads
+#: with AREA, the Visayas reports with PROVINCE and CITY/MUNICIPALITY, and the
+#: last column is "COMMON PRICE" in one and bare "COMMON" in the other.
+_NON_BRAND_HEADERS = {
+    "AREA",
+    "PROVINCE",
+    "CITY/MUNICIPALITY",
+    "CITY",
+    "MUNICIPALITY",
+    "PRODUCT",
+    "OVERALL",
+    "RANGE",
+    "COMMON",
+    "PRICE",
+    "OVERALL RANGE",
+    "COMMON PRICE",
+}
+
+#: Header names that carry the area a block belongs to, best first. A report
+#: with both PROVINCE and CITY/MUNICIPALITY prices per city, so the city is the
+#: area and the province is recorded alongside it.
+_AREA_HEADERS = ("CITY/MUNICIPALITY", "CITY", "MUNICIPALITY", "AREA")
+
+
+def is_brand_column(name: str) -> bool:
+    """Whether a header names a company rather than a dimension."""
+    return name.upper() not in _NON_BRAND_HEADERS
+
 
 _MONTHS = "january|february|march|april|may|june|july|august|september|october|november|december"
 
@@ -89,8 +115,34 @@ _MONITORING = re.compile(
 
 #: The region line, printed under the title.
 _REGION_LINE = re.compile(
-    r"^\s*((?:NCR|CAR|BARMM|Region\s+[IVXAB\-]+(?:\s*\([^)]*\))?|[A-Z][A-Za-z\s\-]{2,40}))\s*$",
+    r"^\s*\(?((?:NCR|CAR|BARMM|Regions?\s+[IVXAB0-9\-]+(?:\s*\([^)]*\))?"
+    r"|[A-Z][A-Za-z\s\-]{2,40}))\)?\s*$",
 )
+
+#: Region as it appears anywhere in the first few lines. The Visayas field
+#: office heads its reports "(REGIONS 6-8)" — arabic numerals, plural, a range
+#: and no "Region N" — while NCR prints a bare "NCR" and Luzon prints
+#: "Region IV-A (CALABARZON)". One pattern has to admit all three.
+_REGION_ANYWHERE = re.compile(
+    r"\b(NCR|CAR|BARMM|Regions?\s+(?:[IVX]+(?:-[AB])?|\d+(?:\s*-\s*\d+)?)"
+    r"(?:\s*\([^)]*\))?)",
+    re.IGNORECASE,
+)
+
+#: A coverage week spelled out in a filename: "for-june-2-8-2026".
+_FILENAME_WORDS = re.compile(
+    rf"({_MONTHS})[-_\s]+(\d{{1,2}})[-_\s]+(\d{{1,2}})[-_\s]+(\d{{4}})",
+    re.IGNORECASE,
+)
+
+#: A date in a filename: MMDDYYYY or MMDDYY.
+#:
+#: Needed because some reports state no dates at all. The Visayas documents say
+#: only "(For the week: Tuesday - Monday)" — a schedule, not a week — so the
+#: filename is the sole source. That does not soften the rule elsewhere: where
+#: the document states its coverage, the document wins, and this is consulted
+#: only when it does not.
+_FILENAME_DATE = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{4}|\d{2})(?!\d)")
 
 _NUMBER = re.compile(r"^\d{1,3}(?:\.\d{1,2})?$")
 
@@ -108,6 +160,9 @@ class AreaPrice:
     """One area × product × brand cell: the brand's price range in that area."""
 
     area: str
+    #: Only the layouts that publish one. Two municipalities can share a name
+    #: across provinces, so without it their rows would collide on the key.
+    province: str | None
     product: str
     fuel_code: str
     brand: str | None
@@ -231,15 +286,13 @@ def parse_header(text: str) -> tuple[str | None, date | None, date | None, date 
             break
 
     if region is None:
-        # Some regional layouts put the region on the title line itself.
+        # Some layouts put the region on the title line, and the Visayas
+        # reports lead with it and print no title at all.
         for line in lines[:6]:
-            match = re.search(
-                r"\b(NCR|CAR|BARMM|Region\s+[IVX]+(?:-[AB])?(?:\s*\([^)]*\))?)\b",
-                line,
-                re.IGNORECASE,
-            )
+            match = _REGION_ANYWHERE.search(line)
+
             if match:
-                region = match.group(1).strip()
+                region = " ".join(match.group(1).split()).upper()
                 break
 
     start = end = None
@@ -273,6 +326,50 @@ def parse_header(text: str) -> tuple[str | None, date | None, date | None, date 
 
 
 # --- the coordinate extractor -------------------------------------------------
+
+
+def coverage_from_filename(filename: str) -> tuple[date, date] | None:
+    """A coverage week derived from a filename, or None.
+
+    The date names the week's first day: `ncr-price-monitoring-07282026`
+    covers 28 July to 3 August, and `vfo-lf-price-monitoring-112525` starts on
+    Tuesday 25 November 2025, which is what "(For the week: Tuesday - Monday)"
+    means in the Visayas documents.
+
+    Only consulted when the document states no coverage of its own.
+    """
+    # The spelled-out form first: "june-2-8-2026" also contains the digits
+    # "2026", and the numeric pattern would read a fragment of it as a date.
+    words = _FILENAME_WORDS.search(filename)
+
+    if words is not None:
+        month, first, last, year = words.groups()
+
+        try:
+            start = date(int(year), _month_number(month), int(first))
+            end = date(int(year), _month_number(month), int(last))
+        except ValueError:
+            start = end = None
+
+        if start is not None and end is not None and end >= start:
+            return start, end
+
+    for match in _FILENAME_DATE.finditer(filename):
+        month, day, year = match.groups()
+
+        # Two-digit years are this century. These publications began in the
+        # 2010s and a DOE report from 1925 is not a thing.
+        full_year = int(year) if len(year) == 4 else 2000 + int(year)
+
+        try:
+            start = date(full_year, int(month), int(day))
+        except ValueError:
+            # Not a date — a sequence number, a page count, an office code.
+            continue
+
+        return start, start + timedelta(days=6)
+
+    return None
 
 
 def _to_price(token: str) -> float | None:
@@ -340,6 +437,18 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
     joined = "\n".join(full_text)
     region, start, end, monitoring = parse_header(joined)
 
+    if start is None or end is None:
+        # The document states no coverage. The Visayas reports print
+        # "(For the week: Tuesday - Monday)" — the publication schedule, not
+        # the week — so their filename is the only place the date exists.
+        derived = coverage_from_filename(path.name)
+
+        if derived is not None:
+            start, end = derived
+            report.warnings.append(
+                f"Coverage not stated in the document; taken from the filename: {start}..{end}"
+            )
+
     report.region = region
     report.coverage_start = start
     report.coverage_end = end
@@ -361,7 +470,10 @@ def _header_columns(
     becomes an area named "AREA", under which every price on the page is
     then filed.
     """
-    anchors = [word for word in words if word["text"].strip().upper() in {"AREA", "PRODUCT"}]
+    # PRODUCT is the only column heading both layouts share — NCR leads with
+    # AREA, the Visayas reports with PROVINCE — so it is what the header band
+    # is found by.
+    anchors = [word for word in words if word["text"].strip().upper() == "PRODUCT"]
 
     if not anchors:
         return None
@@ -372,7 +484,40 @@ def _header_columns(
     # the same companies, and a brand we failed to anticipate must not have its
     # prices absorbed into a neighbour.
     band_top = min(word["top"] for word in anchors)
-    band = [word for word in words if abs(word["top"] - band_top) < 6]
+    window = [word for word in words if abs(word["top"] - band_top) < 6]
+
+    # The header is the busiest baseline in that window. A tolerance alone is
+    # not enough to isolate it, and the two layouts fail it in opposite
+    # directions: NCR wraps "COMMON PRICE" across baselines 3.6pt apart, so a
+    # tight tolerance loses the column, while the Visayas reports print
+    # "(For the week: Tuesday - Monday)" 5.5pt above the header, so a loose one
+    # swallows the title and shreds the brand columns it crosses.
+    baselines: dict[int, list[dict[str, Any]]] = {}
+
+    for word in window:
+        baselines.setdefault(round(word["top"]), []).append(word)
+
+    band = max(baselines.values(), key=len)
+    spans = [(word["x0"], word["x1"]) for word in band]
+
+    # A wrapped heading continues its own column and so overlaps nothing else
+    # on the header line; a title crosses several. That is what separates
+    # "PRICE" under "COMMON" from a stray line of prose.
+    for word in window:
+        if word in band:
+            continue
+
+        # A column heading is a word. Punctuation that happens to fall in the
+        # gap between two columns — the hyphen in "(For the week: Tuesday -
+        # Monday)" lands between TOTAL and FLYING V — is not one, and admitting
+        # it renames the column it attaches to.
+        if not any(character.isalnum() for character in word["text"]):
+            continue
+
+        if any(word["x0"] < right and left < word["x1"] for left, right in spans):
+            continue
+
+        band.append(word)
 
     if len(band) < 6:
         return None
@@ -396,19 +541,44 @@ def _header_columns(
         else:
             merged.append(dict(word))
 
-    centres = [((word["x0"] + word["x1"]) / 2, word["text"].strip().upper()) for word in merged]
-    columns: list[tuple[str, float, float]] = []
-
-    for index, (centre, name) in enumerate(centres):
-        left = 0.0 if index == 0 else (centres[index - 1][0] + centre) / 2
-        right = 10_000.0 if index == len(centres) - 1 else (centre + centres[index + 1][0]) / 2
-        columns.append((name, left, right))
+    # Each column is its heading's own span. Cells are assigned to the *nearest*
+    # heading rather than by hard boundaries — see `column_at`.
+    columns = [(word["text"].strip().upper(), word["x0"], word["x1"]) for word in merged]
 
     return columns, max(word["top"] for word in band)
 
 
-def _area_labels(
+def area_column(columns: list[tuple[str, float, float]]) -> tuple[str, float, float]:
+    """The column carrying the area a block belongs to.
+
+    NCR calls it AREA and prints it first; the Visayas reports call it
+    CITY/MUNICIPALITY and print PROVINCE before it. Taking column zero — which
+    is what this did — reads provinces as areas on those reports, so every
+    city in Negros Occidental would be filed under one label and their prices
+    would collide on the unique key.
+    """
+    for wanted in _AREA_HEADERS:
+        for column in columns:
+            if column[0].upper() == wanted:
+                return column
+
+    # No recognised heading: fall back to the first column, which is where
+    # every layout seen so far puts its leftmost dimension.
+    return columns[0]
+
+
+def province_column(columns: list[tuple[str, float, float]]) -> tuple[str, float, float] | None:
+    """The province column, on the layouts that have one."""
+    for column in columns:
+        if column[0].upper() == "PROVINCE":
+            return column
+
+    return None
+
+
+def _labels_in_column(
     chars: list[dict[str, Any]],
+    column: tuple[str, float, float],
     columns: list[tuple[str, float, float]],
     header_top: float,
 ) -> list[tuple[float, str]]:
@@ -427,7 +597,7 @@ def _area_labels(
     At character level they are clean and unambiguous, so they are grouped by
     exact baseline and ordered by x.
     """
-    _, area_left, area_right = columns[0]
+    wanted = column[0]
 
     lines: dict[float, list[dict[str, Any]]] = {}
 
@@ -437,7 +607,7 @@ def _area_labels(
 
         centre = (char["x0"] + char["x1"]) / 2
 
-        if not (area_left <= centre < area_right):
+        if column_at(centre, columns) != wanted:
             continue
 
         # Half a point: enough to absorb baseline jitter within one label,
@@ -504,7 +674,12 @@ def _rows_from_words(
             parsed.append((min(word["top"] for word in row), product, cells))
 
     prices: list[AreaPrice] = []
-    labels = _area_labels(chars, columns, header_top)
+    labels = _labels_in_column(chars, area_column(columns), columns, header_top)
+
+    # Province labels span several city blocks, so they are matched by nearest
+    # label at or above the block rather than by containment.
+    province_col = province_column(columns)
+    provinces = _labels_in_column(chars, province_col, columns, header_top) if province_col else []
 
     for block in _blocks(parsed):
         top = min(row[0] for row in block)
@@ -535,9 +710,37 @@ def _rows_from_words(
             continue
 
         used.add(area)
-        prices.extend(_block_prices([(row[1], row[2]) for row in block], area, columns))
+        prices.extend(
+            _block_prices(
+                [(row[1], row[2]) for row in block],
+                area,
+                _province_for(provinces, top, bottom),
+                columns,
+            )
+        )
 
     return prices
+
+
+def _province_for(
+    provinces: list[tuple[float, str]],
+    top: float,
+    bottom: float,
+) -> str | None:
+    """The province a block sits under.
+
+    Unlike an area label, a province label covers several city blocks and is
+    centred across them, so it can sit above *or* below any given block. The
+    nearest label to the block's own centre is the one it belongs to; taking
+    the nearest one above instead leaves the first block on every page without
+    a province, which is where a quarter of the rows lost theirs.
+    """
+    if not provinces:
+        return None
+
+    centre = (top + bottom) / 2
+
+    return min(provinces, key=lambda entry: abs(entry[0] - centre))[1]
 
 
 def _blocks(
@@ -570,20 +773,72 @@ def _blocks(
     return blocks
 
 
+def _repair_split_range(cells: dict[str, str]) -> dict[str, str]:
+    """Move a range's maximum back when it lands in the next column.
+
+    The overall range is the widest cell on the row and its heading is one of
+    the narrowest, so its right-hand value can sit marginally closer to the
+    next heading's centre — in the Visayas reports "69.95" is 1.1pt nearer
+    COMMON than OVERALL RANGE. No column-assignment rule fixes that on
+    geometry alone; the values are genuinely interleaved.
+
+    What does fix it is the structure of the field. A range that ends in its
+    separator is incomplete, and the token that completes it is the first one
+    in the next column. Left alone the range reads "54.30 - 54.30" — a real
+    number, wrong, and indistinguishable from a week where prices did not move.
+    """
+    overall_key = next((key for key in cells if key.upper().startswith("OVERALL")), None)
+    common_key = next((key for key in cells if key.upper().startswith("COMMON")), None)
+
+    if overall_key is None or common_key is None:
+        return cells
+
+    if not cells[overall_key].strip().endswith(("-", "–")):
+        return cells
+
+    parts = cells[common_key].split()
+
+    if not parts or _to_price(parts[0]) is None:
+        return cells
+
+    cells[overall_key] = f"{cells[overall_key].strip()} {parts[0]}"
+    cells[common_key] = " ".join(parts[1:])
+
+    return cells
+
+
+def _summary_cell(cells: dict[str, str], prefix: str) -> str:
+    """A summary column's value, found by prefix.
+
+    The two layouts name these differently: NCR heads them "OVERALL RANGE" and
+    "COMMON PRICE", the Visayas reports "OVERALL RANGE" and bare "COMMON". An
+    exact lookup silently returns nothing for the other one, which drops the
+    common price for every area in the report while leaving the branded rows
+    looking perfectly healthy.
+    """
+    for name, value in cells.items():
+        if name.upper().startswith(prefix):
+            return value
+
+    return ""
+
+
 def _block_prices(
     block: list[tuple[tuple[str, str], dict[str, str]]],
     area: str,
+    province: str | None,
     columns: list[tuple[str, float, float]],
 ) -> list[AreaPrice]:
     """Read every priced cell in one area's block."""
     prices: list[AreaPrice] = []
 
-    for product, cells in block:
-        common = _to_price(cells.get("COMMON PRICE", ""))
-        overall_min, overall_max = _range_of(cells.get("OVERALL RANGE", ""))
+    for product, raw_cells in block:
+        cells = _repair_split_range(raw_cells)
+        common = _to_price(_summary_cell(cells, "COMMON"))
+        overall_min, overall_max = _range_of(_summary_cell(cells, "OVERALL"))
 
         for name, _, _ in columns:
-            if name in _NON_BRAND_HEADERS or name in ("OVERALL RANGE", "COMMON PRICE"):
+            if not is_brand_column(name):
                 continue
 
             numbers = [
@@ -601,6 +856,7 @@ def _block_prices(
             prices.append(
                 AreaPrice(
                     area=area,
+                    province=province,
                     product=product[0],
                     fuel_code=product[1],
                     brand=name.title(),
@@ -613,6 +869,7 @@ def _block_prices(
             prices.append(
                 AreaPrice(
                     area=area,
+                    province=province,
                     product=product[0],
                     fuel_code=product[1],
                     brand=None,
@@ -625,17 +882,36 @@ def _block_prices(
     return prices
 
 
+def column_at(centre: float, columns: list[tuple[str, float, float]]) -> str | None:
+    """The column a piece of text belongs to: the nearest heading.
+
+    Not a boundary test. Data is routinely wider than the heading above it, in
+    both directions and in both layouts — the Visayas overall range prints
+    "54.30 - 69.95" across 78pt under a 47pt heading, and its city names
+    overflow the CITY/MUNICIPALITY heading on both sides. Any fixed boundary
+    that keeps one of those intact cuts through the other; nearest-heading
+    handles them symmetrically.
+    """
+    if not columns:
+        return None
+
+    name, _ = min(
+        ((name, abs(centre - (left + right) / 2)) for name, left, right in columns),
+        key=lambda pair: pair[1],
+    )
+
+    return name
+
+
 def _cells(row: list[dict[str, Any]], columns: list[tuple[str, float, float]]) -> dict[str, str]:
     """Assign each word in a row to a column by its horizontal centre."""
     cells: dict[str, list[str]] = {}
 
     for word in row:
-        centre = (word["x0"] + word["x1"]) / 2
+        name = column_at((word["x0"] + word["x1"]) / 2, columns)
 
-        for name, left, right in columns:
-            if left <= centre < right:
-                cells.setdefault(name, []).append(word["text"])
-                break
+        if name is not None:
+            cells.setdefault(name, []).append(word["text"])
 
     return {name: " ".join(parts) for name, parts in cells.items()}
 
@@ -756,6 +1032,13 @@ def _from_dataframes(frames: list[Any], path: Path, name: str) -> ExtractedRepor
         text = "\n".join(page.extract_text() or "" for page in pdf.pages)
 
     region, start, end, monitoring = parse_header(text)
+
+    if start is None or end is None:
+        derived = coverage_from_filename(path.name)
+
+        if derived is not None:
+            start, end = derived
+
     report = ExtractedReport(region, start, end, monitoring, extractor=name)
 
     prices: list[AreaPrice] = []
@@ -802,6 +1085,7 @@ def _from_dataframes(frames: list[Any], path: Path, name: str) -> ExtractedRepor
                     prices.append(
                         AreaPrice(
                             area=current_area,
+                            province=None,
                             product=product[0],
                             fuel_code=product[1],
                             brand=brand.title(),

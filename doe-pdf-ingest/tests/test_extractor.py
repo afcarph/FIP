@@ -285,3 +285,124 @@ class TestExtractorSelection:
         assert result.quality >= get_settings().min_extraction_quality
         assert result.region == "NCR"
         assert len(result.areas) == 12
+
+
+VISAYAS = Path(__file__).parent / "fixtures" / "vfo-lf-price-monitoring-112525.pdf"
+
+
+@pytest.fixture(scope="module")
+def visayas() -> ExtractedReport:
+    return extract_with_pdfplumber(VISAYAS, get_settings())
+
+
+class TestVisayasLayout:
+    """The regional field offices publish a different table entirely.
+
+    Every difference below was found by running against the live portal, where
+    forty consecutive reports extracted their tables cleanly and then failed
+    validation because nothing in the header parsed.
+    """
+
+    def test_it_reads_a_plural_numeric_region(self, visayas: ExtractedReport) -> None:
+        # "(REGIONS 6-8)" — plural, arabic, a range, and in brackets. NCR
+        # prints a bare "NCR" and Luzon prints "Region IV-A (CALABARZON)".
+        assert visayas.region == "REGIONS 6-8"
+
+    def test_coverage_comes_from_the_filename_when_the_document_omits_it(
+        self, visayas: ExtractedReport
+    ) -> None:
+        # These reports state only "(For the week: Tuesday - Monday)" — the
+        # publication schedule, not the week. 112525 is Tuesday 25 November.
+        assert visayas.coverage_start.isoformat() == "2025-11-25"
+        assert visayas.coverage_end.isoformat() == "2025-12-01"
+        assert any("filename" in warning for warning in visayas.warnings)
+
+    def test_the_document_wins_where_it_states_its_own_coverage(
+        self, report: ExtractedReport
+    ) -> None:
+        # The filename fallback must not override a document that says so
+        # itself. ncr-price-monitoring-07282026 agrees here, but the rule is
+        # what matters: the publication is authoritative about its own week.
+        assert report.coverage_start.isoformat() == "2026-07-28"
+        assert report.warnings == []
+
+    def test_the_area_is_the_city_not_the_leading_province_column(
+        self, visayas: ExtractedReport
+    ) -> None:
+        # This layout leads with PROVINCE, so taking the first column as the
+        # area files every city in a province under one label — and their rows
+        # then collide on (report, area, product, brand).
+        assert "Bacolod City" in visayas.areas
+        assert "Cebu City" in visayas.areas
+        assert "Negros Occidental" not in visayas.areas
+
+    def test_every_row_carries_its_province(self, visayas: ExtractedReport) -> None:
+        # A province label is centred across several city blocks, so it sits
+        # above some and below others.
+        assert all(price.province for price in visayas.prices)
+
+        by_area = {price.area: price.province for price in visayas.prices}
+        assert by_area["Bacolod City"] == "Negros Occidental"
+        assert by_area["Cebu City"] == "Cebu"
+
+    def test_the_title_line_does_not_become_a_brand_column(self, visayas: ExtractedReport) -> None:
+        # "(For the week: Tuesday - Monday)" prints 5.5pt above the header and
+        # crosses the PHOENIX, TOTAL and FLYING V columns. Admitted into the
+        # header band it renamed them and shredded the attribution.
+        assert visayas.brands == [
+            "PETRON",
+            "SHELL",
+            "CALTEX",
+            "PHOENIX",
+            "TOTAL",
+            "FLYING V",
+            "SEAOIL",
+            "PTT",
+            "INDEPENDENT",
+        ]
+
+    def test_prices_land_on_the_brands_that_published_them(self, visayas: ExtractedReport) -> None:
+        # Bacolod's RON 95 row prints seven ranges for nine brands: Phoenix and
+        # PTT are blank.
+        row = {
+            price.brand: (price.min_price, price.max_price)
+            for price in visayas.prices
+            if price.area == "Bacolod City" and price.product == "RON 95"
+        }
+
+        assert row["Petron"] == (57.90, 60.40)
+        assert row["Shell"] == (68.45, 69.95)
+        assert row["Caltex"] == (61.25, 63.90)
+        assert row["Total"] == (56.95, 56.95)
+        assert row["Flying V"] == (55.80, 56.90)
+        assert row["Seaoil"] == (57.80, 57.80)
+        assert row["Independent"] == (54.30, 60.55)
+        assert "Phoenix" not in row
+
+    def test_a_range_split_across_the_column_boundary_is_repaired(
+        self, visayas: ExtractedReport
+    ) -> None:
+        # The overall range is the widest cell on the row under one of the
+        # narrowest headings, so its maximum sits marginally nearer the next
+        # heading's centre. Left alone it reads "54.30 - 54.30" — a real
+        # number, wrong, and indistinguishable from a flat week.
+        overall = next(
+            price
+            for price in visayas.prices
+            if price.area == "Bacolod City" and price.product == "RON 95" and price.is_overall
+        )
+
+        assert (overall.min_price, overall.max_price) == (54.30, 69.95)
+        assert overall.common_price == 61.25
+
+    def test_the_common_price_is_found_under_either_heading(self, visayas: ExtractedReport) -> None:
+        # NCR heads this column "COMMON PRICE" and the Visayas reports "COMMON".
+        # An exact lookup drops it for every area in one of the two.
+        assert any(price.common_price is not None for price in visayas.prices)
+
+    def test_it_covers_the_whole_of_regions_six_to_eight(self, visayas: ExtractedReport) -> None:
+        assert len(visayas.areas) == 50
+        assert len(visayas.prices) > 700
+
+    def test_it_extracts_cleanly_enough_to_import(self, visayas: ExtractedReport) -> None:
+        assert visayas.quality >= 0.9

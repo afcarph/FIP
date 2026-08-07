@@ -268,7 +268,14 @@ class FuelReportQuery
      */
     private function applyFilters(Builder $query, array $filters): void
     {
-        foreach (['area' => 'area', 'brand' => 'brand', 'product' => 'product'] as $key => $column) {
+        $textual = [
+            'area' => 'area',
+            'province' => 'province',
+            'brand' => 'brand',
+            'product' => 'product',
+        ];
+
+        foreach ($textual as $key => $column) {
             if (! empty($filters[$key])) {
                 $query->where($column, 'like', '%'.$filters[$key].'%');
             }

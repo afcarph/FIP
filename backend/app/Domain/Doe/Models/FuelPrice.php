@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $report_id
  * @property string $area
+ * @property string|null $province
  * @property string $product
  * @property string|null $fuel_code
  * @property string|null $brand

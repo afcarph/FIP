@@ -197,6 +197,7 @@ def store_report(
             FuelPrice(
                 report_id=entry.id,
                 area=price.area,
+                province=price.province,
                 product=price.product,
                 fuel_code=price.fuel_code,
                 brand=price.brand,

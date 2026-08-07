@@ -81,6 +81,12 @@ return new class extends Migration
             // City or municipality, as the DOE prints it.
             $table->string('area', 160);
 
+            // Only on the layouts that publish one: the Visayas reports group
+            // cities by province, NCR does not. Worth storing rather than
+            // discarding — two municipalities can share a name across
+            // provinces, and without it their rows collide on the key below.
+            $table->string('province', 160)->nullable();
+
             // The DOE's own product label, kept verbatim for traceability.
             $table->string('product', 40);
             // The platform's fuel_types.code, resolved during extraction so
@@ -107,6 +113,7 @@ return new class extends Migration
             );
 
             $table->index('area', 'ix_fuel_prices_area');
+            $table->index('province', 'ix_fuel_prices_province');
             $table->index('brand', 'ix_fuel_prices_brand');
             $table->index('fuel_code', 'ix_fuel_prices_fuel');
             // Serves the trend query: one grade's series across reports.

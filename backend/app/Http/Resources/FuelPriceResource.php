@@ -21,6 +21,7 @@ class FuelPriceResource extends JsonResource
         return [
             'id' => $this->id,
             'area' => $this->area,
+            'province' => $this->province,
             'product' => $this->product,
             'fuel_code' => $this->fuel_code,
             // Null marks the area's overall row rather than a brand's, and the
