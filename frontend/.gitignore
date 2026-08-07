@@ -1,0 +1,3 @@
+
+# UAT: points the dev server at staging. Per-developer.
+.env.local
