@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { DataFreshness } from '@/components/doe/freshness';
 import { Card, ErrorState, LoadingState, QueryState, StatusBadge } from '@/components/doe/states';
 import { useDoeImports, useDoeTrends, type TrendPoint } from '@/hooks/use-doe';
 
@@ -320,6 +321,10 @@ export default function DoeDashboardPage() {
               }
             />
           </div>
+
+          {data?.latest_reports.length ? (
+            <DataFreshness reports={data.latest_reports} />
+          ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <WeeklyAverageChart />

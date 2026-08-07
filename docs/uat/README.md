@@ -44,6 +44,18 @@ another host without a rebuild, which is the point of it being there.
 | History `/doe/history` | History |
 | API Status `/doe/status` | Settings |
 
+Both Dashboard and Home carry a **Data freshness** panel: for each region, the
+week its newest report covers, how old that is, and whether it is current. Age
+is counted from the end of the covered week, not from when the report was
+published or imported — a report imported this morning that covers three weeks
+ago is three weeks old, and measuring from the import would call it fresh. A
+region holding only last week is still "Current", because the DOE posts the
+running week partway through it; two missed publications is not.
+
+The panel also says out loud when one region trails another, which is the
+current state on staging and the reading most likely to be filed as a bug in
+the numbers.
+
 Screenshots are in [`screenshots/`](screenshots).
 
 Every screen distinguishes four states: loading, empty, offline, and the API
@@ -93,7 +105,9 @@ this as `—`. The date is present in the source PDFs, so this is an extraction
 gap in the Visayas layout, not missing source data.
 
 **No NCR report exists for the 4–10 Aug week**, while REGIONS 6-8 has one. The
-dashboard therefore headlines a week that only one region covers. Whether the
+dashboard therefore headlines a week that only one region covers — the Data
+freshness panel now names this explicitly rather than leaving it to be inferred
+from two coverage labels. Whether the
 DOE has not published it or discovery missed it is not resolved — worth a look
 before UAT sign-off, because "latest" reading differently per region is exactly
 the sort of thing a tester will report as a bug.

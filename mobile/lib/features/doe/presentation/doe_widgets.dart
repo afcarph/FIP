@@ -165,3 +165,127 @@ class DoePriceTile extends StatelessWidget {
     );
   }
 }
+
+/// How current each region's newest report is.
+class DoeFreshnessCard extends StatelessWidget {
+  const DoeFreshnessCard({super.key, required this.reports});
+
+  final List<DoeReport> reports;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final rows = [...reports]..sort((a, b) => a.region.compareTo(b.region));
+
+    final newestWeek = rows.fold<String?>(
+      null,
+      (newest, report) =>
+          newest == null || report.coverageStart.compareTo(newest) > 0
+              ? report.coverageStart
+              : newest,
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Data freshness', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 2),
+            Text(
+              'Age is counted from the end of the week each report covers.',
+              style: theme.textTheme.bodySmall,
+            ),
+            for (final report in rows) ...[
+              const Divider(height: 20),
+              _FreshnessRow(
+                report: report,
+                // Said out loud rather than left to be inferred from two
+                // coverage labels. A region a week behind the other is the
+                // reading most likely to be reported as a bug in the numbers.
+                isBehindNewest:
+                    newestWeek != null && report.coverageStart.compareTo(newestWeek) < 0,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FreshnessRow extends StatelessWidget {
+  const _FreshnessRow({required this.report, required this.isBehindNewest});
+
+  final DoeReport report;
+  final bool isBehindNewest;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final freshness = Freshness.of(report);
+
+    final tone = switch (freshness.status) {
+      FreshnessStatus.current => Colors.green,
+      FreshnessStatus.stale => Colors.amber,
+      FreshnessStatus.behind => Colors.red,
+    };
+
+    // shade800 on a translucent fill is legible on white and nearly invisible
+    // on the dark theme's near-black surface, where the fill barely lifts the
+    // background at all.
+    final isDark = theme.brightness == Brightness.dark;
+    final onTone = isDark ? tone.shade200 : tone.shade800;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    report.region,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(report.coverageLabel, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+            Text(
+              freshness.ageLabel,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: tone.withValues(alpha: isDark ? 0.24 : 0.15),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                freshness.statusLabel,
+                style: theme.textTheme.labelSmall?.copyWith(color: onTone),
+              ),
+            ),
+          ],
+        ),
+        if (isBehindNewest) ...[
+          const SizedBox(height: 4),
+          Text(
+            'One publication behind the newest week held.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isDark ? Colors.amber.shade300 : Colors.amber.shade800,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}

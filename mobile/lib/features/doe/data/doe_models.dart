@@ -184,3 +184,64 @@ const fuelTypeOptions = <({String code, String label})>[
   (code: 'diesel_premium', label: 'Diesel Plus'),
   (code: 'kerosene', label: 'Kerosene'),
 ];
+
+/// How current a report is.
+///
+/// The counts on the home card say how much data there is, which is a
+/// different question from whether it is the data you should be looking at. A
+/// region can sit at 363 rows and a quality of 1.00 while being a fortnight
+/// behind: every number reads as healthy and the prices are simply old.
+enum FreshnessStatus { current, stale, behind }
+
+class Freshness {
+  const Freshness({required this.ageDays, required this.status, required this.isRunningWeek});
+
+  /// Whole days since the covered week ended; zero while it is still running.
+  final int ageDays;
+  final FreshnessStatus status;
+
+  /// True when today falls inside the covered week.
+  final bool isRunningWeek;
+
+  /// Age is measured from the end of the week the report covers, not from when
+  /// it was published or imported. A report imported this morning that covers
+  /// three weeks ago is three weeks old, and measuring from the import would
+  /// call it fresh.
+  factory Freshness.of(DoeReport report, {DateTime? now}) {
+    final today = _startOfDay(now ?? DateTime.now());
+    final end = _startOfDay(DateTime.tryParse(report.coverageEnd) ?? today);
+
+    final elapsed = today.difference(end).inDays;
+    final ageDays = elapsed < 0 ? 0 : elapsed;
+
+    return Freshness(
+      ageDays: ageDays,
+      isRunningWeek: elapsed <= 0,
+      // One publication may legitimately be outstanding: the DOE posts the
+      // running week partway through it, so a region holding last week's
+      // report is waiting rather than stale. Two missed weeks is stale.
+      status: ageDays <= 7
+          ? FreshnessStatus.current
+          : ageDays <= 14
+          ? FreshnessStatus.stale
+          : FreshnessStatus.behind,
+    );
+  }
+
+  String get ageLabel {
+    if (isRunningWeek) return 'Current week';
+    if (ageDays == 1) return '1 day';
+
+    return '$ageDays days';
+  }
+
+  String get statusLabel => switch (status) {
+    FreshnessStatus.current => 'Current',
+    FreshnessStatus.stale => 'One week behind',
+    FreshnessStatus.behind => 'Behind',
+  };
+}
+
+/// Local midnight. The API sends plain dates, and comparing them as instants
+/// would move every age by a day depending on the hour the app was opened.
+DateTime _startOfDay(DateTime value) => DateTime(value.year, value.month, value.day);

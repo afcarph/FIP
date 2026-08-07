@@ -36,6 +36,10 @@ class DoeHomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             children: [
               _LatestCard(health: data),
+              if (data.latestReports.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                DoeFreshnessCard(reports: data.latestReports),
+              ],
               const SizedBox(height: 16),
               _RegionSelector(regions: data.regions, selected: region),
               const SizedBox(height: 16),
