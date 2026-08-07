@@ -1,6 +1,7 @@
 'use client';
 
 import { Activity, BarChart3, History, Search } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
@@ -32,9 +33,16 @@ export default function DoeLayout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">
-              FIP
-            </div>
+            {/* The mark, not a lettered tile. SVG so it stays crisp in the
+                header and as a favicon without shipping four raster sizes. */}
+            <Image
+              src="/fip-logo.svg"
+              alt="Fuel Intelligence Platform"
+              width={40}
+              height={40}
+              priority
+              className="size-10"
+            />
             <div>
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
                 DOE Fuel Price Monitoring
