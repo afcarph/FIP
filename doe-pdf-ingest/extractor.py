@@ -97,6 +97,11 @@ _REGION_LINE = re.compile(
 
 _NUMBER = re.compile(r'^\d{1,3}(?:\.\d{1,2})?$')
 
+#: How far apart two words' baselines may be and still be one row. The DOE
+#: prints product rows ~9pt apart, so this is comfortably below a real gap
+#: while absorbing the sub-point jitter within a single line.
+_ROW_TOLERANCE = 3.0
+
 #: Values the DOE prints for "no data".
 _NULL_TOKENS = {'#N/A', 'N/A', 'NONE', '-', '--', ''}
 
@@ -286,6 +291,10 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
     report = ExtractedReport(region=None, coverage_start=None, coverage_end=None, monitoring_date=None)
     all_prices: list[AreaPrice] = []
     full_text: list[str] = []
+    # Spans the document, not the page. A stale label the DOE carries over from
+    # the previous page is only distinguishable from the live one by having
+    # been used already, so this cannot reset between pages.
+    used_areas: set[str] = set()
 
     with pdfplumber.open(str(path)) as pdf:
         for page in pdf.pages:
@@ -312,7 +321,7 @@ def extract_with_pdfplumber(path: Path, settings: Settings) -> ExtractedReport:
             ]
 
             all_prices.extend(
-                _rows_from_words(words, page.chars, columns, header_top, report)
+                _rows_from_words(words, page.chars, columns, header_top, report, used_areas)
             )
 
     joined = '\n'.join(full_text)
@@ -445,19 +454,29 @@ def _rows_from_words(
     columns: list[tuple[str, float, float]],
     header_top: float,
     report: ExtractedReport,
+    used: set[str],
 ) -> list[AreaPrice]:
     """Group words into rows and read a price row out of each."""
-    rows: dict[int, list[dict[str, Any]]] = {}
+    # Clustered by proximity, not by fixed-width buckets.
+    #
+    # `int(top // 3)` looks equivalent and is not: it splits a row whenever its
+    # words straddle a multiple of three. Caloocan City's RON 95 line sits at
+    # y=156.81, half a point from the 156 boundary, so part of it bucketed with
+    # the row above and the row lost its prices entirely. Clustering on the gap
+    # between consecutive baselines has no boundaries to straddle.
+    ordered = sorted(words, key=lambda word: word['top'])
+    rows: list[list[dict[str, Any]]] = []
 
-    for word in words:
-        # Everything at or above the header is title block or the header
-        # row itself, never data.
+    for word in ordered:
+        # Everything at or above the header is title block or the header row
+        # itself, never data.
         if word['top'] <= header_top + 2:
             continue
 
-        # 3pt buckets. Cells on one visual line differ by a point or two of
-        # baseline, and a stricter grouping splits a row in half.
-        rows.setdefault(int(word['top'] // 3), []).append(word)
+        if rows and word['top'] - rows[-1][0]['top'] <= _ROW_TOLERANCE:
+            rows[-1].append(word)
+        else:
+            rows.append([word])
 
     # Two passes, because the area label is vertically centred in its block.
     # The DOE prints "Caloocan City" beside RON 91, the fourth of seven product
@@ -466,8 +485,8 @@ def _rows_from_words(
     # attaching each block's label, keeps them.
     parsed: list[tuple[float, tuple[str, str], dict[str, str]]] = []
 
-    for key in sorted(rows):
-        row = sorted(rows[key], key=lambda word: word['x0'])
+    for group in rows:
+        row = sorted(group, key=lambda word: word['x0'])
         cells = _cells(row, columns)
         product = _product_of(cells.get('PRODUCT', ''))
 
@@ -476,7 +495,6 @@ def _rows_from_words(
 
     prices: list[AreaPrice] = []
     labels = _area_labels(chars, columns, header_top)
-    used: set[str] = set()
 
     for block in _blocks(parsed):
         top = min(row[0] for row in block)
