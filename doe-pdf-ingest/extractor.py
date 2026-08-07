@@ -105,6 +105,10 @@ _DIMENSION_PREFIXES = (
     "COMMON",
     "RANGE",
     "PRICE",
+    # "Row" and "Rowcol" are spreadsheet gridlines the DOE's export leaves in
+    # the header on some pages. They are not companies, and prices filed under
+    # them are cell indices.
+    "ROW",
 )
 
 
@@ -118,7 +122,16 @@ def is_brand_column(name: str) -> bool:
     """
     upper = name.upper()
 
-    return not any(upper.startswith(prefix) for prefix in _DIMENSION_PREFIXES)
+    if any(upper.startswith(prefix) for prefix in _DIMENSION_PREFIXES):
+        return False
+
+    tokens = upper.split()
+
+    # Two headings printed on top of each other come out of the text layer
+    # interleaved character by character: "COMMON" over "PRICE" arrives as
+    # "C P O R M Ic M E O N". A real company name is words, not a scatter of
+    # single letters, and admitting one creates a brand that never existed.
+    return not (tokens and sum(len(token) == 1 for token in tokens) > len(tokens) / 2)
 
 
 _MONTHS = "january|february|march|april|may|june|july|august|september|october|november|december"
