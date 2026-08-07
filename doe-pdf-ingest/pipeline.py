@@ -420,6 +420,15 @@ def replay(path: Path, settings: Settings | None = None) -> PipelineResult:
     if not validation.ok:
         return result
 
+    # Only what validation passed — the same rule the scheduled path applies.
+    # Without this a replay stores every extracted row including the ones
+    # validation rejected, so a figure the validator called implausible lands
+    # in the database anyway and the run reports it as rejected.
+    result.rejections.extend(
+        f"{path.name}: {warning}" for warning in validation.warnings[:10]
+    )
+    report.prices = validation.accepted
+
     with session_scope() as session:
         # allow_reimport is the point of a replay: re-read bytes that have
         # not changed with an extractor that has. Without it the checksum

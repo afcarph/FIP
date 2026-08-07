@@ -8,9 +8,10 @@ reading.
 
 from __future__ import annotations
 
+import inspect
 import json
 
-from pipeline import PHASES, PipelineResult
+from pipeline import PHASES, PipelineResult, process_pdf, replay
 
 
 class TestPhaseTiming:
@@ -109,3 +110,20 @@ class TestTheRunLogFields:
 
     def test_an_unmeasured_total_stays_null(self) -> None:
         assert PipelineResult().run_log_fields()["total_duration_ms"] is None
+
+
+class TestReplayStoresOnlyWhatValidationAccepted:
+    """The rule the scheduled path applies, applied here too.
+
+    `process_pdf` narrows the report to `validation.accepted` before storing.
+    `replay` did not, so every row the validator rejected as implausible was
+    stored anyway — counted as rejected in the log and present in the
+    database. A ₱833.60 litre of RON 95 reached staging that way.
+    """
+
+    def test_the_scheduled_path_and_the_replay_path_agree(self) -> None:
+        # Both must narrow to what validation accepted. Asserted on the source
+        # because the alternative is a database round trip to prove a one-line
+        # omission, and this is the omission that keeps recurring.
+        assert "validation.accepted" in inspect.getsource(process_pdf)
+        assert "validation.accepted" in inspect.getsource(replay)
