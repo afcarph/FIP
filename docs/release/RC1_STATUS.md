@@ -3,10 +3,12 @@
 Assessed 7 August 2026 against staging (`https://fip.nelleeph.com`) and the
 working tree.
 
-**Production readiness: 7 / 10 — not yet deployable, for reasons that are
-deployment steps rather than defects.** Everything in RC1 is written, tested
-and merged; none of it is running on staging yet. The score is what it is
-because *nothing in this release has been exercised against a real run*.
+**Production readiness: 5 / 10.** Revised down from 7 after inspecting the
+staging host on 8 August. Everything in RC1 is written, tested and merged, and
+none of it is running — but the larger finding is that **the ingest service has
+never been deployed anywhere**, and the PDF archive it depends on exists only
+on one developer laptop. That is not a deployment step; it is missing
+infrastructure.
 
 ## Completed
 
@@ -64,10 +66,38 @@ Measured on staging, 7 Aug 2026.
 Per-phase breakdown is **not yet available** — the columns exist but no run has
 populated them. The first scheduled run after deployment will.
 
+## Found on inspection, 8 August
+
+Inspecting the staging host directly, rather than trusting the checklist:
+
+**The DOE ingest is not installed on staging.** No `.env`, no cron entry, no
+container. `/opt/fip/doe-pdf-ingest` is only the source, checked out with the
+rest of the repository. The 6 reports and 3,393 prices in the staging database
+were imported by running `pipeline.py` from a laptop against the staging
+database — three manual runs, the last on 7 August.
+
+**The PDF archive is on that laptop.** 76 files, 111 MB, in a git-ignored
+directory. It exists nowhere else. The DOE does not keep superseded weeks
+accessible, so for any week they have since replaced, those files are the only
+copy in existence — and a `git clean`, a full disk or a lost machine ends them.
+Re-extraction, `--replay`, and every recovery procedure in
+[recovery.md](../runbooks/recovery.md) depend on this directory.
+
+**Nothing is scheduled.** The health endpoint's scheduler check would report
+`down` roughly 26 hours after that last manual run, which has now passed. It is
+reporting correctly; there is simply no scheduler.
+
+This changes the shape of the remaining work. Deploying RC1 is a morning's
+work. Standing the ingest up as a scheduled service with a persistent,
+backed-up archive is a prerequisite for calling any of this production-ready,
+and it was not on the RC1 list because the list assumed it already existed.
+
 ## Known issues
 
 | Issue | Severity | Position |
 |---|---|---|
+| **The ingest is not deployed anywhere; no schedule** | **Critical** | Missing infrastructure, not a deploy step |
+| **The PDF archive exists only on one laptop** (76 files, 111 MB, git-ignored) | **Critical** | Irreplaceable for weeks the DOE has superseded |
 | **RC1 is not deployed to staging.** `/api/v1/health` returns 404 there | High | Deployment step. Migration + code + frontend rebuild |
 | **The deployed web client is stale.** `https://fip.nelleeph.com/doe` returns 404 | High | The build predates the DOE dashboard; needs `npm run build` and reload |
 | **`/admin/system` never rendered against a live session** | Medium | Needs an admin account, which is yours to create. The endpoint is covered by tests; the page is not |
@@ -135,5 +165,6 @@ Ordered. Stop on any failure.
 | Observability | 8 | Per-phase timings, health, operator dashboard — all built, none yet exercised |
 | Security | 8 | TLS, HSTS, CSP, rate limiting verified live; config gate added. No pen test, no secret rotation policy |
 | Operability | 7 | Two runbooks, replay path, kept originals. No alerting on a region going quiet |
-| Deployment readiness | 4 | Nothing is deployed; the live web client is stale |
-| **Overall** | **7** | Sound work, not yet in production |
+| Deployment readiness | 2 | Nothing is deployed, the live web client is stale, and the ingest has no home |
+| Data durability | 2 | The only copy of the source archive is a laptop directory that git ignores |
+| **Overall** | **5** | The software is sound. The operational base it assumes does not exist yet |
