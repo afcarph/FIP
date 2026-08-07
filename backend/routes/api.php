@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\FleetController;
 use App\Http\Controllers\Api\V1\ForecastController;
+use App\Http\Controllers\Api\V1\FuelController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OcrController;
@@ -76,6 +77,19 @@ Route::prefix('v1')->group(function (): void {
         Route::get('forecasts', [ForecastController::class, 'index']);
         Route::get('forecasts/history', [ForecastController::class, 'history']);
         Route::get('forecasts/accuracy', [ForecastController::class, 'accuracy']);
+
+        // The DOE's published weekly price monitoring reports. Distinct from
+        // /prices above, which is the platform's own per-station view: these
+        // are the department's figures for a city, brand and week, as
+        // published. Literal segments precede the parameterised ones so
+        // /fuel/latest is not read as a region named "latest".
+        Route::get('fuel/latest', [FuelController::class, 'latest']);
+        Route::get('fuel/history', [FuelController::class, 'history']);
+        Route::get('fuel/areas', [FuelController::class, 'areas']);
+        Route::get('fuel/brands', [FuelController::class, 'brands']);
+        Route::get('fuel/search', [FuelController::class, 'search']);
+        Route::get('fuel/trends', [FuelController::class, 'trends']);
+        Route::get('fuel/imports', [FuelController::class, 'imports']);
 
         // Community reports (read-only for guests)
         Route::get('reports', [CrowdReportController::class, 'index']);

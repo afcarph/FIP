@@ -1,75 +1,45 @@
 # One-command deployment:  docker compose up -d
 #
-# Brings up MySQL and the scheduler. The scheduler creates its schema on start
-# and then waits for 06:00 Asia/Manila.
-#
-# The scraper's database is separate from the platform's on purpose: FIP's
-# Laravel migrations already own a `fuel_price_history` with a different shape.
-# See ../backend for the bridge that moves rows into the platform's own model.
+# The ingest writes to the platform's database. There is no database of its own
+# to start: `fuel_reports`, `fuel_prices` and `doe_import_runs` are created by
+# Laravel's migrations, and this service only writes rows into them.
 
-name: fip-doe-scraper
+name: fip-doe-ingest
 
 services:
-  db:
-    image: mysql:8.4
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DOE_DB_ROOT_PASSWORD:?set DOE_DB_ROOT_PASSWORD in .env}
-      MYSQL_DATABASE: ${DOE_DB_NAME:-fip_doe}
-      MYSQL_USER: ${DOE_DB_USER:-fip}
-      MYSQL_PASSWORD: ${DOE_DB_PASSWORD:?set DOE_DB_PASSWORD in .env}
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      # The scraper writes a few thousand rows once a day and reads them back
-      # for change detection. The default 128M buffer pool spends the run
-      # reading index pages off disk.
-      - --innodb-buffer-pool-size=512M
-    volumes:
-      - doe-db-data:/var/lib/mysql
-    ports:
-      # Loopback only. This database has no authentication story beyond its
-      # password and no TLS; it should not be reachable from off the host.
-      - "127.0.0.1:${DOE_DB_PORT:-3307}:3306"
-    healthcheck:
-      # --protocol=TCP because MySQL listens on a socket before it opens the
-      # port, and a socket-based check reports healthy while connections from
-      # other containers are still refused.
-      test: ["CMD", "mysqladmin", "ping", "--protocol=TCP", "-h", "127.0.0.1", "-u", "root", "-p${DOE_DB_ROOT_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 40s
-
-  scraper:
+  ingest:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
-      DOE_DB_HOST: db
-      DOE_DB_PORT: 3306
-      DOE_DB_NAME: ${DOE_DB_NAME:-fip_doe}
+      DOE_DB_HOST: ${DOE_DB_HOST:?set DOE_DB_HOST in .env}
+      DOE_DB_PORT: ${DOE_DB_PORT:-3306}
+      DOE_DB_NAME: ${DOE_DB_NAME:-fip}
       DOE_DB_USER: ${DOE_DB_USER:-fip}
       DOE_DB_PASSWORD: ${DOE_DB_PASSWORD:?set DOE_DB_PASSWORD in .env}
-      DOE_DASHBOARD_URL: ${DOE_DASHBOARD_URL:?set DOE_DASHBOARD_URL in .env}
+      DOE_PORTAL_BASE_URL: ${DOE_PORTAL_BASE_URL:-https://doe.gov.ph}
+      DOE_CMS_BASE_URL: ${DOE_CMS_BASE_URL:-https://prod-cms.doe.gov.ph}
       DOE_SCHEDULE_HOUR: ${DOE_SCHEDULE_HOUR:-6}
       DOE_SCHEDULE_MINUTE: ${DOE_SCHEDULE_MINUTE:-0}
       DOE_TIMEZONE: ${DOE_TIMEZONE:-Asia/Manila}
-      DOE_HEADLESS: ${DOE_HEADLESS:-true}
       DOE_LOG_LEVEL: ${DOE_LOG_LEVEL:-INFO}
       DOE_LOG_JSON: ${DOE_LOG_JSON:-false}
-      DOE_MAX_ATTEMPTS: ${DOE_MAX_ATTEMPTS:-3}
+      DOE_NOTIFY_WEBHOOK_URL: ${DOE_NOTIFY_WEBHOOK_URL:-}
     volumes:
       - ./logs:/app/logs
-      - ./captures:/app/captures
-    # Chromium's renderer uses shared memory, and the default 64MB is not
-    # enough for a dashboard this size — it crashes the tab mid-render, which
-    # looks like a dashboard that never finished loading.
-    shm_size: 1gb
+      # The stored PDFs, on a named volume so a container rebuild does not
+      # discard them. They are the only way to re-extract a past week — the DOE
+      # keeps no accessible archive of superseded publications.
+      - doe-pdfs:/app/storage/pdfs
+    # Reaches the platform's MySQL, which runs in the main compose project.
+    networks:
+      - fip
 
 volumes:
-  doe-db-data:
+  doe-pdfs:
+
+networks:
+  fip:
+    external: true
+    name: ${FIP_NETWORK:-fip_default}

@@ -1,291 +1,264 @@
-# FIP DOE fuel price scraper
+# DOE PDF ingest
 
-Collects Philippine retail fuel prices from the Department of Energy's Looker
-Studio dashboard and stores them for the Fuel Intelligence Platform.
-
-The dashboard is **not** read visually. Looker's own frontend asks its backend
-for the data; this service runs that frontend in a real browser and reads the
-JSON answers. There is no `query_selector`, no `inner_text`, no table walk, no
-xpath and no OCR anywhere in this project — the `batchedDataV2` payload is the
-only source of truth.
-
----
-
-## How it works
+Collects the Department of Energy's weekly fuel price monitoring publications
+and loads them into the Fuel Intelligence Platform.
 
 ```
-Playwright opens the dashboard
-   ↓  the page's own JavaScript issues getSchema and batchedDataV2
-   ↓  every response is intercepted and decoded
-   ↓  the )]}' guard is stripped, the body is parsed as JSON
-   ↓  getSchema gives internal id → published label
-   ↓  labels are matched to our columns (nothing hardcoded)
-   ↓  dataResponse → dataSubset → tableDataset
-   ↓  parallel typed columns + null mask → records
-   ↓  MySQL, keyed on (station, price_date)
+DOE portal → find new PDFs → download → store the original
+           → extract tables → normalise → validate → MySQL → Laravel API
 ```
 
-### Why a browser at all
+## Why this replaced the Looker scraper
 
-The `batchedDataV2` request is signed with a token the page mints at load, and
-the report, page and tile ids are regenerated whenever the DOE republishes.
-Replaying a captured request works until the next dashboard edit. A browser
-that renders the dashboard normally produces correct requests by construction.
+The previous version drove the DOE's Looker Studio dashboard and read its JSON.
+That dashboard is backed by a dataset last refreshed in **2021**, so everything
+it served was five years stale. The department's own weekly PDFs are the live
+source, and this service reads those instead. Playwright, the response
+interceptor and the JSON parsing are gone.
 
-### Why nothing is hardcoded
+## What the source actually contains
 
-Looker names fields `qt_fgaojmiemc`, `qt_85e4fhiemc` — generated ids, reissued
-every time the report is edited. A scraper pinned to them does not fail loudly
-when the DOE republishes; it keeps running and writes nothing.
+Worth knowing before reading the schema, because it is not what a price feed
+usually looks like.
 
-So the ids are resolved at run time:
+Each PDF covers one region for one week. Its table is:
 
 ```
-qt_85e4fhiemc  ──getSchema──▶  "Gas Station"  ──patterns──▶  station
-(per report)                   (published)                   (ours)
+AREA | PRODUCT | PETRON | SHELL | CALTEX | … | OVERALL RANGE | COMMON PRICE
 ```
 
-The label is the stable half — it is what the DOE shows the public. The
-patterns that recognise it live in `config.py`.
+Every brand cell holds a **min and a max** — that brand's price range in that
+city. The last two columns are the area's overall range and the common price,
+which the DOE states outright rather than deriving.
 
-### The null mask
+**There is no station-level data.** No station names, no addresses, no
+coordinates. The published grain is *area by product by brand*. That is why
+this service creates no `fuel_stations` table: it could only ever be empty. The
+platform's own `gas_stations` remains the station directory, and
+`/api/v1/stations` remains the way to browse it.
 
-This is the part worth knowing about. Looker does not send rows; it sends
-parallel typed column arrays plus a positional null mask. A column with nulls
-carries **fewer values than there are rows**, because omitted entries are
-recorded in `nullIndex` rather than sent as null.
+It also means nothing here duplicates `station_prices` or `fuel_price_history`,
+which are per-station pump prices, or `price_advisories`, which are weekly
+*changes* per region. Published price *levels* per city and brand are something
+FIP had no table for.
 
-Zipping values by position without re-inserting the gaps shifts every
-subsequent value up a row. The result is a complete, plausible, entirely wrong
-dataset — every price is real, and attached to the wrong station. Nothing
-downstream can detect it. `parser.expand_nulls` is what prevents it, and it has
-its own tests.
+## Discovery
 
----
+There is no index, no feed and no API. `prod-cms.doe.gov.ph` is a Liferay
+instance whose document library is not browsable, and the only route to a PDF
+is the article that links it. So discovery crawls:
+
+```
+doe.gov.ph/articles/group/liquid-fuels?category=Price+Monitoring   (paginated)
+    ↓ article links
+/articles/{id}--{slug}
+    ↓ attachment links
+prod-cms.doe.gov.ph/documents/d/guest/{name}
+```
+
+**Filenames are never trusted.** They are inconsistent enough to break any
+convention-based approach:
+
+| Published name | What it tells you |
+| --- | --- |
+| `ncr-price-monitoring-07282026-pdf` | region and date, with a `-pdf` suffix |
+| `ncr-price-monitoring-11112025` | the same, without the suffix |
+| `region-iv-a-calabarzon-20-pdf` | region, and a sequence number |
+| `region-v-bicol-8-pdf` | no date at all |
+
+A crawler guessing `ncr-price-monitoring-{date}-pdf` would find NCR and miss
+every other region. The filename is only a hint about whether a link is worth
+downloading; **region and coverage dates are read from the PDF's own header**.
+
+## Extraction
+
+Three extractors are implemented and every one is *scored*; the best result
+wins. The ordering is not the obvious one, and the reason is worth stating.
+
+Camelot and tabula reconstruct a grid. These documents defeat that: the DOE
+rules a box around each area block and draws **no line between the product
+rows** inside it, so a grid reader merges RON 100 through KEROSENE into a
+single row. Verified against the real NCR report, pdfplumber's own
+`extract_tables` does exactly this.
+
+Plain text extraction is worse. A blank brand column produces no text, so a
+RON 95 line reads:
+
+```
+79.50 87.50 87.60 93.00 93.90 93.90 78.30 81.90 …
+```
+
+Nothing in that string says which brands those pairs belong to. Splitting on
+whitespace assigns them left to right and silently gives Shell's price to
+Caltex whenever a brand ahead of them is blank.
+
+So the primary extractor is **coordinate-based**: every word is placed in a
+column by its x position against boundaries taken from the header the document
+prints. Blank columns stay blank because nothing lands in them. Camelot and
+tabula stay in the chain and are scored, in case a future layout suits them.
+
+Two bugs this module has had, both of which produced wrong data rather than an
+error, and both now covered by tests:
+
+- **A stale area label stealing the next area's table.** Page two of the real
+  NCR report carries a leftover "Caloocan City" from page one sitting two
+  points above the real "Muntinlupa City" — which is also why they interleave
+  into `MCuanlotioncluapna C Citiyty` in the text layer. Each area publishes
+  once, so the live label is the one not already used.
+- **Rows bucketed by `int(top // 3)`.** That splits a row whenever its words
+  straddle a multiple of three. Caloocan's RON 95 line sits at y=156.81 and
+  lost every price it had. Rows are clustered on baseline gaps instead.
+
+## Validation
+
+Rejects what is wrong *about the document* — no region, a coverage week that
+runs backwards or spans forty days, a table that mostly failed to parse. It
+does not judge whether a price is reasonable in market terms; that belongs to
+the platform.
+
+A mostly-unusable table fails the whole report rather than importing the part
+that parsed. A partial import is how a layout change becomes a week of quietly
+missing areas.
+
+## Idempotency
+
+- A report is keyed on the **checksum of its PDF**, so the daily schedule is
+  safe to run twice.
+- A region publishes one report per week. A re-issued PDF with different bytes
+  is a **correction**: it replaces that week's rows wholesale rather than
+  merging, so figures the DOE has withdrawn do not survive.
+- A run that finds nothing new is a success, recorded under its own
+  `no_changes` status. Without that, a quiet week and a dead scheduler look
+  identical.
 
 ## Quick start
 
 ```bash
-cp .env.example .env      # then set DOE_DASHBOARD_URL and the database password
+cp .env.example .env      # point DOE_DB_* at the platform's database
 docker compose up -d
 ```
 
-That brings up MySQL and the scheduler. The scheduler creates its schema on
-start and waits for 06:00 Asia/Manila.
-
-To run once, immediately:
+Run once, immediately:
 
 ```bash
-docker compose run --rm scraper python scraper.py
+docker compose run --rm ingest python pipeline.py
 ```
 
-### Without Docker
+Without Docker — note the system packages, which camelot and tabula need:
 
 ```bash
+sudo apt-get install ghostscript poppler-utils default-jre-headless libgl1
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/playwright install chromium --with-deps
-cp .env.example .env
-.venv/bin/python scraper.py --dry-run
+.venv/bin/python pipeline.py --dry-run
 ```
-
----
 
 ## Commands
 
 ```bash
-python scraper.py                     # one run
-python scraper.py --dry-run           # parse and report, write nothing
-python scraper.py --replay captures/  # re-parse a capture, no browser
-python scraper.py --headed            # watch it
-python scraper.py --url https://...   # override the dashboard URL
+python pipeline.py                    # a normal daily run
+python pipeline.py --dry-run          # extract and report, write nothing
+python pipeline.py --backfill         # walk the whole listing archive
+python pipeline.py --url <pdf-url>    # one document
+python pipeline.py --replay <path>    # re-extract a stored PDF
 
 python scheduler.py                   # long-lived, fires at 06:00
 python scheduler.py --run-now         # and once immediately
 ```
 
-`--replay` is the one to reach for when a run parses to zero rows. Captures are
-written to `captures/<date>/` on every run and kept for 14 days, so a schema
-change can be diagnosed in minutes rather than by waiting for tomorrow.
+`--replay` is why the original PDFs are kept. Extraction is what will need
+fixing, and a fix is only worth having if it can be re-run against the
+documents it would have got wrong — by which time the DOE has published a
+different week and keeps no accessible archive of the old one.
 
----
+## Schema
 
-## Configuration
+Created by Laravel's migration; this service only writes rows.
 
-Every setting is an environment variable with a `DOE_` prefix. See
-[.env.example](.env.example) for the full list. The two with no sensible
-default:
+**`fuel_reports`** — one published PDF. Unique on `checksum`, and on
+`(region, coverage_start)`. Keeps `pdf_path` so extraction can be re-run, and
+`extractor`/`quality` so a report imported at 0.60 can be looked at before one
+imported at 0.98.
 
-| Variable | Why |
-| --- | --- |
-| `DOE_DASHBOARD_URL` | The report id changes when the DOE rebuilds the dashboard |
-| `DOE_DB_PASSWORD` | — |
+**`fuel_prices`** — one area × product × brand cell. `brand` is NULL on the
+row carrying the area's overall range and common price. `fuel_code` is the
+platform's `fuel_types.code`, resolved during extraction, so the data lands in
+FIP's vocabulary. It is nullable because the DOE publishes RON 100 and the
+platform has no fuel type for it — carried rather than filed under RON 97,
+which would read as a plausible price for a different product.
 
----
-
-## Database
-
-The scraper writes to its **own database** (`fip_doe`), not the platform's.
-
-This is not a preference. FIP's Laravel migrations already own a table called
-`fuel_price_history`, and it is a different table:
-
-| | FIP's | This one |
-| --- | --- | --- |
-| grain | one row per fuel type | one row per station-date |
-| columns | `station_id, fuel_type_id, price, recorded_on` | `station_id, price_date, ron91…diesel_plus` |
-
-Sharing a schema would mean two owners for one name. See
-[the bridge](#feeding-the-platform) for how rows get from here into the
-platform's model.
-
-### Tables
-
-**`fuel_stations`** — a retail site as the DOE publishes it. The DOE issues no
-station identifiers, so identity is a `fingerprint`: a hash of company, name,
-city and barangay, normalised for case. Matching on the display name alone
-merges the four different Petron sites in one city into one row.
-
-**`fuel_price_history`** — one station's posted prices on one date. Unique on
-`(station_id, price_date)`. Rows are never deleted and never rewritten with
-equal values.
-
-**`scraper_logs`** — one row per execution, including the ones that failed
-before they started parsing. A log that only records successes cannot answer
-"when did this last work?", which is the only question asked of it during an
-incident.
-
-### Import rules
-
-- **Idempotent.** Re-running a day writes nothing.
-- **Only changed prices are written.** Rewriting equal values daily would make
-  `updated_at` useless as a signal and produce a binlog the size of the table
-  for no information.
-- **History is kept forever.** The only mutation permitted is correcting a
-  price the DOE itself restated for a date already recorded.
-- **A missing grade stays missing.** Almost no station sells all six, and a
-  zero would be indistinguishable from "free" in an average.
-
----
-
-## Feeding the platform
-
-The scraper's tables are a landing zone. The platform's own model — the one the
-map, the dashboard, the forecast and the advisor read — is populated by a
-Laravel command:
-
-```bash
-php artisan fip:sync-doe-prices             # the most recent scraped date
-php artisan fip:sync-doe-prices --dry-run
-php artisan fip:sync-doe-prices --date=2026-08-06
-php artisan fip:sync-doe-prices --create-missing
-```
-
-It writes through `PriceService::recordPrice`, so `fuel_price_history` gains a
-row rather than `station_prices` being overwritten. Writing the table directly
-would give a populated map and a forecast with nothing to read.
-
-Station matching is deliberately conservative: brand **and** city must agree
-before a name is considered. Unmatched stations are reported rather than
-guessed at — a wrong match writes one station's price onto another, which is
-worse than no match, because it cannot be seen.
-
-`ron100` is not synced. The platform has no RON 100 fuel type, and mapping it
-onto RON 97 would file one product's price under another.
-
-Laravel reads the scraper's database over a separate `doe` connection —
-`DOE_DB_HOST`, `DOE_DB_DATABASE`, `DOE_DB_USERNAME`, `DOE_DB_PASSWORD` in the
-backend's `.env`.
-
----
+**`doe_import_runs`** — one row per execution, including the ones that found
+nothing.
 
 ## API
 
-Seven public endpoints, served by the Laravel app from the scraped data:
-
 ```
-GET /api/v1/fuel/latest              most recent prices + national statistics
-GET /api/v1/fuel/history             the series, with a trend
-GET /api/v1/fuel/stations            the directory
-GET /api/v1/fuel/search              everything, filtered
-GET /api/v1/fuel/company/{company}
-GET /api/v1/fuel/city/{city}
-GET /api/v1/fuel/compare?stations=12,48
-GET /api/v1/fuel/insights            rankings, extremes, trends, movement
+GET /api/v1/fuel/latest      most recent report per region, with provenance
+GET /api/v1/fuel/history     the series, bounded by date
+GET /api/v1/fuel/areas       cities and municipalities monitored
+GET /api/v1/fuel/brands      brands monitored, with their coverage
+GET /api/v1/fuel/search      area, brand, product, price range
+GET /api/v1/fuel/trends      a weekly series for one grade
+GET /api/v1/fuel/imports     ingestion health, for the admin dashboard
 ```
 
-`search` accepts `province`, `city`, `municipality`, `barangay`, `station`,
-`company`, `fuel`, `min_price`, `max_price`, `date` and `sort`.
+Ranges are never collapsed into a single price — that would invent a figure
+nobody published. The one exception is `/trends`, where a line needs one value
+per week; those points are midpoints, the minimum and maximum travel with them,
+and the response says so.
 
-`insights` returns the lowest, highest and average price, province and city
-rankings, the cheapest and most expensive station, a trend series, and weekly
-and monthly changes.
-
-These sit alongside the platform's existing `/prices` and `/stations`, they do
-not replace them. The distinction is provenance: `/stations` is the platform's
-directory, which operators maintain and users report against. `/fuel` is what
-the DOE published, unedited.
-
----
+`/imports` returns the last run, the last successful run, import duration,
+record counts, failed runs, checksums and the latest publication date.
 
 ## Tests
 
 ```bash
-pytest                     # 96 tests, under a second
+pytest                     # 51 tests
 ruff check . && ruff format --check .
 ```
 
-No browser is needed: every test runs against captured payloads or in-memory
-SQLite. The Docker job in CI is what proves a browser starts, which is the one
-thing these cannot cover.
+They run against **the real published NCR report** for the week of 28 July
+2026, kept in `tests/fixtures/`. Synthetic PDFs would not be worth much: every
+bug this pipeline has had came from something the real document does and a
+hand-built one would not — labels centred between rows, a stale label from the
+previous page, baselines that straddle a bucket boundary.
 
-The tests worth reading first are `TestExpandNulls` and
-`test_nulls_land_on_the_right_rows` in `tests/test_parser.py`. They cover the
-failure that produces wrong data rather than no data.
-
----
+The Docker job in CI proves camelot, pdfplumber and tabula all import in the
+image and that the fixture extracts end to end, which the test job deliberately
+does not cover.
 
 ## Operations
 
-**Schedule.** 06:00 Asia/Manila, daily. The DOE publishes its weekly adjustment
-early Tuesday; running daily rather than weekly means one failure costs one day.
+**Schedule.** 06:00 Asia/Manila, daily. The DOE publishes weekly; running daily
+means a missed publication is picked up the next morning rather than the next
+week.
 
-**Retries.** Three attempts, 5s then 10s apart. Linear rather than exponential:
-the dashboard is slow, not rate-limiting us, and a run that must finish before
-the morning window closes cannot afford a doubling backoff.
+**Retries.** Three attempts on discovery, 5s then 10s apart. The portal is not
+highly available, and a transient 5xx would otherwise look like a week with
+nothing published — a silent failure, since an empty run is legitimate.
 
-**Cron instead.** See [crontab.example](crontab.example). Note it sources `.env`
-explicitly and sets `TZ` — cron runs with a near-empty environment, and a bare
-`python scraper.py` finds no database and runs at 2pm Manila time.
+**Health.** `doe_import_runs` is the record, surfaced at `/api/v1/fuel/imports`.
 
-**Health.** `scraper_logs` is the record. A `partial` status means rows were
-written and some tiles failed; `failed` means nothing was written.
+### When a report fails to import
 
-### When a run parses zero rows
-
-1. Check `scraper_logs.errors` for the run.
-2. Look at `captures/<date>/` — the raw payloads are there.
-3. `python scraper.py --replay captures/<date>/` to re-parse without a browser.
-4. If the field mapping is unusable, the dashboard's labels have changed. The
-   captured `getSchema` payload shows the new ones; the patterns are in
-   `config.py`.
-
-A mapping that resolves no station or no price column fails the run rather than
-importing rows of nothing.
-
----
+1. Check `doe_import_runs.errors` for the run.
+2. The PDF is in `storage/pdfs/`, sharded by checksum.
+3. `python pipeline.py --replay storage/pdfs/xx/name-checksum.pdf`.
+4. If extraction scored below the threshold, the layout has changed. The
+   coordinate reader takes its columns from the header the document prints, so
+   start by checking that the header parsed.
 
 ## Layout
 
 | File | |
 | --- | --- |
-| `settings.py` | environment: credentials, hosts, timeouts |
-| `config.py` | the Looker protocol and the label vocabulary |
-| `interceptor.py` | response capture, `)]}'` stripping, JSON decoding |
-| `mapper.py` | getSchema → id → label → column |
-| `parser.py` | tableDataset → records, including the null mask |
-| `models.py` | SQLAlchemy schema |
-| `database.py` | engine, sessions, the import rules |
-| `scraper.py` | orchestration, retries, CLI |
+| `settings.py` | environment: credentials, hosts, thresholds |
+| `discovery.py` | crawls the article listings for PDF links |
+| `downloader.py` | fetches, checksums and stores the original |
+| `extractor.py` | three extractors, scored; the table and the header |
+| `validator.py` | document-level checks before anything is stored |
+| `models.py` | SQLAlchemy description of the platform's tables |
+| `storage.py` | engine, sessions, the write path, the run log |
+| `pipeline.py` | orchestration, retries, CLI |
 | `scheduler.py` | the 06:00 job |
-| `logger.py` | logging, run correlation, payload capture |
+| `logger.py` | logging and run correlation |

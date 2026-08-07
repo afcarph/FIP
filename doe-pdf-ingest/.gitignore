@@ -12,7 +12,7 @@ coverage.xml
 # Secrets.
 .env
 
-# Run output. Captures can contain the full published dataset; they are for
-# debugging, not for version control.
+# Run output. The stored PDFs are the DOE's own published documents, kept so a
+# past week can be re-extracted — they belong on a volume, not in git.
 logs/
-captures/
+storage/
