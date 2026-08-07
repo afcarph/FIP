@@ -1,0 +1,18 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Secrets.
+.env
+
+# Run output. Captures can contain the full published dataset; they are for
+# debugging, not for version control.
+logs/
+captures/

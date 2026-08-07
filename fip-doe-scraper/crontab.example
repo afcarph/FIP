@@ -1,0 +1,18 @@
+# System cron, for hosts that would rather own the schedule than run the
+# scheduler container.
+#
+#   crontab -l > current && cat crontab.example >> current && crontab current
+#
+# Note the two differences from the container:
+#   * cron runs with a near-empty environment, so the .env file has to be
+#     sourced explicitly — a bare `python scraper.py` finds no database.
+#   * TZ must be set, or the "06:00" below is 06:00 UTC, which is 2pm Manila.
+
+TZ=Asia/Manila
+MAILTO=ops@example.com
+
+0 6 * * * cd /opt/fip-doe-scraper && set -a && . ./.env && set +a && ./.venv/bin/python scraper.py >> logs/cron.log 2>&1
+
+# Weekly capture prune, in case a run has not completed in a while and the
+# scraper's own pruning has not fired.
+30 3 * * 0 cd /opt/fip-doe-scraper && ./.venv/bin/python -c "from logger import prune_captures; print(prune_captures())" >> logs/cron.log 2>&1

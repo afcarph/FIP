@@ -1,0 +1,53 @@
+# Lint configuration, shared by the pre-commit hook and CI so a green local run
+# means a green pipeline.
+
+target-version = "py312"
+line-length = 100
+exclude = [".venv", "captures", "logs"]
+
+[lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "DTZ",  # naive datetimes — the scraper spans timezones and must be explicit
+    "SIM",  # simplifications
+    "PL",   # pylint subset
+    "RUF",
+]
+ignore = [
+    # The engine, the session factory and the logging setup are process-wide
+    # singletons. A module-level global is what that is.
+    "PLW0603",
+    # Parsers have many exits by nature: parse_date tries nine formats and two
+    # epoch encodings, and collapsing those into one return would need a
+    # sentinel that reads worse than the returns do.
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    # The plausibility bounds and epoch thresholds are the logic, not stray
+    # constants — each is named and explained in config.py.
+    "PLR2004",
+]
+
+[lint.per-file-ignores]
+# Tests reach into private helpers on purpose, to drive the Playwright callback
+# without a browser.
+"tests/*" = ["SLF001", "PLR2004", "S101"]
+
+[lint.isort]
+known-first-party = [
+    "config",
+    "database",
+    "interceptor",
+    "logger",
+    "mapper",
+    "models",
+    "parser",
+    "scraper",
+    "scheduler",
+    "settings",
+]
