@@ -6,11 +6,8 @@
 
 # --- discovery and download -------------------------------------------------
 requests~=2.32
-# The article listings are server-rendered HTML; the crawler reads anchors from
-# them. This is link discovery, not data extraction — every figure comes from
-# the PDF.
-beautifulsoup4~=4.12
-lxml~=5.3
+# No HTML parser: discovery is a GraphQL query, and nothing in this service
+# reads a web page.
 
 # --- table extraction -------------------------------------------------------
 # Three extractors, tried in order and scored. No single one handles these

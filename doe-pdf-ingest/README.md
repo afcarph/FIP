@@ -44,31 +44,84 @@ FIP had no table for.
 
 ## Discovery
 
-There is no index, no feed and no API. `prod-cms.doe.gov.ph` is a Liferay
-instance whose document library is not browsable, and the only route to a PDF
-is the article that links it. So discovery crawls:
+**The listing crawler is removed.** Discovery queries Liferay's GraphQL API.
 
 ```
-doe.gov.ph/articles/group/liquid-fuels?category=Price+Monitoring   (paginated)
-    ↓ article links
-/articles/{id}--{slug}
-    ↓ attachment links
-prod-cms.doe.gov.ph/documents/d/guest/{name}
+POST https://prod-cms.doe.gov.ph/o/graphql
+
+documents(
+  siteKey: "guest"
+  flatten: true
+  pageSize: 100
+  page: N
+  sort: "dateModified:desc"
+) { totalCount items { id title contentUrl dateModified } }
 ```
 
-**Filenames are never trusted.** They are inconsistent enough to break any
-convention-based approach:
+Unauthenticated, introspection enabled. A daily run reads **one page in about
+two seconds** and the newest reports are on it by construction.
 
-| Published name | What it tells you |
+### Why the crawler went
+
+It read the portal's article listings, which worked for the field offices
+publishing under "Price Monitoring" and never once reached NCR. Those reports
+are public and served fine — the listings that link them use a different query
+grammar, so NCR sat at **position 2,382 of 3,251** candidates. No page limit or
+category balancing fixes an ordering that carries no meaning.
+
+### Why `flatten: true` is mandatory
+
+It defaults to false, which returns only the library's **root folder**: 58
+documents, not one of them a price report. With it, the same site key returns
+**14,898** and the current NCR report is on page one.
+
+This one argument was the entire bug. `siteKey: "guest"` was correct
+throughout — and note that the `/documents/d/guest/…` URL segment is a
+friendly-URL namespace, not the site key. They coincide here; that is luck, not
+a rule.
+
+### Why `search` and `filter` are unused
+
+Both look like they work and quietly lose reports.
+
+| attempt | result |
 | --- | --- |
-| `ncr-price-monitoring-07282026-pdf` | region and date, with a `-pdf` suffix |
-| `ncr-price-monitoring-11112025` | the same, without the suffix |
-| `region-iv-a-calabarzon-20-pdf` | region, and a sequence number |
-| `region-v-bicol-8-pdf` | no date at all |
+| `search: "NCR Price Monitoring"` | 4,621 documents, not relevance-ranked, order unchanged |
+| `search: "ncr-price-monitoring-07282026"` | the same 4,621 |
+| `filter: "contains(title,'NCR')"` | 0 |
 
-A crawler guessing `ncr-price-monitoring-{date}-pdf` would find NCR and miss
-every other region. The filename is only a hint about whether a link is worth
-downloading; **region and coverage dates are read from the PDF's own header**.
+Titles are classified in-process instead, where the rules are visible and
+tested. The CMS keeps titles clean — `NCR Price Monitoring 07282026.pdf` —
+unlike the friendly-URL filenames, which run to four irreconcilable
+conventions.
+
+### Providers
+
+The pipeline depends on `DiscoveryProvider`, never on GraphQL:
+
+```python
+class DiscoveryProvider(ABC):
+    def discover(self, limit: int | None = None) -> list[DiscoveredPdf]: ...
+```
+
+`GraphQlDiscoveryProvider` is the default. `ManualSeedProvider` backs `--url`,
+so a single document and a scheduled run share one code path. A sitemap or feed
+provider would be another implementation and would change nothing downstream.
+
+### Pagination
+
+Three independent stops, because each fails somewhere alone:
+
+- `LOOKBACK_DAYS` (14) — the library is newest-first, so a page ending older
+  than the window means every later page is older still. This is what keeps a
+  daily run to page one.
+- `MAX_PAGES` (3) — a ceiling, so a misconfigured lookback cannot walk the
+  archive. `--backfill` raises it to `BACKFILL_MAX_PAGES`.
+- `max_candidates_per_run` (40) — stops early once enough is in hand.
+
+Discovery does **not** deduplicate. A report is identified by the checksum of
+its bytes, which is the importer's job — a provider guessing identity from a
+URL would let a re-issued document through under a new name.
 
 ## Extraction
 

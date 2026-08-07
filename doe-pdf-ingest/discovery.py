@@ -1,293 +1,389 @@
-"""Finds newly published DOE price monitoring PDFs.
+"""Finding newly published DOE price monitoring PDFs.
 
-The DOE publishes these as attachments on weekly articles. There is no index,
-no feed and no API: ``prod-cms.doe.gov.ph`` is a Liferay instance whose
-document library is not browsable, and the only way to a PDF is the article
-that links it.
+Discovery sits behind a provider interface so the pipeline never knows where
+candidates come from. The shipping implementation queries Liferay's GraphQL
+API; the listing crawler that preceded it has been removed.
 
-Discovery reads the listing pages, which embed the attachment links in their
-cards:
+Why the crawler was replaced
+----------------------------
 
-    /articles/group/liquid-fuels?category=Price+Monitoring   (paginated)
-        ↓  attachment links, straight from the cards
-    prod-cms.doe.gov.ph/documents/d/guest/{name}
+It read the portal's article listings. That worked for the field offices
+publishing under "Price Monitoring" and never once reached NCR — those reports
+exist and are publicly served, but the listings linking them use a different
+query grammar, and NCR sat at position 2,382 of 3,251 candidates. No page limit
+or category balancing fixes that, because the ordering itself carried no
+meaning.
 
-It deliberately does *not* follow the individual article pages. Those are
-client-rendered shells: fetched over HTTP they contain the site chrome, the
-title and nothing else, and even in a real browser the body arrives empty. The
-Liferay content API behind them (`/o/headless-delivery/v1.0/`) answers 404 for
-the ids in the article URLs, which are not content ids. Crawling them costs a
-request each and returns nothing — the listing already has what is needed.
+The GraphQL API returns the document library ordered by modification date, so
+the newest reports are on page one by construction.
 
-**Filenames are not trusted for anything.** They are inconsistent in a way that
-would break any convention-based approach:
+The endpoint
+------------
 
-    ncr-price-monitoring-07282026-pdf     region and date, with a -pdf suffix
-    ncr-price-monitoring-11112025         the same thing, without the suffix
-    region-iv-a-calabarzon-20-pdf         region, and a sequence number
-    region-v-bicol-8-pdf                  no date at all
-    petro_vis_2024-feb-27                 a different path and a third convention
+    POST https://prod-cms.doe.gov.ph/o/graphql
 
-A crawler that guessed `ncr-price-monitoring-{date}-pdf` would find NCR and
-miss every region. So the filename is used only as a weak hint for *whether a
-link is worth downloading*; the authoritative region and coverage dates are
-read out of the PDF's own header by :mod:`extractor`.
+    documents(
+        siteKey: "guest",
+        flatten: true,
+        pageSize: 100,
+        page: N,
+        sort: "dateModified:desc"
+    )
 
-This module reads HTML to find links. That is not table scraping — no figure
-in this system comes from a web page. Every price is extracted from a PDF.
+``flatten: true`` is mandatory, and is the whole reason this took so long to
+find. It defaults to false, which returns only the library's *root folder* —
+58 documents, not one of them a price report. With it, the same site key
+returns 14,898 and the current NCR report is on page one. The site key was
+never wrong; the missing argument was.
+
+``search`` and ``filter`` are deliberately unused. ``search`` is not
+relevance-ranked here — "NCR Price Monitoring" returns 4,621 documents, no
+query returns fewer, and the ordering does not change — while OData
+``filter: contains(title,'NCR')`` returns zero. Either would look like it was
+working while quietly dropping reports. Titles are classified in this process
+instead, where the rules are visible and tested.
 """
 
 from __future__ import annotations
 
 import re
 import time
-from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, timedelta
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
 
 from logger import get_logger
 from settings import Settings, get_settings
 
 log = get_logger(__name__)
 
-#: Words in a link or its label that suggest a fuel price monitoring document.
-#: Deliberately broad — a false positive costs one download that the extractor
-#: then rejects, while a false negative loses a region for the week.
-_RELEVANT = re.compile(
-    r"(price[-_\s]*monitoring|prevailing|retail[-_\s]*price|oil[-_\s]*monitor"
-    r"|petro_|price[-_\s]*watch|region|ncr|car\b|mimaropa|calabarzon|bicol)",
-    re.IGNORECASE,
-)
-
-#: Liferay's public document path.
-_DOCUMENT_PATH = re.compile(r"/documents/d/", re.IGNORECASE)
-
-#: Site chrome served from the same document path — logos, social icons,
-#: seals. Without this every page contributes a dozen candidate "PDFs" that
-#: are actually PNGs, each costing a download to reject.
-_CHROME = re.compile(
-    r"(logo|facebook|instagram|twitter|viber|youtube|tiktok|seal|banner|icon"
-    r"|bagong_ph|transparency|foi|dpo)",
-    re.IGNORECASE,
-)
-
 
 class DiscoveryError(RuntimeError):
-    """The listing could not be crawled."""
+    """Candidates could not be retrieved."""
+
+
+#: Titles that name a fuel price publication.
+#:
+#: Matched against the document *title*, which the CMS keeps clean — "NCR Price
+#: Monitoring 07282026.pdf", "VFO PRICE MONITORING 080426_with LGU and
+#: Field.pdf" — unlike the friendly-URL filenames, which run to four
+#: irreconcilable conventions.
+_RELEVANT_TITLE = re.compile(
+    r"(price\s*monitoring|pump\s*price|prevailing\s*retail|retail\s*pump)",
+    re.IGNORECASE,
+)
+
+#: Region hints in a title, best-effort only.
+#:
+#: The authoritative region is read from the PDF's own header by the extractor.
+#: This exists so a run's log says something useful before anything is
+#: downloaded.
+_REGION_HINTS: tuple[tuple[str, str], ...] = (
+    (r"\bNCR\b", "NCR"),
+    (r"\bCAR\b", "CAR"),
+    (r"\bBARMM\b", "BARMM"),
+    (r"\bVFO\b|visayas", "Visayas"),
+    (r"north\s*luzon", "North Luzon"),
+    (r"south\s*luzon", "South Luzon"),
+    (r"\bLFRO\b", "Field Office"),
+    (r"region\s*[IVX0-9]+", "Region"),
+)
+
+#: A date embedded in a title: MMDDYYYY or MMDDYY.
+_TITLE_DATE = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{4}|\d{2})(?!\d)")
 
 
 @dataclass(frozen=True)
 class DiscoveredPdf:
-    """A candidate PDF, before anything has been downloaded or verified."""
+    """A candidate document, before anything has been downloaded.
 
-    url: str
-    #: Link text or the article title. Kept for the run log, never parsed for
-    #: region or dates — see the module docstring.
-    label: str
-    article_url: str
-    article_title: str
+    ``region`` and ``publication_date`` are hints from the title and the CMS
+    metadata. Neither is authoritative — the extractor reads both out of the
+    PDF, because a title can be wrong and a filename routinely is.
+    ``checksum`` is unknown until the bytes are fetched, and is carried so a
+    provider that already knows it can supply it.
+    """
+
+    title: str
+    content_url: str
+    date_modified: datetime | None = None
+    region: str | None = None
+    publication_date: date | None = None
+    checksum: str | None = None
+
+    #: Which provider produced this, for the run log.
+    source: str = "graphql"
+
+    @property
+    def url(self) -> str:
+        """Absolute URL. The pipeline and downloader use this."""
+        return self.content_url
 
     @property
     def filename(self) -> str:
-        """The last path segment, used as the stored filename."""
-        name = urlparse(self.url).path.rstrip("/").rsplit("/", 1)[-1]
+        """A filename for the stored PDF.
 
-        return name if name.lower().endswith(".pdf") else f"{name}.pdf"
+        Derived from the *title*, not the URL. Liferay's contentUrl ends in a
+        UUID — `/documents/20119/0/NCR Price Monitoring 07282026.pdf/8c3f…` —
+        so the last path segment is an opaque identifier carrying nothing.
+        That matters beyond tidiness: the extractor falls back to the filename
+        for a coverage week when the document states none, which the Visayas
+        reports never do. A UUID there silently costs every one of them its
+        dates.
+        """
+        stem = re.sub(r"[^A-Za-z0-9._-]+", "-", unquote(self.title)).strip("-")
+
+        if not stem:
+            stem = urlparse(self.content_url).path.rstrip("/").rsplit("/", 1)[-1] or "document"
+
+        return stem if stem.lower().endswith(".pdf") else f"{stem}.pdf"
 
 
-def _interleave(by_category: dict[str, list[DiscoveredPdf]]) -> list[DiscoveredPdf]:
-    """Round-robin the categories together, newest first within each.
+class DiscoveryProvider(ABC):
+    """Where candidate documents come from.
 
-    A run processes only the first N candidates, and the listings hold the
-    whole archive — so concatenating the categories lets whichever comes first
-    spend the entire budget. On the first live import that was Price
-    Monitoring, and all forty reports were Visayas: NCR never got a look in
-    despite being published that morning.
-
-    Interleaving makes any prefix of the list proportionate across categories.
+    The pipeline depends on this and nothing below it, so a provider can be
+    swapped without touching ingestion. A sitemap or a feed would each be
+    another implementation of this one method.
     """
-    ordered: list[DiscoveredPdf] = []
-    queues = [list(items) for items in by_category.values()]
 
-    while any(queues):
-        for queue in queues:
-            if queue:
-                ordered.append(queue.pop(0))
+    name: str = "provider"
 
-    return ordered
+    @abstractmethod
+    def discover(self, limit: int | None = None) -> list[DiscoveredPdf]:
+        """Candidate documents, newest first."""
 
 
-class PdfDiscovery:
-    """Crawls the DOE article listings for PDF attachments."""
+def classify_title(title: str) -> tuple[bool, str | None]:
+    """Whether a title names a price publication, and which region it hints at.
+
+    Returns ``(is_relevant, region_hint)``. The hint is advisory: the region
+    stored against a report is always the one printed inside the document.
+    """
+    if not _RELEVANT_TITLE.search(title):
+        return False, None
+
+    for pattern, region in _REGION_HINTS:
+        if re.search(pattern, title, re.IGNORECASE):
+            return True, region
+
+    return True, None
+
+
+def date_from_title(title: str) -> date | None:
+    """A publication date embedded in a title, if there is one."""
+    for match in _TITLE_DATE.finditer(title):
+        month, day, year = match.groups()
+        full_year = int(year) if len(year) == 4 else 2000 + int(year)
+
+        try:
+            return date(full_year, int(month), int(day))
+        except ValueError:
+            # A sequence number or a page count, not a date.
+            continue
+
+    return None
+
+
+def _parse_timestamp(value: object) -> datetime | None:
+    """Parse the CMS's ISO timestamps, which end in Z."""
+    if not isinstance(value, str) or not value:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+class GraphQlDiscoveryProvider(DiscoveryProvider):
+    """Reads the CMS document library over GraphQL."""
+
+    name = "graphql"
+
+    _QUERY = """
+        query Documents($siteKey: String!, $pageSize: Int!, $page: Int!) {
+          documents(
+            siteKey: $siteKey
+            flatten: true
+            pageSize: $pageSize
+            page: $page
+            sort: "dateModified:desc"
+          ) {
+            totalCount
+            items { id title contentUrl dateModified }
+          }
+        }
+    """
 
     def __init__(self, settings: Settings | None = None, session: requests.Session | None = None):
         self.settings = settings or get_settings()
         self.session = session or requests.Session()
-        self.session.headers.update({"User-Agent": self.settings.user_agent})
+        self.session.headers.update(
+            {"User-Agent": self.settings.user_agent, "Content-Type": "application/json"}
+        )
 
-    # -- crawl ---------------------------------------------------------------
+    def discover(self, limit: int | None = None) -> list[DiscoveredPdf]:
+        """Walk pages newest-first until there is no reason to continue.
 
-    def discover(self, pages: int | None = None) -> list[DiscoveredPdf]:
-        """Every PDF linked from the recent listings, newest first.
-
-        A failing category or page is logged and skipped rather than raised:
-        the DOE portal is not highly available, and losing Price Monitoring
-        because its listing 500s should not cost Oil Monitor too.
+        Three independent stops, because any one alone fails somewhere: the
+        lookback window keeps a daily run to page one, the page cap bounds a
+        backfill, and the limit stops early once enough candidates are in hand.
+        Without them this would enumerate all 14,898 documents every morning to
+        find the two that are new.
         """
-        pages = pages or self.settings.listing_pages
-        seen: set[str] = set()
-        by_category: dict[str, list[DiscoveredPdf]] = {}
+        limit = limit or self.settings.max_candidates_per_run
+        cutoff = datetime.now(tz=UTC) - timedelta(days=self.settings.lookback_days)
 
-        for category in self.settings.listing_queries:
-            for page in range(1, pages + 1):
-                url = self.settings.listing_url(category, page)
+        found: list[DiscoveredPdf] = []
+        scanned = 0
+        pages = 0
+        started = time.monotonic()
 
-                try:
-                    soup = self._fetch_html(url)
-                except DiscoveryError as exc:
-                    log.warning("Listing unavailable", extra={"url": url, "error": str(exc)})
-                    continue
+        for page in range(1, self.settings.graphql_max_pages + 1):
+            items = self._fetch_page(page)
+            pages += 1
 
-                page_pdfs = self._document_links(soup, url, category)
+            if not items:
+                break
 
-                if not page_pdfs:
-                    # No documents on this page means the end of the archive
-                    # for this category, not an error.
-                    break
+            scanned += len(items)
+            oldest: datetime | None = None
 
-                for pdf in page_pdfs:
-                    if pdf.url in seen:
-                        continue
+            for item in items:
+                modified = _parse_timestamp(item.get("dateModified"))
 
-                    seen.add(pdf.url)
-                    by_category.setdefault(category, []).append(pdf)
+                if modified is not None:
+                    oldest = modified
 
-        found = _interleave(by_category)
+                candidate = self._to_candidate(item, modified)
+
+                if candidate is not None:
+                    found.append(candidate)
+
+            if len(found) >= limit:
+                break
+
+            # The library is sorted newest first, so once a page ends older
+            # than the window, every later page is older still.
+            if oldest is not None and oldest < cutoff:
+                break
+
+        elapsed = time.monotonic() - started
 
         log.info(
-            "Discovery finished",
+            "Discovery finished in %.2fs: %d scanned, %d matched across %d page(s)",
+            elapsed,
+            scanned,
+            len(found),
+            pages,
             extra={
-                "pdfs": len(found),
+                "provider": self.name,
+                "scanned": scanned,
+                "matched": len(found),
                 "pages": pages,
-                "per_category": {name: len(items) for name, items in by_category.items()},
+                "seconds": round(elapsed, 3),
             },
         )
 
-        return found
+        return found[:limit]
 
-    def _document_links(
-        self, soup: BeautifulSoup, source: str, category: str
-    ) -> list[DiscoveredPdf]:
-        """Attachment links on a listing page.
+    def _to_candidate(self, item: dict, modified: datetime | None) -> DiscoveredPdf | None:
+        """Turn one API item into a candidate, or reject it."""
+        title = str(item.get("title") or "").strip()
+        content_url = str(item.get("contentUrl") or "").strip()
 
-        Both anchors and image sources are considered: the cards link some
-        documents and embed others as thumbnails whose URL is the document
-        itself.
-        """
-        pdfs: list[DiscoveredPdf] = []
+        if not title or not content_url:
+            return None
 
-        for element in soup.find_all(["a", "img"]):
-            href = str(element.get("href") or element.get("src") or "")
-            label = (
-                element.get_text(strip=True)
-                if element.name == "a"
-                else str(element.get("alt") or "")
-            )
+        relevant, region = classify_title(title)
 
-            if not self._looks_like_document(href, label):
-                continue
+        if not relevant:
+            return None
 
-            pdfs.append(
-                DiscoveredPdf(
-                    url=urljoin(self.settings.cms_base_url, href),
-                    label=label or category,
-                    article_url=source,
-                    article_title=category,
-                )
-            )
+        return DiscoveredPdf(
+            title=title,
+            content_url=urljoin(self.settings.cms_base_url, content_url),
+            date_modified=modified,
+            region=region,
+            # The title's own date where it has one, otherwise when the CMS
+            # last touched the file. Both are hints; the extractor reads the
+            # coverage week out of the document itself.
+            publication_date=date_from_title(title) or (modified.date() if modified else None),
+        )
 
-        return pdfs
+    def _fetch_page(self, page: int) -> list[dict]:
+        """One page of the document library."""
+        payload = {
+            "query": self._QUERY,
+            "variables": {
+                "siteKey": self.settings.graphql_site_key,
+                "pageSize": self.settings.graphql_page_size,
+                "page": page,
+            },
+        }
 
-    def _article_links(self, listing_url: str) -> list[tuple[str, str]]:
-        """`(url, title)` for every article on a listing page."""
-        soup = self._fetch_html(listing_url)
-        links: list[tuple[str, str]] = []
-        seen: set[str] = set()
-
-        for anchor in soup.find_all("a", href=True):
-            href = str(anchor["href"])
-
-            # Article hrefs are /articles/{id}--{slug}. The id requirement is
-            # what keeps category and pagination links out.
-            if not re.search(r"/articles/\d+--", href):
-                continue
-
-            url = urljoin(self.settings.portal_base_url, href)
-
-            if url in seen:
-                continue
-
-            seen.add(url)
-            links.append((url, anchor.get_text(strip=True)))
-
-        return links
-
-    def _article_pdfs(self, article_url: str, title: str) -> list[DiscoveredPdf]:
-        """Attachment links on one article."""
-        try:
-            soup = self._fetch_html(article_url)
-        except DiscoveryError as exc:
-            log.warning("Article unavailable", extra={"url": article_url, "error": str(exc)})
-            return []
-
-        pdfs: list[DiscoveredPdf] = []
-
-        for anchor in soup.find_all("a", href=True):
-            href = str(anchor["href"])
-            label = anchor.get_text(strip=True)
-
-            if not self._looks_like_document(href, label):
-                continue
-
-            pdfs.append(
-                DiscoveredPdf(
-                    url=urljoin(self.settings.cms_base_url, href),
-                    label=label or title,
-                    article_url=article_url,
-                    article_title=title,
-                )
-            )
-
-        return pdfs
-
-    def _looks_like_document(self, href: str, label: str) -> bool:
-        """Whether a link is worth downloading.
-
-        A hint only. The extractor decides whether the file is really a price
-        monitoring report, because that question is answered by the PDF's own
-        header and not by its URL.
-        """
-        if not _DOCUMENT_PATH.search(href):
-            return False
-
-        if _CHROME.search(href):
-            return False
-
-        return bool(_RELEVANT.search(href) or _RELEVANT.search(label))
-
-    # -- http ----------------------------------------------------------------
-
-    def _fetch_html(self, url: str) -> BeautifulSoup:
-        # Deliberate pacing. This is a government portal being polled by a
-        # daily job; there is nothing to gain by hammering it.
-        time.sleep(self.settings.request_delay_s)
+        started = time.monotonic()
 
         try:
-            response = self.session.get(url, timeout=self.settings.request_timeout_s)
+            response = self.session.post(
+                self.settings.graphql_endpoint,
+                json=payload,
+                timeout=self.settings.request_timeout_s,
+            )
             response.raise_for_status()
-        except requests.RequestException as exc:
-            raise DiscoveryError(str(exc)) from exc
+            body = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise DiscoveryError(f"GraphQL page {page} failed: {exc}") from exc
 
-        return BeautifulSoup(response.text, "lxml")
+        log.debug(
+            "GraphQL page %d in %.3fs",
+            page,
+            time.monotonic() - started,
+            extra={"page": page, "seconds": round(time.monotonic() - started, 3)},
+        )
+
+        if body.get("errors"):
+            # Surfaced rather than swallowed: a schema change here means no
+            # discovery at all, and an empty run is otherwise a valid outcome.
+            message = body["errors"][0].get("message", "unknown error")
+            raise DiscoveryError(f"GraphQL page {page} returned an error: {message}")
+
+        documents = (body.get("data") or {}).get("documents") or {}
+        items = documents.get("items") or []
+
+        return [item for item in items if isinstance(item, dict)]
+
+
+@dataclass
+class ManualSeedProvider(DiscoveryProvider):
+    """Candidates supplied directly, for `--url` and for a fixed replay set.
+
+    Keeps the pipeline free of special cases: one URL is a provider yielding
+    one candidate, not a branch in the run.
+    """
+
+    urls: list[str] = field(default_factory=list)
+    name: str = "manual"
+
+    def discover(self, limit: int | None = None) -> list[DiscoveredPdf]:
+        candidates = [
+            DiscoveredPdf(
+                title=urlparse(url).path.rsplit("/", 1)[-1],
+                content_url=url,
+                source=self.name,
+            )
+            for url in self.urls
+        ]
+
+        return candidates[:limit] if limit else candidates
+
+
+def build_provider(settings: Settings | None = None) -> DiscoveryProvider:
+    """The configured discovery provider."""
+    return GraphQlDiscoveryProvider(settings or get_settings())

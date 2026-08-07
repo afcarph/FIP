@@ -51,40 +51,29 @@ class Settings(BaseSettings):
     portal_base_url: str = Field(default="https://doe.gov.ph")
     cms_base_url: str = Field(default="https://prod-cms.doe.gov.ph")
 
-    #: Listings to crawl, as query strings against /articles/group/liquid-fuels.
-    #:
-    #: Two shapes, because the DOE uses two. Most sections filter on
-    #: `category`, but the regional pump price pages filter on `maincat` plus
-    #: `subcategory` — and that is where NCR lives. Building only `category=`
-    #: URLs returned 1,849 documents and not one NCR report: they are not in
-    #: that view at all, rather than under a category name we had missed.
-    #:
-    #: Held as raw query strings rather than a name per entry, so a section
-    #: with a third grammar can be added without changing this module.
-    listing_queries: list[str] = Field(
-        default=[
-            "category=Price+Monitoring",
-            "maincat=Retail+Pump+Prices&subcategory=NCR+Pump+Prices",
-            "maincat=Retail+Pump+Prices&subcategory=Regional+Pump+Prices",
-            "category=Oil+Monitor",
-        ]
+    # --- discovery: GraphQL --------------------------------------------------
+    #
+    # Liferay's API, unauthenticated. Replaces the listing crawler entirely —
+    # see discovery.py for why, and for why `flatten` is not optional.
+    graphql_endpoint: str = Field(
+        default="https://prod-cms.doe.gov.ph/o/graphql",
     )
+    graphql_site_key: str = Field(default="guest")
+    graphql_page_size: int = Field(default=100, ge=1, le=200)
 
-    #: How many listing pages back to walk on a normal run. One page covers
-    #: roughly a fortnight, so two is enough to catch a week the scheduler
-    #: missed without re-reading years of archive every morning.
-    listing_pages: int = Field(default=2, ge=1)
+    #: How far back a normal run looks. The library is sorted newest first, so
+    #: this is what keeps a daily run to page one rather than walking 14,898
+    #: documents to find the two published overnight.
+    lookback_days: int = Field(default=14, ge=1)
 
-    #: Backfill depth, used only by `--backfill`.
-    backfill_pages: int = Field(default=168, ge=1)
+    #: Hard ceiling on pages, so a misconfigured lookback cannot walk the whole
+    #: archive. `--backfill` raises it.
+    graphql_max_pages: int = Field(default=3, ge=1)
+
+    #: Pages walked by `--backfill`.
+    backfill_max_pages: int = Field(default=150, ge=1)
 
     #: Most candidates a normal run will process.
-    #:
-    #: The listing pages embed the *whole* archive in their cards — one page
-    #: yields around 1,800 documents going back years, not the fortnight the
-    #: pagination implies. Unbounded, every morning would re-download the lot.
-    #: The listing is ordered newest first, so the cap keeps a daily run to
-    #: what is plausibly new; `--backfill` lifts it.
     max_candidates_per_run: int = Field(default=40, ge=1)
 
     # --- download -----------------------------------------------------------
@@ -168,14 +157,6 @@ class Settings(BaseSettings):
     def safe_database_url(self) -> str:
         """The DSN with the password removed, for logs."""
         return f"mysql+pymysql://{self.db_user}:***@{self.db_host}:{self.db_port}/{self.db_name}"
-
-    def listing_url(self, query: str, page: int = 1) -> str:
-        """A listing page for one query string."""
-        suffix = f"&page={page}" if page > 1 else ""
-
-        return (
-            f"{self.portal_base_url}/articles/group/liquid-fuels?{query}&display_type=Card{suffix}"
-        )
 
 
 @lru_cache

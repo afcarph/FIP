@@ -6,7 +6,7 @@ Run it directly::
 
     python pipeline.py                    # a normal daily run
     python pipeline.py --dry-run          # discover and extract, write nothing
-    python pipeline.py --backfill         # walk the whole archive
+    python pipeline.py --backfill         # walk deeper into the archive
     python pipeline.py --url <pdf-url>    # one document
     python pipeline.py --replay <path>    # re-extract a stored PDF
 
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import requests
 
-from discovery import DiscoveredPdf, PdfDiscovery
+from discovery import DiscoveredPdf, DiscoveryProvider, ManualSeedProvider, build_provider
 from downloader import DownloadError, PdfDownloader
 from extractor import ExtractionError, extract
 from logger import get_logger, new_run_id
@@ -167,22 +167,23 @@ def run(
     downloader = PdfDownloader(settings)
 
     try:
-        if url:
-            candidates = [
-                DiscoveredPdf(
-                    url=url,
-                    label="manual",
-                    article_url="",
-                    article_title="manual",
-                )
-            ]
-        else:
-            discovery = PdfDiscovery(settings)
-            pages = settings.backfill_pages if backfill else settings.listing_pages
-            candidates = _with_retries(discovery, pages, settings, result)
+        # The pipeline knows only the interface. A single URL is a provider
+        # yielding one candidate rather than a branch through the run, which is
+        # what keeps `--url` and a scheduled run on the same path.
+        if backfill:
+            # Raises the page ceiling rather than removing it: the archive is
+            # ~150 pages, and an unbounded walk is how a backfill turns into a
+            # denial of service against a public agency's API.
+            settings = settings.model_copy(
+                update={"graphql_max_pages": settings.backfill_max_pages}
+            )
 
-        if not backfill and not url:
-            candidates = candidates[: settings.max_candidates_per_run]
+        provider: DiscoveryProvider = (
+            ManualSeedProvider(urls=[url]) if url else build_provider(settings)
+        )
+
+        limit = None if (url or backfill) else settings.max_candidates_per_run
+        candidates = _with_retries(provider, limit, settings, result)
 
         result.discovered = len(candidates)
 
@@ -221,19 +222,19 @@ def run(
 
 
 def _with_retries(
-    discovery: PdfDiscovery,
-    pages: int,
+    provider: DiscoveryProvider,
+    limit: int | None,
     settings: Settings,
     result: PipelineResult,
 ) -> list[DiscoveredPdf]:
     """Discovery, retried.
 
-    The portal is not highly available and a transient 5xx on the listing would
-    otherwise look like a week with nothing published — which is a silent
-    failure, since an empty run is a legitimate outcome.
+    The CMS is not highly available, and a transient 5xx would otherwise look
+    like a week with nothing published — a silent failure, since an empty run
+    is a legitimate outcome.
     """
     for attempt in range(1, settings.max_attempts + 1):
-        found = discovery.discover(pages)
+        found = provider.discover(limit)
 
         if found:
             return found
