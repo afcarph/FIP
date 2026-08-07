@@ -87,6 +87,26 @@ class DoeFuelReportApiTest extends TestCase
         $this->assertCount(4, $response->json('data'));
     }
 
+    public function test_latest_means_the_newest_coverage_not_the_newest_row(): void
+    {
+        // Insertion order is not publication order. Discovery walks the CMS by
+        // dateModified — when a file was last touched — and the DOE re-uploads
+        // older weeks, so the highest id is routinely an older report. Keying
+        // on MAX(id) had staging headline the week of 14 July while the week
+        // of 4 August sat in the same table.
+        $newest = $this->report('NCR', '2026-08-04', '2026-08-10');
+        $this->price($newest, ['min_price' => 90.00, 'max_price' => 95.00]);
+
+        // Imported afterwards, so it holds the higher id.
+        $older = $this->report('NCR', '2026-06-02', '2026-06-08');
+        $this->price($older, ['min_price' => 60.00, 'max_price' => 65.00]);
+
+        $response = $this->getJson('/api/v1/fuel/latest?region=NCR');
+
+        $this->assertSame('2026-08-04', $response->json('meta.reports.0.coverage_start'));
+        $this->assertCount(1, $response->json('meta.reports'));
+    }
+
     public function test_latest_is_anchored_to_the_data_not_the_calendar(): void
     {
         // A region whose report did not appear this week should show the last

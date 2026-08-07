@@ -72,9 +72,25 @@ class FuelReport extends Model
      */
     public function scopeLatestPerRegion(Builder $query): void
     {
+        // Keyed on the coverage week, not on `MAX(id)`.
+        //
+        // Insertion order is not publication order. Discovery walks the CMS by
+        // `dateModified`, which is when a file was last *touched* — the DOE
+        // re-uploads older weeks, and a backfill imports oldest-first — so the
+        // highest id is routinely an older report. On staging that meant the
+        // dashboard headlined the week of 14 July while the week of 4 August
+        // sat in the same table.
+        //
+        // The id is still the tie-break: a week re-issued as a correction has
+        // two rows only transiently, and the later one is the correction.
         $query->whereIn('id', function ($sub): void {
             $sub->selectRaw('MAX(id)')
-                ->from('fuel_reports')
+                ->from('fuel_reports as newest')
+                ->whereRaw(
+                    'newest.coverage_start = ('
+                    .'select max(inner_reports.coverage_start) from fuel_reports as inner_reports '
+                    .'where inner_reports.region = newest.region)',
+                )
                 ->groupBy('region');
         });
     }
