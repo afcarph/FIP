@@ -385,7 +385,7 @@ class SystemHealth
     /**
      * The worst status any check reported.
      *
-     * @param  array<string, mixed>  $checks
+     * @param array<string, mixed> $checks
      */
     private function worstOf(array $checks): string
     {

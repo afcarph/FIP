@@ -13,12 +13,12 @@ function report(coverageStart: string, coverageEnd: string): DoeReport {
     monitoring_date: null,
     publication_date: null,
     source_url: null,
-    checksum: null,
-    extractor: null,
-    quality: null,
+    checksum: 'x'.repeat(64),
+    extractor: 'pdfplumber-coordinates',
+    quality: 1,
     areas_count: 12,
     rows_count: 363,
-  } as DoeReport;
+  };
 }
 
 function expectFreshness(entry: DoeReport, now: Date) {
