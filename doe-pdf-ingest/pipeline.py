@@ -48,26 +48,58 @@ class PipelineResult:
         self.skipped = 0
         self.records = 0
         self.replaced = 0
+
+        # Run-level failures: discovery unreachable, storage broken, the run
+        # itself unable to do its job. These decide the status.
         self.errors: list[str] = []
+
+        # Per-document rejections: a PDF that is not a price table, a layout
+        # the extractor cannot read. Expected, recurring, and *not* a run
+        # failure — the DOE publishes LPG sheets and regional layouts we do not
+        # handle, and those documents will be rejected every single day. Mixing
+        # them into `errors` is what made a healthy idempotent run report
+        # `failed`, which would page someone every morning forever.
+        self.rejections: list[str] = []
 
     def summary(self) -> str:
         return (
             f"discovered={self.discovered} downloaded={self.downloaded} "
             f"imported={self.imported} skipped={self.skipped} "
-            f"records={self.records} errors={len(self.errors)}"
+            f"records={self.records} rejected={len(self.rejections)} "
+            f"errors={len(self.errors)}"
         )
 
     def status(self) -> str:
-        if self.imported == 0 and self.errors:
+        """What this run should be read as.
+
+        The question each status answers is "does a human need to look at
+        this?", not "did anything go wrong". Documents the DOE publishes that
+        we cannot use go wrong on every run, by design, and a status that
+        reflects them is a status nobody reads.
+        """
+        # The run could not do its job: nothing imported, nothing recognised as
+        # already held, and something broke.
+        if self.errors and self.imported == 0 and self.skipped == 0:
             return ImportRun.STATUS_FAILED
+
+        # Something broke but the run still did work.
         if self.errors:
             return ImportRun.STATUS_PARTIAL
-        if self.imported == 0:
-            # Nothing new published. A success, and recorded as its own status
-            # so a quiet week is distinguishable from a scheduler that died.
-            return ImportRun.STATUS_NO_CHANGES
 
-        return ImportRun.STATUS_SUCCESS
+        if self.imported == 0:
+            # Everything found was already held. The normal outcome between
+            # weekly publications, and the case that used to read as failure.
+            if self.skipped > 0:
+                return ImportRun.STATUS_NO_CHANGES
+
+            # Candidates were found and none could be used at all. Not a quiet
+            # week — a layout change, or a discovery query returning the wrong
+            # documents.
+            return ImportRun.STATUS_FAILED if self.discovered else ImportRun.STATUS_NO_CHANGES
+
+        # Imported, but some documents were unusable. Worth seeing, not worth
+        # paging for.
+        return ImportRun.STATUS_PARTIAL if self.rejections else ImportRun.STATUS_SUCCESS
 
 
 def process_pdf(
@@ -82,7 +114,7 @@ def process_pdf(
     try:
         pdf = downloader.fetch(candidate.url, candidate.filename)
     except (DownloadError, requests.RequestException) as exc:
-        result.errors.append(f"{candidate.filename}: download failed: {exc}")
+        result.rejections.append(f"{candidate.filename}: download failed: {exc}")
         return
 
     if pdf.newly_downloaded:
@@ -104,11 +136,11 @@ def process_pdf(
         # table — an Oil Monitor summary, a circular — lands here, and so does
         # a genuine layout change. Both are logged; neither costs the regions
         # that read cleanly.
-        result.errors.append(f"{candidate.filename}: {exc}")
+        result.rejections.append(f"{candidate.filename}: {exc}")
         return
 
     validation = validate(report, settings)
-    result.errors.extend(f"{candidate.filename}: {error}" for error in validation.errors)
+    result.rejections.extend(f"{candidate.filename}: {error}" for error in validation.errors)
 
     if not validation.ok:
         return
@@ -136,7 +168,7 @@ def process_pdf(
                 pdf_path=str(pdf.path),
             )
     except Exception as exc:
-        result.errors.append(f"{candidate.filename}: could not be stored: {exc}")
+        result.rejections.append(f"{candidate.filename}: could not be stored: {exc}")
         log.exception("Storing %s failed", candidate.filename)
         return
 
@@ -208,7 +240,7 @@ def run(
                 "records_imported": result.records,
                 "records_updated": result.replaced,
             },
-            errors=result.errors,
+            errors=[*result.errors, *result.rejections],
         )
 
     if not dry_run:
@@ -349,7 +381,7 @@ def main(argv: list[str] | None = None) -> int:
     # Non-zero only when nothing landed and something went wrong. A week with
     # nothing new published is a success, and paging someone for it is how a
     # real failure gets ignored later.
-    if result.imported == 0 and result.errors:
+    if result.status() == ImportRun.STATUS_FAILED:
         return 1
 
     return 0
