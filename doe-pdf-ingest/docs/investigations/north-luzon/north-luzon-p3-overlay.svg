@@ -1,0 +1,1107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="837.0" height="592.0" viewBox="0 0 837.0 592.0">
+<rect width="100%" height="100%" fill="white"/>
+<style>.band{fill:#0ea5e9;fill-opacity:.06}.band-alt{fill:#0ea5e9;fill-opacity:.12}.col{fill:#f59e0b;fill-opacity:.08}.colline{stroke:#b45309;stroke-width:.6;stroke-dasharray:3 2}.word{fill:none;stroke:#059669;stroke-width:.35}.txt{font-family:monospace;font-size:3px;fill:#111}.ord{font-family:monospace;font-size:2.4px;fill:#b91c1c}.legend{font-family:sans-serif;font-size:7px;fill:#334155}</style>
+<rect class="col" x="39.9" y="0" width="34.15" height="592.0"/>
+<line class="colline" x1="39.9" y1="0" x2="39.9" y2="592.0"/>
+<rect class="col" x="92.09" y="0" width="27.0" height="592.0"/>
+<line class="colline" x1="92.09" y1="0" x2="92.09" y2="592.0"/>
+<rect class="col" x="143.75" y="0" width="39.129999999999995" height="592.0"/>
+<line class="colline" x1="143.75" y1="0" x2="143.75" y2="592.0"/>
+<rect class="col" x="191.3" y="0" width="293.07" height="592.0"/>
+<line class="colline" x1="191.3" y1="0" x2="191.3" y2="592.0"/>
+<rect class="col" x="529.41" y="0" width="79.05000000000007" height="592.0"/>
+<line class="colline" x1="529.41" y1="0" x2="529.41" y2="592.0"/>
+<rect class="col" x="653.9" y="0" width="92.68000000000006" height="592.0"/>
+<line class="colline" x1="653.9" y1="0" x2="653.9" y2="592.0"/>
+<rect class="band" x="0" y="151.9" width="837.0" height="8.689999999999998"/>
+<rect class="band-alt" x="0" y="160.3" width="837.0" height="7.5"/>
+<rect class="band" x="0" y="167.26" width="837.0" height="9.0"/>
+<rect class="band-alt" x="0" y="175.91" width="837.0" height="9.0"/>
+<rect class="band" x="0" y="184.38" width="837.0" height="8.950000000000017"/>
+<rect class="band-alt" x="0" y="192.58" width="837.0" height="9.149999999999977"/>
+<rect class="band" x="0" y="201.63" width="837.0" height="8.5"/>
+<rect class="band-alt" x="0" y="210.03" width="837.0" height="8.699999999999989"/>
+<rect class="band" x="0" y="217.34" width="837.0" height="9.810000000000002"/>
+<rect class="band-alt" x="0" y="223.31" width="837.0" height="11.259999999999991"/>
+<rect class="band" x="0" y="226.91" width="837.0" height="7.810000000000002"/>
+<rect class="band-alt" x="0" y="235.48" width="837.0" height="8.450000000000017"/>
+<rect class="band" x="0" y="243.88" width="837.0" height="8.700000000000017"/>
+<rect class="band-alt" x="0" y="248.96" width="837.0" height="12.02000000000001"/>
+<rect class="band" x="0" y="251.83" width="837.0" height="10.999999999999972"/>
+<rect class="band-alt" x="0" y="260.83" width="837.0" height="8.550000000000011"/>
+<rect class="band" x="0" y="269.25" width="837.0" height="8.779999999999973"/>
+<rect class="band-alt" x="0" y="277.89" width="837.0" height="8.54000000000002"/>
+<rect class="band" x="0" y="286.38" width="837.0" height="8.340000000000032"/>
+<rect class="band-alt" x="0" y="294.61" width="837.0" height="7.810000000000002"/>
+<rect class="band" x="0" y="302.84" width="837.0" height="9.04000000000002"/>
+<rect class="band-alt" x="0" y="309.59" width="837.0" height="10.939999999999998"/>
+<rect class="band" x="0" y="320.23" width="837.0" height="8.699999999999989"/>
+<rect class="band-alt" x="0" y="328.55" width="837.0" height="8.529999999999973"/>
+<rect class="band" x="0" y="337.43" width="837.0" height="8.300000000000011"/>
+<rect class="band-alt" x="0" y="346.63" width="837.0" height="7.5"/>
+<rect class="band" x="0" y="354.03" width="837.0" height="8.5"/>
+<rect class="band-alt" x="0" y="362.43" width="837.0" height="8.699999999999989"/>
+<rect class="band" x="0" y="369.93" width="837.0" height="9.849999999999966"/>
+<rect class="band-alt" x="0" y="379.48" width="837.0" height="8.449999999999989"/>
+<rect class="band" x="0" y="387.8" width="837.0" height="8.529999999999973"/>
+<rect class="band-alt" x="0" y="396.28" width="837.0" height="8.700000000000045"/>
+<rect class="band" x="0" y="404.68" width="837.0" height="8.610000000000014"/>
+<rect class="band-alt" x="0" y="413.17" width="837.0" height="7.659999999999968"/>
+<rect class="band" x="0" y="415.35" width="837.0" height="26.029999999999973"/>
+<rect class="band-alt" x="0" y="428.14" width="837.0" height="10.189999999999998"/>
+<rect class="band" x="0" y="431.33" width="837.0" height="8.199999999999989"/>
+<rect class="band-alt" x="0" y="438.78" width="837.0" height="8.700000000000045"/>
+<rect class="band" x="0" y="447.1" width="837.0" height="8.779999999999973"/>
+<rect class="band-alt" x="0" y="455.58" width="837.0" height="7.890000000000043"/>
+<rect class="word" x="39.9" y="153.78" width="7.5" height="4.960000000000008"/>
+<text class="txt" x="39.9" y="158.14000000000001">U</text>
+<text class="ord" x="39.9" y="153.38">0</text>
+<rect class="word" x="40.7" y="157.74" width="6.5" height="2.3100000000000023"/>
+<text class="txt" x="40.7" y="159.45000000000002">-</text>
+<text class="ord" x="40.7" y="157.34">1</text>
+<rect class="word" x="42.89" y="154.43" width="27.0" height="6.159999999999997"/>
+<text class="txt" x="42.89" y="159.99">z</text>
+<text class="ord" x="42.89" y="154.03">2</text>
+<rect class="word" x="49.55" y="153.44" width="6.5" height="6.590000000000003"/>
+<text class="txt" x="49.55" y="159.43">0</text>
+<text class="ord" x="49.55" y="153.04">3</text>
+<rect class="word" x="67.55" y="153.84" width="6.5" height="6.6200000000000045"/>
+<text class="txt" x="67.55" y="159.86">m</text>
+<text class="ord" x="67.55" y="153.44">4</text>
+<rect class="word" x="708.7" y="151.9" width="28.329999999999927" height="7.5"/>
+<text class="txt" x="708.7" y="158.8">OVERALL</text>
+<text class="ord" x="708.7" y="151.5">5</text>
+<rect class="word" x="574.48" y="164.38" width="4.0" height="1.1800000000000068"/>
+<text class="txt" x="574.48" y="164.96">77</text>
+<text class="ord" x="574.48" y="163.98">6</text>
+<rect class="word" x="712.55" y="160.3" width="21.06000000000006" height="7.5"/>
+<text class="txt" x="712.55" y="167.20000000000002">RANGE</text>
+<text class="ord" x="712.55" y="159.9">7</text>
+<rect class="word" x="702.7" y="168.45" width="19.959999999999923" height="7.5"/>
+<text class="txt" x="702.7" y="175.35">0.00</text>
+<text class="ord" x="702.7" y="168.04999999999998">8</text>
+<rect class="word" x="721.45" y="167.26" width="2.0299999999999727" height="9.0"/>
+<text class="txt" x="721.45" y="175.66">-</text>
+<text class="ord" x="721.45" y="166.85999999999999">9</text>
+<rect class="word" x="731.05" y="168.45" width="11.650000000000091" height="7.5"/>
+<text class="txt" x="731.05" y="175.35">0.00</text>
+<text class="ord" x="731.05" y="168.04999999999998">10</text>
+<rect class="word" x="157.64" y="179.89" width="5.5" height="2.2900000000000205"/>
+<text class="txt" x="157.64" y="181.58">f</text>
+<text class="ord" x="157.64" y="179.48999999999998">11</text>
+<rect class="word" x="157.64" y="176.07" width="5.5" height="3.819999999999993"/>
+<text class="txt" x="157.64" y="179.29">e</text>
+<text class="ord" x="157.64" y="175.67">12</text>
+<rect class="word" x="702.95" y="176.85" width="19.709999999999923" height="7.5"/>
+<text class="txt" x="702.95" y="183.75">0.00</text>
+<text class="ord" x="702.95" y="176.45">13</text>
+<rect class="word" x="721.45" y="175.91" width="2.3099999999999454" height="9.0"/>
+<text class="txt" x="721.45" y="184.31">-</text>
+<text class="ord" x="721.45" y="175.51">14</text>
+<rect class="word" x="731.3" y="177.1" width="11.170000000000073" height="7.5"/>
+<text class="txt" x="731.3" y="184.0">0.00</text>
+<text class="ord" x="731.3" y="176.7">15</text>
+<rect class="word" x="143.75" y="184.38" width="13.689999999999998" height="7.5"/>
+<text class="txt" x="143.75" y="191.28">RON</text>
+<text class="ord" x="143.75" y="183.98">16</text>
+<rect class="word" x="159.12" y="184.38" width="6.389999999999986" height="7.75"/>
+<text class="txt" x="159.12" y="191.53">95</text>
+<text class="ord" x="159.12" y="183.98">17</text>
+<rect class="word" x="299.51" y="185.0" width="8.5" height="2.5999999999999943"/>
+<text class="txt" x="299.51" y="187.0">g</text>
+<text class="ord" x="299.51" y="184.6">18</text>
+<rect class="word" x="529.45" y="185.58" width="15.379999999999995" height="7.5"/>
+<text class="txt" x="529.45" y="192.48000000000002">93.26</text>
+<text class="ord" x="529.45" y="185.18">19</text>
+<rect class="word" x="546.92" y="185.58" width="18.56000000000006" height="7.5"/>
+<text class="txt" x="546.92" y="192.48000000000002">93.26</text>
+<text class="ord" x="546.92" y="185.18">20</text>
+<rect class="word" x="655.9" y="185.83" width="15.860000000000014" height="7.5"/>
+<text class="txt" x="655.9" y="192.73000000000002">83.83</text>
+<text class="ord" x="655.9" y="185.43">21</text>
+<rect class="word" x="674.02" y="185.83" width="21.210000000000036" height="7.5"/>
+<text class="txt" x="674.02" y="192.73000000000002">83.83</text>
+<text class="ord" x="674.02" y="185.43">22</text>
+<rect class="word" x="701.3" y="185.58" width="21.710000000000036" height="7.5"/>
+<text class="txt" x="701.3" y="192.48000000000002">76.73</text>
+<text class="ord" x="701.3" y="185.18">23</text>
+<rect class="word" x="721.45" y="185.58" width="2.490000000000009" height="7.5"/>
+<text class="txt" x="721.45" y="192.48000000000002">-</text>
+<text class="ord" x="721.45" y="185.18">24</text>
+<rect class="word" x="725.77" y="185.58" width="18.730000000000018" height="7.5"/>
+<text class="txt" x="725.77" y="192.48000000000002">93.26</text>
+<text class="ord" x="725.77" y="185.18">25</text>
+<rect class="word" x="92.55" y="192.58" width="6.5" height="5.519999999999982"/>
+<text class="txt" x="92.55" y="197.5">ca</text>
+<text class="ord" x="92.55" y="192.18">26</text>
+<rect class="word" x="99.65" y="192.69" width="7.5" height="5.039999999999992"/>
+<text class="txt" x="99.65" y="197.13">__4</text>
+<text class="ord" x="99.65" y="192.29">27</text>
+<rect class="word" x="143.75" y="193.03" width="13.039999999999992" height="7.5"/>
+<text class="txt" x="143.75" y="199.93">RON</text>
+<text class="ord" x="143.75" y="192.63">28</text>
+<rect class="word" x="158.89" y="193.03" width="6.75" height="7.5"/>
+<text class="txt" x="158.89" y="199.93">91</text>
+<text class="ord" x="158.89" y="192.63">29</text>
+<rect class="word" x="280.55" y="193.48" width="15.099999999999966" height="7.5"/>
+<text class="txt" x="280.55" y="200.38">75.77</text>
+<text class="ord" x="280.55" y="193.07999999999998">30</text>
+<rect class="word" x="297.78" y="193.48" width="18.77000000000004" height="7.5"/>
+<text class="txt" x="297.78" y="200.38">75.77</text>
+<text class="ord" x="297.78" y="193.07999999999998">31</text>
+<rect class="word" x="529.45" y="193.98" width="15.379999999999995" height="7.5"/>
+<text class="txt" x="529.45" y="200.88">91.16</text>
+<text class="ord" x="529.45" y="193.57999999999998">32</text>
+<rect class="word" x="546.93" y="193.98" width="18.190000000000055" height="7.5"/>
+<text class="txt" x="546.93" y="200.88">91.16</text>
+<text class="ord" x="546.93" y="193.57999999999998">33</text>
+<rect class="word" x="655.9" y="194.23" width="17.269999999999982" height="7.5"/>
+<text class="txt" x="655.9" y="201.13">82.82</text>
+<text class="ord" x="655.9" y="193.82999999999998">34</text>
+<rect class="word" x="675.91" y="194.23" width="18.840000000000032" height="7.5"/>
+<text class="txt" x="675.91" y="201.13">82.82</text>
+<text class="ord" x="675.91" y="193.82999999999998">35</text>
+<rect class="word" x="701.3" y="193.98" width="14.800000000000068" height="7.5"/>
+<text class="txt" x="701.3" y="200.88">75.77</text>
+<text class="ord" x="701.3" y="193.57999999999998">36</text>
+<rect class="word" x="715.7" y="193.98" width="0.5" height="7.5"/>
+<text class="txt" x="715.7" y="200.88">(cid:9)</text>
+<text class="ord" x="715.7" y="193.57999999999998">37</text>
+<rect class="word" x="729.6" y="194.23" width="14.559999999999945" height="7.5"/>
+<text class="txt" x="729.6" y="201.13">91.16</text>
+<text class="ord" x="729.6" y="193.82999999999998">38</text>
+<rect class="word" x="143.75" y="201.63" width="21.110000000000014" height="7.5"/>
+<text class="txt" x="143.75" y="208.53">DIESEL</text>
+<text class="ord" x="143.75" y="201.23">39</text>
+<rect class="word" x="280.3" y="201.88" width="21.870000000000005" height="7.5"/>
+<text class="txt" x="280.3" y="208.78">87.48</text>
+<text class="ord" x="280.3" y="201.48">40</text>
+<rect class="word" x="300.95" y="202.13" width="15.600000000000023" height="7.5"/>
+<text class="txt" x="300.95" y="209.03">87.48</text>
+<text class="ord" x="300.95" y="201.73">41</text>
+<rect class="word" x="529.41" y="202.04" width="8.5" height="6.77000000000001"/>
+<text class="txt" x="529.41" y="208.21">8</text>
+<text class="ord" x="529.41" y="201.64">42</text>
+<rect class="word" x="537.56" y="202.04" width="8.5" height="6.77000000000001"/>
+<text class="txt" x="537.56" y="208.21">8</text>
+<text class="ord" x="537.56" y="201.64">43</text>
+<rect class="word" x="550.06" y="202.33" width="8.5" height="6.47999999999999"/>
+<text class="txt" x="550.06" y="208.21">8</text>
+<text class="ord" x="550.06" y="201.93">44</text>
+<rect class="word" x="558.46" y="202.33" width="8.5" height="6.47999999999999"/>
+<text class="txt" x="558.46" y="208.21">8</text>
+<text class="ord" x="558.46" y="201.93">45</text>
+<rect class="word" x="679.66" y="202.81" width="8.5" height="6.079999999999984"/>
+<text class="txt" x="679.66" y="208.29">8</text>
+<text class="ord" x="679.66" y="202.41">46</text>
+<rect class="word" x="686.62" y="202.82" width="10.0" height="6.150000000000006"/>
+<text class="txt" x="686.62" y="208.37">a</text>
+<text class="ord" x="686.62" y="202.42">47</text>
+<rect class="word" x="701.3" y="202.63" width="21.629999999999995" height="7.5"/>
+<text class="txt" x="701.3" y="209.53">86.00</text>
+<text class="ord" x="701.3" y="202.23">48</text>
+<rect class="word" x="721.7" y="202.63" width="2.1099999999999" height="7.5"/>
+<text class="txt" x="721.7" y="209.53">-</text>
+<text class="ord" x="721.7" y="202.23">49</text>
+<rect class="word" x="725.65" y="202.63" width="19.029999999999973" height="7.5"/>
+<text class="txt" x="725.65" y="209.53">96.60</text>
+<text class="ord" x="725.65" y="202.23">50</text>
+<rect class="word" x="143.75" y="210.03" width="21.180000000000007" height="7.5"/>
+<text class="txt" x="143.75" y="216.93">DIESEL</text>
+<text class="ord" x="143.75" y="209.63">51</text>
+<rect class="word" x="166.48" y="210.03" width="16.350000000000023" height="7.5"/>
+<text class="txt" x="166.48" y="216.93">PLUS</text>
+<text class="ord" x="166.48" y="209.63">52</text>
+<rect class="word" x="702.95" y="211.03" width="20.159999999999968" height="7.5"/>
+<text class="txt" x="702.95" y="217.93">0.00</text>
+<text class="ord" x="702.95" y="210.63">53</text>
+<rect class="word" x="721.7" y="211.23" width="2.1099999999999" height="7.5"/>
+<text class="txt" x="721.7" y="218.13">-</text>
+<text class="ord" x="721.7" y="210.82999999999998">54</text>
+<rect class="word" x="726.94" y="211.23" width="15.659999999999968" height="7.5"/>
+<text class="txt" x="726.94" y="218.13">0.00</text>
+<text class="ord" x="726.94" y="210.82999999999998">55</text>
+<rect class="word" x="50.3" y="217.34" width="6.5" height="7.469999999999999"/>
+<text class="txt" x="50.3" y="224.21">0</text>
+<text class="ord" x="50.3" y="216.94">56</text>
+<rect class="word" x="53.55" y="217.95" width="7.5" height="6.010000000000019"/>
+<text class="txt" x="53.55" y="223.36">C)</text>
+<text class="ord" x="53.55" y="217.54999999999998">57</text>
+<rect class="word" x="59.49" y="217.79" width="5.499999999999993" height="5.52000000000001"/>
+<text class="txt" x="59.49" y="222.71">0</text>
+<text class="ord" x="59.49" y="217.39">58</text>
+<rect class="word" x="62.55" y="217.52" width="6.5" height="8.349999999999994"/>
+<text class="txt" x="62.55" y="225.27">c,,</text>
+<text class="ord" x="62.55" y="217.12">59</text>
+<rect class="word" x="143.75" y="218.43" width="33.25" height="7.5"/>
+<text class="txt" x="143.75" y="225.33">KEROSENE</text>
+<text class="ord" x="143.75" y="218.03">60</text>
+<rect class="word" x="701.74" y="219.05" width="5.5" height="7.4199999999999875"/>
+<text class="txt" x="701.74" y="225.87">p</text>
+<text class="ord" x="701.74" y="218.65">61</text>
+<rect class="word" x="707.51" y="219.48" width="8.5" height="7.430000000000007"/>
+<text class="txt" x="707.51" y="226.31">8</text>
+<text class="ord" x="707.51" y="219.07999999999998">62</text>
+<rect class="word" x="59.49" y="223.31" width="5.499999999999993" height="5.52000000000001"/>
+<text class="txt" x="59.49" y="228.23000000000002">1</text>
+<text class="ord" x="59.49" y="222.91">63</text>
+<rect class="word" x="729.9" y="219.57" width="7.5" height="7.5800000000000125"/>
+<text class="txt" x="729.9" y="226.55">P</text>
+<text class="ord" x="729.9" y="219.17">64</text>
+<rect class="word" x="735.56" y="219.75" width="8.5" height="7.289999999999992"/>
+<text class="txt" x="735.56" y="226.44">8</text>
+<text class="ord" x="735.56" y="219.35">65</text>
+<rect class="word" x="50.3" y="224.81" width="6.5" height="7.469999999999999"/>
+<text class="txt" x="50.3" y="231.68">0</text>
+<text class="ord" x="50.3" y="224.41">66</text>
+<rect class="word" x="59.49" y="228.83" width="5.499999999999993" height="3.309999999999974"/>
+<text class="txt" x="59.49" y="231.54">-</text>
+<text class="ord" x="59.49" y="228.43">67</text>
+<rect class="word" x="62.55" y="225.87" width="6.5" height="6.590000000000003"/>
+<text class="txt" x="62.55" y="231.86">m</text>
+<text class="ord" x="62.55" y="225.47">68</text>
+<rect class="word" x="143.75" y="227.08" width="13.039999999999992" height="7.5"/>
+<text class="txt" x="143.75" y="233.98000000000002">RON</text>
+<text class="ord" x="143.75" y="226.68">69</text>
+<rect class="word" x="158.92" y="227.08" width="10.410000000000025" height="7.5"/>
+<text class="txt" x="158.92" y="233.98000000000002">100</text>
+<text class="ord" x="158.92" y="226.68">70</text>
+<rect class="word" x="701.74" y="226.47" width="5.5" height="8.099999999999994"/>
+<text class="txt" x="701.74" y="233.97">P</text>
+<text class="ord" x="701.74" y="226.07">71</text>
+<rect class="word" x="707.51" y="226.91" width="8.5" height="7.430000000000007"/>
+<text class="txt" x="707.51" y="233.74">8</text>
+<text class="ord" x="707.51" y="226.51">72</text>
+<rect class="word" x="729.9" y="227.15" width="7.5" height="7.569999999999993"/>
+<text class="txt" x="729.9" y="234.12">P</text>
+<text class="ord" x="729.9" y="226.75">73</text>
+<rect class="word" x="735.56" y="227.04" width="8.5" height="7.300000000000011"/>
+<text class="txt" x="735.56" y="233.74">8</text>
+<text class="ord" x="735.56" y="226.64">74</text>
+<rect class="word" x="143.75" y="235.48" width="13.030000000000001" height="7.5"/>
+<text class="txt" x="143.75" y="242.38">RON</text>
+<text class="ord" x="143.75" y="235.07999999999998">75</text>
+<rect class="word" x="158.86" y="235.48" width="6.659999999999997" height="7.5"/>
+<text class="txt" x="158.86" y="242.38">97</text>
+<text class="ord" x="158.86" y="235.07999999999998">76</text>
+<rect class="word" x="571.2" y="236.43" width="15.349999999999909" height="7.5"/>
+<text class="txt" x="571.2" y="243.33">92.77</text>
+<text class="ord" x="571.2" y="236.03">77</text>
+<rect class="word" x="588.69" y="236.43" width="18.239999999999895" height="7.5"/>
+<text class="txt" x="588.69" y="243.33">92.77</text>
+<text class="ord" x="588.69" y="236.03">78</text>
+<rect class="word" x="701.3" y="236.43" width="21.110000000000014" height="7.5"/>
+<text class="txt" x="701.3" y="243.33">92.77</text>
+<text class="ord" x="701.3" y="236.03">79</text>
+<rect class="word" x="721.7" y="236.43" width="2.490000000000009" height="7.5"/>
+<text class="txt" x="721.7" y="243.33">-</text>
+<text class="ord" x="721.7" y="236.03">80</text>
+<rect class="word" x="726.05" y="236.43" width="18.5" height="7.5"/>
+<text class="txt" x="726.05" y="243.33">92.77</text>
+<text class="ord" x="726.05" y="236.03">81</text>
+<rect class="word" x="144.0" y="243.88" width="13.27000000000001" height="7.5"/>
+<text class="txt" x="144.0" y="250.78">RON</text>
+<text class="ord" x="144.0" y="243.48">82</text>
+<rect class="word" x="158.87" y="243.88" width="6.909999999999997" height="7.75"/>
+<text class="txt" x="158.87" y="251.03">95</text>
+<text class="ord" x="158.87" y="243.48">83</text>
+<rect class="word" x="198.22" y="244.12" width="10.0" height="6.150000000000006"/>
+<text class="txt" x="198.22" y="249.67000000000002">a</text>
+<text class="ord" x="198.22" y="243.72">84</text>
+<rect class="word" x="310.95" y="244.74" width="6.5" height="6.069999999999993"/>
+<text class="txt" x="310.95" y="250.21">CA</text>
+<text class="ord" x="310.95" y="244.34">85</text>
+<rect class="word" x="350.61" y="244.33" width="8.5" height="6.47999999999999"/>
+<text class="txt" x="350.61" y="250.21">8</text>
+<text class="ord" x="350.61" y="243.93">86</text>
+<rect class="word" x="404.9" y="244.83" width="15.870000000000005" height="7.5"/>
+<text class="txt" x="404.9" y="251.73000000000002">86.00</text>
+<text class="ord" x="404.9" y="244.43">87</text>
+<rect class="word" x="422.69" y="244.83" width="19.910000000000025" height="7.5"/>
+<text class="txt" x="422.69" y="251.73000000000002">86.00</text>
+<text class="ord" x="422.69" y="244.43">88</text>
+<rect class="word" x="530.15" y="244.83" width="17.409999999999968" height="7.5"/>
+<text class="txt" x="530.15" y="251.73000000000002">75.05</text>
+<text class="ord" x="530.15" y="244.43">89</text>
+<rect class="word" x="549.8" y="244.83" width="16.210000000000036" height="7.5"/>
+<text class="txt" x="549.8" y="251.73000000000002">75.05</text>
+<text class="ord" x="549.8" y="244.43">90</text>
+<rect class="word" x="571.2" y="244.83" width="21.949999999999932" height="7.5"/>
+<text class="txt" x="571.2" y="251.73000000000002">87.20</text>
+<text class="ord" x="571.2" y="244.43">91</text>
+<rect class="word" x="591.85" y="244.83" width="15.399999999999977" height="7.5"/>
+<text class="txt" x="591.85" y="251.73000000000002">87.20</text>
+<text class="ord" x="591.85" y="244.43">92</text>
+<rect class="word" x="656.4" y="245.08" width="16.909999999999968" height="7.5"/>
+<text class="txt" x="656.4" y="251.98000000000002">79.90</text>
+<text class="ord" x="656.4" y="244.68">93</text>
+<rect class="word" x="676.02" y="245.08" width="19.279999999999973" height="7.5"/>
+<text class="txt" x="676.02" y="251.98000000000002">74.90</text>
+<text class="ord" x="676.02" y="244.68">94</text>
+<rect class="word" x="701.3" y="244.83" width="21.629999999999995" height="7.5"/>
+<text class="txt" x="701.3" y="251.73000000000002">74.90</text>
+<text class="ord" x="701.3" y="244.43">95</text>
+<rect class="word" x="721.7" y="245.08" width="2.490000000000009" height="7.5"/>
+<text class="txt" x="721.7" y="251.98000000000002">-</text>
+<text class="ord" x="721.7" y="244.68">96</text>
+<rect class="word" x="725.83" y="245.08" width="18.84999999999991" height="7.5"/>
+<text class="txt" x="725.83" y="251.98000000000002">87.20</text>
+<text class="ord" x="725.83" y="244.68">97</text>
+<rect class="word" x="100.7" y="251.38" width="6.5" height="6.350000000000023"/>
+<text class="txt" x="100.7" y="257.13">0</text>
+<text class="ord" x="100.7" y="250.98">98</text>
+<rect class="word" x="312.53" y="252.7" width="4.5" height="4.449999999999989"/>
+<text class="txt" x="312.53" y="256.54999999999995">n</text>
+<text class="ord" x="312.53" y="252.29999999999998">99</text>
+<rect class="word" x="312.53" y="248.96" width="4.5" height="7.679999999999978"/>
+<text class="txt" x="312.53" y="256.03999999999996">,</text>
+<text class="ord" x="312.53" y="248.56">100</text>
+<rect class="word" x="144.0" y="252.28" width="13.27000000000001" height="7.499999999999972"/>
+<text class="txt" x="144.0" y="259.17999999999995">RON</text>
+<text class="ord" x="144.0" y="251.88">101</text>
+<rect class="word" x="158.65" y="252.28" width="7.099999999999994" height="7.499999999999972"/>
+<text class="txt" x="158.65" y="259.17999999999995">91</text>
+<text class="ord" x="158.65" y="251.88">102</text>
+<rect class="word" x="191.5" y="252.53" width="18.939999999999998" height="7.499999999999972"/>
+<text class="txt" x="191.5" y="259.42999999999995">77.60</text>
+<text class="ord" x="191.5" y="252.13">103</text>
+<rect class="word" x="212.93" y="252.53" width="18.22" height="7.499999999999972"/>
+<text class="txt" x="212.93" y="259.42999999999995">77.60</text>
+<text class="ord" x="212.93" y="252.13">104</text>
+<rect class="word" x="312.53" y="257.15" width="4.5" height="2.0300000000000296"/>
+<text class="txt" x="312.53" y="258.58">I</text>
+<text class="ord" x="312.53" y="256.75">105</text>
+<rect class="word" x="322.3" y="253.03" width="15.420000000000016" height="7.499999999999972"/>
+<text class="txt" x="322.3" y="259.92999999999995">77.60</text>
+<text class="ord" x="322.3" y="252.63">106</text>
+<rect class="word" x="339.95" y="253.03" width="18.150000000000034" height="7.499999999999972"/>
+<text class="txt" x="339.95" y="259.92999999999995">77.60</text>
+<text class="ord" x="339.95" y="252.63">107</text>
+<rect class="word" x="400.8" y="252.44" width="7.759999999999991" height="8.5"/>
+<text class="txt" x="400.8" y="260.34">P8</text>
+<text class="ord" x="400.8" y="252.04">108</text>
+<rect class="word" x="411.6" y="252.44" width="9.169999999999959" height="8.5"/>
+<text class="txt" x="411.6" y="260.34">.00</text>
+<text class="ord" x="411.6" y="252.04">109</text>
+<rect class="word" x="420.0" y="252.44" width="0.5" height="8.5"/>
+<text class="txt" x="420.0" y="260.34">(cid:9)</text>
+<text class="ord" x="420.0" y="252.04">110</text>
+<rect class="word" x="442.1" y="251.83" width="5.449999999999989" height="10.999999999999972"/>
+<text class="txt" x="442.1" y="262.22999999999996">1</text>
+<text class="ord" x="442.1" y="251.43">111</text>
+<rect class="word" x="530.15" y="253.23" width="16.970000000000027" height="7.500000000000028"/>
+<text class="txt" x="530.15" y="260.13">74.54</text>
+<text class="ord" x="530.15" y="252.82999999999998">112</text>
+<rect class="word" x="549.26" y="253.23" width="16.81000000000006" height="7.500000000000028"/>
+<text class="txt" x="549.26" y="260.13">74.54</text>
+<text class="ord" x="549.26" y="252.82999999999998">113</text>
+<rect class="word" x="571.2" y="253.23" width="21.92999999999995" height="7.500000000000028"/>
+<text class="txt" x="571.2" y="260.13">81.40</text>
+<text class="ord" x="571.2" y="252.82999999999998">114</text>
+<rect class="word" x="591.85" y="253.23" width="15.029999999999973" height="7.500000000000028"/>
+<text class="txt" x="591.85" y="260.13">81.40</text>
+<text class="ord" x="591.85" y="252.82999999999998">115</text>
+<rect class="word" x="658.7" y="257.62" width="6.5" height="2.2099999999999795"/>
+<text class="txt" x="658.7" y="259.22999999999996">5</text>
+<text class="ord" x="658.7" y="257.22">116</text>
+<rect class="word" x="658.7" y="253.67" width="6.5" height="4.310000000000031"/>
+<text class="txt" x="658.7" y="257.38">0</text>
+<text class="ord" x="658.7" y="253.26999999999998">117</text>
+<rect class="word" x="687.81" y="253.4" width="8.5" height="7.429999999999978"/>
+<text class="txt" x="687.81" y="260.22999999999996">2</text>
+<text class="ord" x="687.81" y="253.0">118</text>
+<rect class="word" x="701.3" y="253.48" width="21.83000000000004" height="7.500000000000028"/>
+<text class="txt" x="701.3" y="260.38">73.90</text>
+<text class="ord" x="701.3" y="253.07999999999998">119</text>
+<rect class="word" x="721.9" y="253.48" width="2.1800000000000637" height="7.500000000000028"/>
+<text class="txt" x="721.9" y="260.38">-</text>
+<text class="ord" x="721.9" y="253.07999999999998">120</text>
+<rect class="word" x="726.57" y="253.48" width="18.1099999999999" height="7.500000000000028"/>
+<text class="txt" x="726.57" y="260.38">85.00</text>
+<text class="ord" x="726.57" y="253.07999999999998">121</text>
+<rect class="word" x="144.0" y="260.93" width="20.919999999999987" height="7.5"/>
+<text class="txt" x="144.0" y="267.83">DIESEL</text>
+<text class="ord" x="144.0" y="260.53000000000003">122</text>
+<rect class="word" x="191.3" y="260.93" width="26.079999999999984" height="7.5"/>
+<text class="txt" x="191.3" y="267.83">84.80</text>
+<text class="ord" x="191.3" y="260.53000000000003">123</text>
+<rect class="word" x="215.75" y="261.18" width="15.400000000000006" height="7.5"/>
+<text class="txt" x="215.75" y="268.08">84.80</text>
+<text class="ord" x="215.75" y="260.78000000000003">124</text>
+<rect class="word" x="322.1" y="261.43" width="21.589999999999975" height="7.5"/>
+<text class="txt" x="322.1" y="268.33">84.80</text>
+<text class="ord" x="322.1" y="261.03000000000003">125</text>
+<rect class="word" x="342.7" y="261.43" width="15.400000000000034" height="7.5"/>
+<text class="txt" x="342.7" y="268.33">84.80</text>
+<text class="ord" x="342.7" y="261.03000000000003">126</text>
+<rect class="word" x="405.1" y="261.63" width="15.669999999999959" height="7.5"/>
+<text class="txt" x="405.1" y="268.53">86.00</text>
+<text class="ord" x="405.1" y="261.23">127</text>
+<rect class="word" x="422.74" y="261.63" width="19.860000000000014" height="7.5"/>
+<text class="txt" x="422.74" y="268.53">86.00</text>
+<text class="ord" x="422.74" y="261.23">128</text>
+<rect class="word" x="529.7" y="261.63" width="22.719999999999914" height="7.5"/>
+<text class="txt" x="529.7" y="268.53">81.72</text>
+<text class="ord" x="529.7" y="261.23">129</text>
+<rect class="word" x="550.55" y="261.88" width="16.00999999999999" height="7.5"/>
+<text class="txt" x="550.55" y="268.78">81.72</text>
+<text class="ord" x="550.55" y="261.48">130</text>
+<rect class="word" x="571.2" y="261.88" width="16.00999999999999" height="7.5"/>
+<text class="txt" x="571.2" y="268.78">89.34</text>
+<text class="ord" x="571.2" y="261.48">131</text>
+<rect class="word" x="589.47" y="261.88" width="17.059999999999945" height="7.5"/>
+<text class="txt" x="589.47" y="268.78">89.34</text>
+<text class="ord" x="589.47" y="261.48">132</text>
+<rect class="word" x="653.9" y="262.01" width="6.5" height="6.170000000000016"/>
+<text class="txt" x="653.9" y="267.58">a,</text>
+<text class="ord" x="653.9" y="261.61">133</text>
+<rect class="word" x="658.98" y="261.95" width="4.0" height="6.389999999999986"/>
+<text class="txt" x="658.98" y="267.73999999999995">U,</text>
+<text class="ord" x="658.98" y="261.55">134</text>
+<rect class="word" x="687.81" y="260.83" width="8.5" height="7.420000000000016"/>
+<text class="txt" x="687.81" y="267.65">2</text>
+<text class="ord" x="687.81" y="260.43">135</text>
+<rect class="word" x="701.5" y="261.88" width="22.16999999999996" height="7.5"/>
+<text class="txt" x="701.5" y="268.78">81.72</text>
+<text class="ord" x="701.5" y="261.48">136</text>
+<rect class="word" x="721.9" y="261.88" width="2.1800000000000637" height="7.5"/>
+<text class="txt" x="721.9" y="268.78">-</text>
+<text class="ord" x="721.9" y="261.48">137</text>
+<rect class="word" x="726.57" y="261.88" width="18.5" height="7.5"/>
+<text class="txt" x="726.57" y="268.78">89.34</text>
+<text class="ord" x="726.57" y="261.48">138</text>
+<rect class="word" x="143.75" y="269.33" width="22.80000000000001" height="7.5"/>
+<text class="txt" x="143.75" y="276.22999999999996">DIESEL</text>
+<text class="ord" x="143.75" y="268.93">139</text>
+<rect class="word" x="166.55" y="269.25" width="15.799999999999983" height="7.5"/>
+<text class="txt" x="166.55" y="276.15">PLUS</text>
+<text class="ord" x="166.55" y="268.85">140</text>
+<rect class="word" x="191.5" y="269.58" width="15.400000000000006" height="7.5"/>
+<text class="txt" x="191.5" y="276.47999999999996">87.80</text>
+<text class="ord" x="191.5" y="269.18">141</text>
+<rect class="word" x="209.34" y="269.58" width="21.810000000000002" height="7.5"/>
+<text class="txt" x="209.34" y="276.47999999999996">87.80</text>
+<text class="ord" x="209.34" y="269.18">142</text>
+<rect class="word" x="322.1" y="269.83" width="21.870000000000005" height="7.5"/>
+<text class="txt" x="322.1" y="276.72999999999996">87.80</text>
+<text class="ord" x="322.1" y="269.43">143</text>
+<rect class="word" x="342.7" y="270.03" width="15.400000000000034" height="7.5"/>
+<text class="txt" x="342.7" y="276.92999999999995">87.80</text>
+<text class="ord" x="342.7" y="269.63">144</text>
+<rect class="word" x="701.5" y="270.28" width="21.629999999999995" height="7.5"/>
+<text class="txt" x="701.5" y="277.17999999999995">87.80</text>
+<text class="ord" x="701.5" y="269.88">145</text>
+<rect class="word" x="721.9" y="270.53" width="2.1800000000000637" height="7.5"/>
+<text class="txt" x="721.9" y="277.42999999999995">-</text>
+<text class="ord" x="721.9" y="270.13">146</text>
+<rect class="word" x="725.88" y="270.53" width="19.049999999999955" height="7.5"/>
+<text class="txt" x="725.88" y="277.42999999999995">87.80</text>
+<text class="ord" x="725.88" y="270.13">147</text>
+<rect class="word" x="143.75" y="277.98" width="33.129999999999995" height="7.5"/>
+<text class="txt" x="143.75" y="284.88">KEROSENE</text>
+<text class="ord" x="143.75" y="277.58000000000004">148</text>
+<rect class="word" x="280.31" y="277.89" width="8.5" height="6.720000000000027"/>
+<text class="txt" x="280.31" y="284.01">8</text>
+<text class="ord" x="280.31" y="277.49">149</text>
+<rect class="word" x="300.96" y="278.19" width="8.5" height="6.420000000000016"/>
+<text class="txt" x="300.96" y="284.01">8</text>
+<text class="ord" x="300.96" y="277.79">150</text>
+<rect class="word" x="701.5" y="278.93" width="22.16999999999996" height="7.5"/>
+<text class="txt" x="701.5" y="285.83">99.02</text>
+<text class="ord" x="701.5" y="278.53000000000003">151</text>
+<rect class="word" x="721.9" y="278.93" width="2.560000000000059" height="7.5"/>
+<text class="txt" x="721.9" y="285.83">-</text>
+<text class="ord" x="721.9" y="278.53000000000003">152</text>
+<rect class="word" x="726.16" y="278.93" width="19.110000000000014" height="7.5"/>
+<text class="txt" x="726.16" y="285.83">99.02</text>
+<text class="ord" x="726.16" y="278.53000000000003">153</text>
+<rect class="word" x="144.0" y="286.38" width="13.159999999999997" height="7.5"/>
+<text class="txt" x="144.0" y="293.28">RON</text>
+<text class="ord" x="144.0" y="285.98">154</text>
+<rect class="word" x="159.12" y="286.38" width="10.019999999999982" height="7.5"/>
+<text class="txt" x="159.12" y="293.28">100</text>
+<text class="ord" x="159.12" y="285.98">155</text>
+<rect class="word" x="701.8" y="287.0" width="7.5" height="7.7099999999999795"/>
+<text class="txt" x="701.8" y="294.10999999999996">P</text>
+<text class="ord" x="701.8" y="286.6">156</text>
+<rect class="word" x="707.76" y="287.18" width="8.5" height="7.430000000000007"/>
+<text class="txt" x="707.76" y="294.01">8</text>
+<text class="ord" x="707.76" y="286.78000000000003">157</text>
+<rect class="word" x="730.04" y="287.07" width="5.5" height="7.600000000000023"/>
+<text class="txt" x="730.04" y="294.07">P</text>
+<text class="ord" x="730.04" y="286.67">158</text>
+<rect class="word" x="735.81" y="287.39" width="8.5" height="7.330000000000041"/>
+<text class="txt" x="735.81" y="294.12">8</text>
+<text class="ord" x="735.81" y="286.99">159</text>
+<rect class="word" x="144.0" y="294.78" width="13.259999999999991" height="7.5"/>
+<text class="txt" x="144.0" y="301.67999999999995">RON</text>
+<text class="ord" x="144.0" y="294.38">160</text>
+<rect class="word" x="158.85" y="294.78" width="6.6200000000000045" height="7.5"/>
+<text class="txt" x="158.85" y="301.67999999999995">97</text>
+<text class="ord" x="158.85" y="294.38">161</text>
+<rect class="word" x="701.8" y="294.71" width="7.5" height="7.710000000000036"/>
+<text class="txt" x="701.8" y="301.82">P</text>
+<text class="ord" x="701.8" y="294.31">162</text>
+<rect class="word" x="707.76" y="294.61" width="8.5" height="7.430000000000007"/>
+<text class="txt" x="707.76" y="301.44">8</text>
+<text class="ord" x="707.76" y="294.21000000000004">163</text>
+<rect class="word" x="730.04" y="294.67" width="5.5" height="7.599999999999966"/>
+<text class="txt" x="730.04" y="301.66999999999996">P</text>
+<text class="ord" x="730.04" y="294.27000000000004">164</text>
+<rect class="word" x="735.81" y="294.72" width="8.5" height="7.319999999999993"/>
+<text class="txt" x="735.81" y="301.44">8</text>
+<text class="ord" x="735.81" y="294.32000000000005">165</text>
+<rect class="word" x="202.04" y="302.84" width="5.5" height="6.75"/>
+<text class="txt" x="202.04" y="308.98999999999995">e</text>
+<text class="ord" x="202.04" y="302.44">166</text>
+<rect class="word" x="223.66" y="303.36" width="8.5" height="6.6200000000000045"/>
+<text class="txt" x="223.66" y="309.38">e</text>
+<text class="ord" x="223.66" y="302.96000000000004">167</text>
+<rect class="word" x="280.55" y="303.88" width="15.079999999999984" height="7.5"/>
+<text class="txt" x="280.55" y="310.78">83.25</text>
+<text class="ord" x="280.55" y="303.48">168</text>
+<rect class="word" x="298.06" y="303.88" width="18.44999999999999" height="7.5"/>
+<text class="txt" x="298.06" y="310.78">8325</text>
+<text class="ord" x="298.06" y="303.48">169</text>
+<rect class="word" x="322.1" y="303.88" width="15.599999999999966" height="7.5"/>
+<text class="txt" x="322.1" y="310.78">83.00</text>
+<text class="ord" x="322.1" y="303.48">170</text>
+<rect class="word" x="339.52" y="303.88" width="18.55000000000001" height="7.5"/>
+<text class="txt" x="339.52" y="310.78">83.00</text>
+<text class="ord" x="339.52" y="303.48">171</text>
+<rect class="word" x="530.15" y="304.13" width="17.540000000000077" height="7.5"/>
+<text class="txt" x="530.15" y="311.03">79.60</text>
+<text class="ord" x="530.15" y="303.73">172</text>
+<rect class="word" x="549.95" y="304.13" width="16.519999999999982" height="7.5"/>
+<text class="txt" x="549.95" y="311.03">79.60</text>
+<text class="ord" x="549.95" y="303.73">173</text>
+<rect class="word" x="571.7" y="304.13" width="16.789999999999964" height="7.5"/>
+<text class="txt" x="571.7" y="311.03">77.30</text>
+<text class="ord" x="571.7" y="303.73">174</text>
+<rect class="word" x="590.61" y="304.13" width="16.840000000000032" height="7.5"/>
+<text class="txt" x="590.61" y="311.03">77.30</text>
+<text class="ord" x="590.61" y="303.73">175</text>
+<rect class="word" x="656.4" y="304.38" width="24.31000000000006" height="7.5"/>
+<text class="txt" x="656.4" y="311.28">8330</text>
+<text class="ord" x="656.4" y="303.98">176</text>
+<rect class="word" x="680.4" y="304.38" width="15.149999999999977" height="7.5"/>
+<text class="txt" x="680.4" y="311.28">81.30</text>
+<text class="ord" x="680.4" y="303.98">177</text>
+<rect class="word" x="701.5" y="304.38" width="14.950000000000045" height="7.5"/>
+<text class="txt" x="701.5" y="311.28">77.30</text>
+<text class="ord" x="701.5" y="303.98">178</text>
+<rect class="word" x="716.15" y="304.38" width="0.5" height="7.5"/>
+<text class="txt" x="716.15" y="311.28">(cid:9)</text>
+<text class="ord" x="716.15" y="303.98">179</text>
+<rect class="word" x="730.1" y="304.38" width="14.829999999999927" height="7.5"/>
+<text class="txt" x="730.1" y="311.28">83.30</text>
+<text class="ord" x="730.1" y="303.98">180</text>
+<rect class="word" x="202.04" y="309.59" width="5.5" height="8.75"/>
+<text class="txt" x="202.04" y="317.73999999999995">R</text>
+<text class="ord" x="202.04" y="309.19">181</text>
+<rect class="word" x="223.66" y="309.98" width="8.5" height="8.599999999999966"/>
+<text class="txt" x="223.66" y="317.97999999999996">R</text>
+<text class="ord" x="223.66" y="309.58000000000004">182</text>
+<rect class="word" x="280.55" y="312.28" width="15.729999999999961" height="7.5"/>
+<text class="txt" x="280.55" y="319.17999999999995">82.35</text>
+<text class="ord" x="280.55" y="311.88">183</text>
+<rect class="word" x="298.09" y="312.28" width="18.390000000000043" height="7.5"/>
+<text class="txt" x="298.09" y="319.17999999999995">82.35</text>
+<text class="ord" x="298.09" y="311.88">184</text>
+<rect class="word" x="322.1" y="312.28" width="15.599999999999966" height="7.5"/>
+<text class="txt" x="322.1" y="319.17999999999995">82.90</text>
+<text class="ord" x="322.1" y="311.88">185</text>
+<rect class="word" x="339.55" y="312.28" width="18.519999999999982" height="7.5"/>
+<text class="txt" x="339.55" y="319.17999999999995">82.90</text>
+<text class="ord" x="339.55" y="311.88">186</text>
+<rect class="word" x="530.15" y="312.78" width="15.399999999999977" height="7.5"/>
+<text class="txt" x="530.15" y="319.67999999999995">78.60</text>
+<text class="ord" x="530.15" y="312.38">187</text>
+<rect class="word" x="547.15" y="312.78" width="18.83000000000004" height="7.5"/>
+<text class="txt" x="547.15" y="319.67999999999995">7860</text>
+<text class="ord" x="547.15" y="312.38">188</text>
+<rect class="word" x="571.7" y="312.78" width="15.370000000000005" height="7.5"/>
+<text class="txt" x="571.7" y="319.67999999999995">76.80</text>
+<text class="ord" x="571.7" y="312.38">189</text>
+<rect class="word" x="588.7" y="312.78" width="18.75" height="7.5"/>
+<text class="txt" x="588.7" y="319.67999999999995">76.80</text>
+<text class="ord" x="588.7" y="312.38">190</text>
+<rect class="word" x="656.4" y="313.03" width="15.870000000000005" height="7.5"/>
+<text class="txt" x="656.4" y="319.92999999999995">82.30</text>
+<text class="ord" x="656.4" y="312.63">191</text>
+<rect class="word" x="674.6" y="313.03" width="20.949999999999932" height="7.5"/>
+<text class="txt" x="674.6" y="319.92999999999995">80.30</text>
+<text class="ord" x="674.6" y="312.63">192</text>
+<rect class="word" x="701.5" y="312.78" width="21.629999999999995" height="7.5"/>
+<text class="txt" x="701.5" y="319.67999999999995">76.80</text>
+<text class="ord" x="701.5" y="312.38">193</text>
+<rect class="word" x="721.9" y="312.78" width="2.560000000000059" height="7.5"/>
+<text class="txt" x="721.9" y="319.67999999999995">-</text>
+<text class="ord" x="721.9" y="312.38">194</text>
+<rect class="word" x="726.29" y="312.78" width="18.639999999999986" height="7.5"/>
+<text class="txt" x="726.29" y="319.67999999999995">82.90</text>
+<text class="ord" x="726.29" y="312.38">195</text>
+<rect class="word" x="144.0" y="320.23" width="20.900000000000006" height="7.5"/>
+<text class="txt" x="144.0" y="327.13">DIESEL</text>
+<text class="ord" x="144.0" y="319.83000000000004">196</text>
+<rect class="word" x="191.5" y="320.23" width="25.849999999999994" height="7.5"/>
+<text class="txt" x="191.5" y="327.13">84.20</text>
+<text class="ord" x="191.5" y="319.83000000000004">197</text>
+<rect class="word" x="215.75" y="320.43" width="15.009999999999991" height="7.5"/>
+<text class="txt" x="215.75" y="327.33">84.20</text>
+<text class="ord" x="215.75" y="320.03000000000003">198</text>
+<rect class="word" x="301.16" y="320.39" width="8.5" height="6.720000000000027"/>
+<text class="txt" x="301.16" y="326.51">8</text>
+<text class="ord" x="301.16" y="319.99">199</text>
+<rect class="word" x="322.1" y="320.93" width="15.599999999999966" height="7.5"/>
+<text class="txt" x="322.1" y="327.83">86.30</text>
+<text class="ord" x="322.1" y="320.53000000000003">200</text>
+<rect class="word" x="339.4" y="320.68" width="18.670000000000016" height="7.5"/>
+<text class="txt" x="339.4" y="327.58">86.30</text>
+<text class="ord" x="339.4" y="320.28000000000003">201</text>
+<rect class="word" x="529.9" y="321.18" width="15.649999999999977" height="7.5"/>
+<text class="txt" x="529.9" y="328.08">84.40</text>
+<text class="ord" x="529.9" y="320.78000000000003">202</text>
+<rect class="word" x="547.34" y="321.18" width="18.74000000000001" height="7.5"/>
+<text class="txt" x="547.34" y="328.08">84.40</text>
+<text class="ord" x="547.34" y="320.78000000000003">203</text>
+<rect class="word" x="571.41" y="320.84" width="8.5" height="6.770000000000039"/>
+<text class="txt" x="571.41" y="327.01">8</text>
+<text class="ord" x="571.41" y="320.44">204</text>
+<rect class="word" x="591.81" y="320.88" width="8.5" height="6.480000000000018"/>
+<text class="txt" x="591.81" y="326.76">8</text>
+<text class="ord" x="591.81" y="320.48">205</text>
+<rect class="word" x="599.96" y="320.88" width="8.5" height="6.480000000000018"/>
+<text class="txt" x="599.96" y="326.76">8</text>
+<text class="ord" x="599.96" y="320.48">206</text>
+<rect class="word" x="656.4" y="321.18" width="25.58000000000004" height="7.5"/>
+<text class="txt" x="656.4" y="328.08">88.10</text>
+<text class="ord" x="656.4" y="320.78000000000003">207</text>
+<rect class="word" x="680.65" y="321.43" width="14.870000000000005" height="7.5"/>
+<text class="txt" x="680.65" y="328.33">85.80</text>
+<text class="ord" x="680.65" y="321.03000000000003">208</text>
+<rect class="word" x="701.75" y="321.18" width="20.850000000000023" height="7.5"/>
+<text class="txt" x="701.75" y="328.08">80.85</text>
+<text class="ord" x="701.75" y="320.78000000000003">209</text>
+<rect class="word" x="722.15" y="321.18" width="2.1800000000000637" height="7.5"/>
+<text class="txt" x="722.15" y="328.08">-</text>
+<text class="ord" x="722.15" y="320.78000000000003">210</text>
+<rect class="word" x="726.15" y="321.18" width="18.779999999999973" height="7.5"/>
+<text class="txt" x="726.15" y="328.08">88.10</text>
+<text class="ord" x="726.15" y="320.78000000000003">211</text>
+<rect class="word" x="144.0" y="328.63" width="21.099999999999994" height="7.5"/>
+<text class="txt" x="144.0" y="335.53">DIESEL</text>
+<text class="ord" x="144.0" y="328.23">212</text>
+<rect class="word" x="166.8" y="328.55" width="15.699999999999989" height="7.5"/>
+<text class="txt" x="166.8" y="335.45">PLUS</text>
+<text class="ord" x="166.8" y="328.15000000000003">213</text>
+<rect class="word" x="191.5" y="328.83" width="15.650000000000006" height="7.5"/>
+<text class="txt" x="191.5" y="335.72999999999996">87.20</text>
+<text class="ord" x="191.5" y="328.43">214</text>
+<rect class="word" x="210.77" y="328.83" width="19.95999999999998" height="7.5"/>
+<text class="txt" x="210.77" y="335.72999999999996">87.20</text>
+<text class="ord" x="210.77" y="328.43">215</text>
+<rect class="word" x="701.75" y="329.58" width="14.67999999999995" height="7.5"/>
+<text class="txt" x="701.75" y="336.47999999999996">87.20</text>
+<text class="ord" x="701.75" y="329.18">216</text>
+<rect class="word" x="716.15" y="329.58" width="0.5" height="7.5"/>
+<text class="txt" x="716.15" y="336.47999999999996">(cid:9)</text>
+<text class="ord" x="716.15" y="329.18">217</text>
+<rect class="word" x="730.1" y="329.58" width="15.110000000000014" height="7.5"/>
+<text class="txt" x="730.1" y="336.47999999999996">87.20</text>
+<text class="ord" x="730.1" y="329.18">218</text>
+<rect class="word" x="280.56" y="337.43" width="8.5" height="6.360000000000014"/>
+<text class="txt" x="280.56" y="343.19">8</text>
+<text class="ord" x="280.56" y="337.03000000000003">219</text>
+<rect class="word" x="688.06" y="337.89" width="8.5" height="6.720000000000027"/>
+<text class="txt" x="688.06" y="344.01">8</text>
+<text class="ord" x="688.06" y="337.49">220</text>
+<rect class="word" x="701.5" y="338.23" width="15.629999999999995" height="7.5"/>
+<text class="txt" x="701.5" y="345.13">99.02</text>
+<text class="ord" x="701.5" y="337.83000000000004">221</text>
+<rect class="word" x="716.15" y="338.23" width="0.5" height="7.5"/>
+<text class="txt" x="716.15" y="345.13">(cid:9)</text>
+<text class="ord" x="716.15" y="337.83000000000004">222</text>
+<rect class="word" x="728.65" y="338.23" width="17.930000000000064" height="7.5"/>
+<text class="txt" x="728.65" y="345.13">119.00</text>
+<text class="ord" x="728.65" y="337.83000000000004">223</text>
+<rect class="word" x="703.45" y="346.63" width="20.1099999999999" height="7.5"/>
+<text class="txt" x="703.45" y="353.53">0.00</text>
+<text class="ord" x="703.45" y="346.23">224</text>
+<rect class="word" x="722.15" y="346.63" width="2.1800000000000637" height="7.5"/>
+<text class="txt" x="722.15" y="353.53">-</text>
+<text class="ord" x="722.15" y="346.23">225</text>
+<rect class="word" x="727.35" y="346.63" width="16.129999999999995" height="7.5"/>
+<text class="txt" x="727.35" y="353.53">0.00</text>
+<text class="ord" x="727.35" y="346.23">226</text>
+<rect class="word" x="144.0" y="354.03" width="13.159999999999997" height="7.5"/>
+<text class="txt" x="144.0" y="360.92999999999995">RON</text>
+<text class="ord" x="144.0" y="353.63">227</text>
+<rect class="word" x="159.1" y="354.03" width="6.6200000000000045" height="7.5"/>
+<text class="txt" x="159.1" y="360.92999999999995">97</text>
+<text class="ord" x="159.1" y="353.63">228</text>
+<rect class="word" x="703.45" y="355.03" width="20.079999999999927" height="7.5"/>
+<text class="txt" x="703.45" y="361.92999999999995">0.00</text>
+<text class="ord" x="703.45" y="354.63">229</text>
+<rect class="word" x="722.15" y="355.03" width="2.1800000000000637" height="7.5"/>
+<text class="txt" x="722.15" y="361.92999999999995">-</text>
+<text class="ord" x="722.15" y="354.63">230</text>
+<rect class="word" x="727.44" y="355.03" width="15.669999999999959" height="7.5"/>
+<text class="txt" x="727.44" y="361.92999999999995">0.00</text>
+<text class="ord" x="727.44" y="354.63">231</text>
+<rect class="word" x="144.0" y="362.43" width="13.509999999999991" height="7.5"/>
+<text class="txt" x="144.0" y="369.33">RON</text>
+<text class="ord" x="144.0" y="362.03000000000003">232</text>
+<rect class="word" x="159.1" y="362.68" width="6.6200000000000045" height="7.5"/>
+<text class="txt" x="159.1" y="369.58">95</text>
+<text class="ord" x="159.1" y="362.28000000000003">233</text>
+<rect class="word" x="237.6" y="362.93" width="15.379999999999995" height="7.5"/>
+<text class="txt" x="237.6" y="369.83">88.30</text>
+<text class="ord" x="237.6" y="362.53000000000003">234</text>
+<rect class="word" x="255.19" y="362.93" width="20.629999999999995" height="7.5"/>
+<text class="txt" x="255.19" y="369.83">88.30</text>
+<text class="ord" x="255.19" y="362.53000000000003">235</text>
+<rect class="word" x="280.8" y="363.18" width="15.399999999999977" height="7.5"/>
+<text class="txt" x="280.8" y="370.08">83.30</text>
+<text class="ord" x="280.8" y="362.78000000000003">236</text>
+<rect class="word" x="298.06" y="363.18" width="20.80000000000001" height="7.5"/>
+<text class="txt" x="298.06" y="370.08">83.30,</text>
+<text class="ord" x="298.06" y="362.78000000000003">237</text>
+<rect class="word" x="363.1" y="363.18" width="15.899999999999977" height="7.5"/>
+<text class="txt" x="363.1" y="370.08">85.20</text>
+<text class="ord" x="363.1" y="362.78000000000003">238</text>
+<rect class="word" x="381.31" y="363.18" width="17.860000000000014" height="7.75"/>
+<text class="txt" x="381.31" y="370.33">85.20</text>
+<text class="ord" x="381.31" y="362.78000000000003">239</text>
+<rect class="word" x="448.1" y="363.18" width="21.569999999999993" height="7.5"/>
+<text class="txt" x="448.1" y="370.08">82.70</text>
+<text class="ord" x="448.1" y="362.78000000000003">240</text>
+<rect class="word" x="468.7" y="363.43" width="15.670000000000016" height="7.5"/>
+<text class="txt" x="468.7" y="370.33">82.70</text>
+<text class="ord" x="468.7" y="363.03000000000003">241</text>
+<rect class="word" x="571.9" y="363.63" width="15.230000000000018" height="7.5"/>
+<text class="txt" x="571.9" y="370.53">78.55</text>
+<text class="ord" x="571.9" y="363.23">242</text>
+<rect class="word" x="588.85" y="363.63" width="18.92999999999995" height="7.5"/>
+<text class="txt" x="588.85" y="370.53">78.55</text>
+<text class="ord" x="588.85" y="363.23">243</text>
+<rect class="word" x="656.65" y="363.63" width="18.940000000000055" height="7.5"/>
+<text class="txt" x="656.65" y="370.53">85.00</text>
+<text class="ord" x="656.65" y="363.23">244</text>
+<rect class="word" x="678.04" y="363.63" width="17.389999999999986" height="7.5"/>
+<text class="txt" x="678.04" y="370.53">8500</text>
+<text class="ord" x="678.04" y="363.23">245</text>
+<rect class="word" x="701.75" y="363.43" width="20.840000000000032" height="7.5"/>
+<text class="txt" x="701.75" y="370.33">79.55</text>
+<text class="ord" x="701.75" y="363.03000000000003">246</text>
+<rect class="word" x="722.15" y="363.63" width="2.1800000000000637" height="7.5"/>
+<text class="txt" x="722.15" y="370.53">-</text>
+<text class="ord" x="722.15" y="363.23">247</text>
+<rect class="word" x="726.19" y="363.63" width="18.989999999999895" height="7.5"/>
+<text class="txt" x="726.19" y="370.53">88.30</text>
+<text class="ord" x="726.19" y="363.23">248</text>
+<rect class="word" x="47.94" y="370.43" width="5.5" height="5.810000000000002"/>
+<text class="txt" x="47.94" y="375.64">C)</text>
+<text class="ord" x="47.94" y="370.03000000000003">249</text>
+<rect class="word" x="51.95" y="369.93" width="6.5" height="6.349999999999966"/>
+<text class="txt" x="51.95" y="375.67999999999995">0</text>
+<text class="ord" x="51.95" y="369.53000000000003">250</text>
+<rect class="word" x="62.34" y="370.55" width="5.5" height="5.689999999999998"/>
+<text class="txt" x="62.34" y="375.64">Cl)</text>
+<text class="ord" x="62.34" y="370.15000000000003">251</text>
+<rect class="word" x="144.0" y="370.83" width="13.699999999999989" height="7.5"/>
+<text class="txt" x="144.0" y="377.72999999999996">RON</text>
+<text class="ord" x="144.0" y="370.43">252</text>
+<rect class="word" x="159.32" y="370.83" width="6.510000000000019" height="7.5"/>
+<text class="txt" x="159.32" y="377.72999999999996">91</text>
+<text class="ord" x="159.32" y="370.43">253</text>
+<rect class="word" x="237.6" y="371.33" width="23.72" height="7.5"/>
+<text class="txt" x="237.6" y="378.22999999999996">86.90</text>
+<text class="ord" x="237.6" y="370.93">254</text>
+<rect class="word" x="260.15" y="371.58" width="15.28000000000003" height="7.5"/>
+<text class="txt" x="260.15" y="378.47999999999996">86.90</text>
+<text class="ord" x="260.15" y="371.18">255</text>
+<rect class="word" x="280.8" y="371.58" width="15.670000000000016" height="7.5"/>
+<text class="txt" x="280.8" y="378.47999999999996">82.30</text>
+<text class="ord" x="280.8" y="371.18">256</text>
+<rect class="word" x="298.29" y="371.58" width="19.029999999999973" height="7.5"/>
+<text class="txt" x="298.29" y="378.47999999999996">82.30</text>
+<text class="ord" x="298.29" y="371.18">257</text>
+<rect class="word" x="363.35" y="371.58" width="16.370000000000005" height="7.5"/>
+<text class="txt" x="363.35" y="378.47999999999996">84.20</text>
+<text class="ord" x="363.35" y="371.18">258</text>
+<rect class="word" x="382.26" y="371.58" width="16.5" height="7.75"/>
+<text class="txt" x="382.26" y="378.72999999999996">84.20</text>
+<text class="ord" x="382.26" y="371.18">259</text>
+<rect class="word" x="448.1" y="371.83" width="15.20999999999998" height="7.5"/>
+<text class="txt" x="448.1" y="378.72999999999996">82.20</text>
+<text class="ord" x="448.1" y="371.43">260</text>
+<rect class="word" x="465.55" y="371.83" width="18.819999999999993" height="7.5"/>
+<text class="txt" x="465.55" y="378.72999999999996">82.20</text>
+<text class="ord" x="465.55" y="371.43">261</text>
+<rect class="word" x="568.45" y="372.03" width="18.92999999999995" height="7.5"/>
+<text class="txt" x="568.45" y="378.92999999999995">7755</text>
+<text class="ord" x="568.45" y="371.63">262</text>
+<rect class="word" x="589.75" y="372.03" width="18.029999999999973" height="7.5"/>
+<text class="txt" x="589.75" y="378.92999999999995">77.55</text>
+<text class="ord" x="589.75" y="371.63">263</text>
+<rect class="word" x="656.65" y="372.03" width="19.129999999999995" height="7.5"/>
+<text class="txt" x="656.65" y="378.92999999999995">83.00</text>
+<text class="ord" x="656.65" y="371.63">264</text>
+<rect class="word" x="678.27" y="372.03" width="17.529999999999973" height="7.75"/>
+<text class="txt" x="678.27" y="379.17999999999995">83.00</text>
+<text class="ord" x="678.27" y="371.63">265</text>
+<rect class="word" x="701.75" y="372.03" width="21.74000000000001" height="7.5"/>
+<text class="txt" x="701.75" y="378.92999999999995">77.55</text>
+<text class="ord" x="701.75" y="371.63">266</text>
+<rect class="word" x="722.15" y="372.03" width="4.25" height="7.5"/>
+<text class="txt" x="722.15" y="378.92999999999995">.</text>
+<text class="ord" x="722.15" y="371.63">267</text>
+<rect class="word" x="726.34" y="372.03" width="18.839999999999918" height="7.5"/>
+<text class="txt" x="726.34" y="378.92999999999995">86.90</text>
+<text class="ord" x="726.34" y="371.63">268</text>
+<rect class="word" x="144.0" y="379.48" width="20.900000000000006" height="7.5"/>
+<text class="txt" x="144.0" y="386.38">DIESEL</text>
+<text class="ord" x="144.0" y="379.08000000000004">269</text>
+<rect class="word" x="237.6" y="379.73" width="23.130000000000024" height="7.5"/>
+<text class="txt" x="237.6" y="386.63">87.45</text>
+<text class="ord" x="237.6" y="379.33000000000004">270</text>
+<rect class="word" x="260.15" y="379.98" width="15.730000000000018" height="7.5"/>
+<text class="txt" x="260.15" y="386.88">87.45</text>
+<text class="ord" x="260.15" y="379.58000000000004">271</text>
+<rect class="word" x="280.55" y="379.98" width="15.920000000000016" height="7.5"/>
+<text class="txt" x="280.55" y="386.88">87.80</text>
+<text class="ord" x="280.55" y="379.58000000000004">272</text>
+<rect class="word" x="298.17" y="379.98" width="19.149999999999977" height="7.5"/>
+<text class="txt" x="298.17" y="386.88">87.80</text>
+<text class="ord" x="298.17" y="379.58000000000004">273</text>
+<rect class="word" x="363.35" y="380.23" width="15.399999999999977" height="7.5"/>
+<text class="txt" x="363.35" y="387.13">83.00</text>
+<text class="ord" x="363.35" y="379.83000000000004">274</text>
+<rect class="word" x="381.06" y="380.23" width="18.089999999999975" height="7.5"/>
+<text class="txt" x="381.06" y="387.13">83.00</text>
+<text class="ord" x="381.06" y="379.83000000000004">275</text>
+<rect class="word" x="448.1" y="380.23" width="15.599999999999966" height="7.5"/>
+<text class="txt" x="448.1" y="387.13">83.60</text>
+<text class="ord" x="448.1" y="379.83000000000004">276</text>
+<rect class="word" x="465.52" y="380.23" width="18.83000000000004" height="7.5"/>
+<text class="txt" x="465.52" y="387.13">83.60</text>
+<text class="ord" x="465.52" y="379.83000000000004">277</text>
+<rect class="word" x="571.45" y="380.43" width="16.449999999999932" height="7.5"/>
+<text class="txt" x="571.45" y="387.33">82.70</text>
+<text class="ord" x="571.45" y="380.03000000000003">278</text>
+<rect class="word" x="590.24" y="380.43" width="17.480000000000018" height="7.5"/>
+<text class="txt" x="590.24" y="387.33">82.70</text>
+<text class="ord" x="590.24" y="380.03000000000003">279</text>
+<rect class="word" x="701.75" y="380.43" width="21.629999999999995" height="7.5"/>
+<text class="txt" x="701.75" y="387.33">82.70</text>
+<text class="ord" x="701.75" y="380.03000000000003">280</text>
+<rect class="word" x="722.15" y="380.43" width="2.560000000000059" height="7.5"/>
+<text class="txt" x="722.15" y="387.33">-</text>
+<text class="ord" x="722.15" y="380.03000000000003">281</text>
+<rect class="word" x="726.32" y="380.43" width="18.8599999999999" height="7.5"/>
+<text class="txt" x="726.32" y="387.33">87.80</text>
+<text class="ord" x="726.32" y="380.03000000000003">282</text>
+<rect class="word" x="144.0" y="387.88" width="20.860000000000014" height="7.5"/>
+<text class="txt" x="144.0" y="394.78">DIESEL</text>
+<text class="ord" x="144.0" y="387.48">283</text>
+<rect class="word" x="166.8" y="387.8" width="16.079999999999984" height="7.5"/>
+<text class="txt" x="166.8" y="394.7">PLUS</text>
+<text class="ord" x="166.8" y="387.40000000000003">284</text>
+<rect class="word" x="236.34" y="392.66" width="5.5" height="1.8699999999999477"/>
+<text class="txt" x="236.34" y="393.92999999999995">'</text>
+<text class="ord" x="236.34" y="392.26000000000005">285</text>
+<rect class="word" x="236.34" y="388.28" width="5.5" height="4.380000000000052"/>
+<text class="txt" x="236.34" y="392.06">0</text>
+<text class="ord" x="236.34" y="387.88">286</text>
+<rect class="word" x="239.35" y="392.25" width="7.5" height="2.3899999999999864"/>
+<text class="txt" x="239.35" y="394.03999999999996">&quot;</text>
+<text class="ord" x="239.35" y="391.85">287</text>
+<rect class="word" x="239.35" y="388.38" width="7.5" height="4.389999999999986"/>
+<text class="txt" x="239.35" y="392.16999999999996">3</text>
+<text class="ord" x="239.35" y="387.98">288</text>
+<rect class="word" x="270.69" y="388.22" width="5.5" height="6.449999999999989"/>
+<text class="txt" x="270.69" y="394.07">U,</text>
+<text class="ord" x="270.69" y="387.82000000000005">289</text>
+<rect class="word" x="701.75" y="388.83" width="22.00999999999999" height="7.5"/>
+<text class="txt" x="701.75" y="395.72999999999996">92.25</text>
+<text class="ord" x="701.75" y="388.43">290</text>
+<rect class="word" x="722.4" y="388.83" width="2.1800000000000637" height="7.5"/>
+<text class="txt" x="722.4" y="395.72999999999996">-</text>
+<text class="ord" x="722.4" y="388.43">291</text>
+<rect class="word" x="726.54" y="388.83" width="18.920000000000073" height="7.5"/>
+<text class="txt" x="726.54" y="395.72999999999996">92.25</text>
+<text class="ord" x="726.54" y="388.43">292</text>
+<rect class="word" x="144.0" y="396.28" width="33.31" height="7.5"/>
+<text class="txt" x="144.0" y="403.17999999999995">KEROSENE</text>
+<text class="ord" x="144.0" y="395.88">293</text>
+<rect class="word" x="280.8" y="396.78" width="15.729999999999961" height="7.5"/>
+<text class="txt" x="280.8" y="403.67999999999995">99.02</text>
+<text class="ord" x="280.8" y="396.38">294</text>
+<rect class="word" x="301.45" y="396.78" width="15.930000000000007" height="7.5"/>
+<text class="txt" x="301.45" y="403.67999999999995">99.02</text>
+<text class="ord" x="301.45" y="396.38">295</text>
+<rect class="word" x="699.1" y="397.23" width="18.319999999999936" height="7.5"/>
+<text class="txt" x="699.1" y="404.13">_99.02</text>
+<text class="ord" x="699.1" y="396.83000000000004">296</text>
+<rect class="word" x="716.4" y="397.23" width="0.5" height="7.5"/>
+<text class="txt" x="716.4" y="404.13">(cid:9)</text>
+<text class="ord" x="716.4" y="396.83000000000004">297</text>
+<rect class="word" x="730.3" y="397.48" width="15.180000000000064" height="7.5"/>
+<text class="txt" x="730.3" y="404.38">99.02</text>
+<text class="ord" x="730.3" y="397.08000000000004">298</text>
+<rect class="word" x="144.0" y="404.68" width="15.439999999999998" height="7.5"/>
+<text class="txt" x="144.0" y="411.58">RON</text>
+<text class="ord" x="144.0" y="404.28000000000003">299</text>
+<rect class="word" x="159.35" y="404.93" width="9.960000000000008" height="7.5"/>
+<text class="txt" x="159.35" y="411.83">100</text>
+<text class="ord" x="159.35" y="404.53000000000003">300</text>
+<rect class="word" x="707.96" y="406.01" width="8.5" height="7.160000000000025"/>
+<text class="txt" x="707.96" y="412.57">8</text>
+<text class="ord" x="707.96" y="405.61">301</text>
+<rect class="word" x="730.35" y="405.84" width="7.5" height="7.439999999999998"/>
+<text class="txt" x="730.35" y="412.67999999999995">P</text>
+<text class="ord" x="730.35" y="405.44">302</text>
+<rect class="word" x="736.06" y="406.0" width="8.5" height="7.2900000000000205"/>
+<text class="txt" x="736.06" y="412.69">8</text>
+<text class="ord" x="736.06" y="405.6">303</text>
+<rect class="word" x="144.0" y="413.33" width="13.030000000000001" height="7.5"/>
+<text class="txt" x="144.0" y="420.22999999999996">RON</text>
+<text class="ord" x="144.0" y="412.93">304</text>
+<rect class="word" x="159.11" y="413.33" width="6.659999999999997" height="7.5"/>
+<text class="txt" x="159.11" y="420.22999999999996">97</text>
+<text class="ord" x="159.11" y="412.93">305</text>
+<rect class="word" x="707.96" y="413.17" width="8.5" height="7.169999999999959"/>
+<text class="txt" x="707.96" y="419.73999999999995">8</text>
+<text class="ord" x="707.96" y="412.77000000000004">306</text>
+<rect class="word" x="730.35" y="413.28" width="7.5" height="7.440000000000055"/>
+<text class="txt" x="730.35" y="420.12">P</text>
+<text class="ord" x="730.35" y="412.88">307</text>
+<rect class="word" x="736.06" y="413.29" width="8.5" height="7.2999999999999545"/>
+<text class="txt" x="736.06" y="419.98999999999995">8</text>
+<text class="ord" x="736.06" y="412.89000000000004">308</text>
+<rect class="word" x="144.0" y="421.73" width="14.97999999999999" height="7.5"/>
+<text class="txt" x="144.0" y="428.63">RON</text>
+<text class="ord" x="144.0" y="421.33000000000004">309</text>
+<rect class="word" x="158.9" y="421.98" width="6.8799999999999955" height="7.5"/>
+<text class="txt" x="158.9" y="428.88">95</text>
+<text class="ord" x="158.9" y="421.58000000000004">310</text>
+<rect class="word" x="198.69" y="421.75" width="5.5" height="6.389999999999986"/>
+<text class="txt" x="198.69" y="427.53999999999996">0,</text>
+<text class="ord" x="198.69" y="421.35">311</text>
+<rect class="word" x="223.91" y="421.9" width="8.5" height="6.650000000000034"/>
+<text class="txt" x="223.91" y="427.95">e</text>
+<text class="ord" x="223.91" y="421.5">312</text>
+<rect class="word" x="318.7" y="422.43" width="21.069999999999993" height="7.5"/>
+<text class="txt" x="318.7" y="429.33">184.00</text>
+<text class="ord" x="318.7" y="422.03000000000003">313</text>
+<rect class="word" x="341.91" y="422.43" width="16.689999999999998" height="7.5"/>
+<text class="txt" x="341.91" y="429.33">84.00</text>
+<text class="ord" x="341.91" y="422.03000000000003">314</text>
+<rect class="word" x="702.0" y="422.93" width="14.67999999999995" height="7.5"/>
+<text class="txt" x="702.0" y="429.83">80.60</text>
+<text class="ord" x="702.0" y="422.53000000000003">315</text>
+<rect class="word" x="716.4" y="422.93" width="0.5" height="7.5"/>
+<text class="txt" x="716.4" y="429.83">(cid:9)</text>
+<text class="ord" x="716.4" y="422.53000000000003">316</text>
+<rect class="word" x="730.55" y="422.93" width="14.830000000000041" height="7.5"/>
+<text class="txt" x="730.55" y="429.83">84.00</text>
+<text class="ord" x="730.55" y="422.53000000000003">317</text>
+<rect class="word" x="92.09" y="415.35" width="27.0" height="26.029999999999973"/>
+<text class="txt" x="92.09" y="440.78">i</text>
+<text class="ord" x="92.09" y="414.95000000000005">318</text>
+<rect class="word" x="198.69" y="428.14" width="5.5" height="4.259999999999991"/>
+<text class="txt" x="198.69" y="431.79999999999995">1</text>
+<text class="ord" x="198.69" y="427.74">319</text>
+<rect class="word" x="144.0" y="430.38" width="13.030000000000001" height="7.5"/>
+<text class="txt" x="144.0" y="437.28">RON</text>
+<text class="ord" x="144.0" y="429.98">320</text>
+<rect class="word" x="159.13" y="430.38" width="6.710000000000008" height="7.5"/>
+<text class="txt" x="159.13" y="437.28">91</text>
+<text class="ord" x="159.13" y="429.98">321</text>
+<rect class="word" x="198.69" y="432.4" width="5.5" height="4.260000000000048"/>
+<text class="txt" x="198.69" y="436.06">0</text>
+<text class="ord" x="198.69" y="432.0">322</text>
+<rect class="word" x="223.91" y="428.55" width="8.5" height="8.629999999999995"/>
+<text class="txt" x="223.91" y="436.58">R</text>
+<text class="ord" x="223.91" y="428.15000000000003">323</text>
+<rect class="word" x="318.7" y="432.03" width="4.020000000000039" height="7.5"/>
+<text class="txt" x="318.7" y="438.92999999999995">I</text>
+<text class="ord" x="318.7" y="431.63">324</text>
+<rect class="word" x="322.3" y="430.83" width="15.649999999999977" height="7.5"/>
+<text class="txt" x="322.3" y="437.72999999999996">82.90</text>
+<text class="ord" x="322.3" y="430.43">325</text>
+<rect class="word" x="339.8" y="430.83" width="18.80000000000001" height="7.5"/>
+<text class="txt" x="339.8" y="437.72999999999996">82.90</text>
+<text class="ord" x="339.8" y="430.43">326</text>
+<rect class="word" x="701.75" y="431.33" width="21.879999999999995" height="7.5"/>
+<text class="txt" x="701.75" y="438.22999999999996">79.60</text>
+<text class="ord" x="701.75" y="430.93">327</text>
+<rect class="word" x="722.4" y="431.33" width="3.6200000000000045" height="7.5"/>
+<text class="txt" x="722.4" y="438.22999999999996">.</text>
+<text class="ord" x="722.4" y="430.93">328</text>
+<rect class="word" x="726.54" y="431.33" width="18.840000000000032" height="7.5"/>
+<text class="txt" x="726.54" y="438.22999999999996">82.90</text>
+<text class="ord" x="726.54" y="430.93">329</text>
+<rect class="word" x="144.0" y="438.78" width="20.879999999999995" height="7.5"/>
+<text class="txt" x="144.0" y="445.67999999999995">DIESEL</text>
+<text class="ord" x="144.0" y="438.38">330</text>
+<rect class="word" x="191.5" y="439.03" width="15.650000000000006" height="7.5"/>
+<text class="txt" x="191.5" y="445.92999999999995">84.20</text>
+<text class="ord" x="191.5" y="438.63">331</text>
+<rect class="word" x="216.0" y="439.03" width="15.009999999999991" height="7.5"/>
+<text class="txt" x="216.0" y="445.92999999999995">84.20</text>
+<text class="ord" x="216.0" y="438.63">332</text>
+<rect class="word" x="322.55" y="439.23" width="21.620000000000005" height="7.5"/>
+<text class="txt" x="322.55" y="446.13">86.10</text>
+<text class="ord" x="322.55" y="438.83000000000004">333</text>
+<rect class="word" x="343.2" y="439.23" width="14.980000000000018" height="7.5"/>
+<text class="txt" x="343.2" y="446.13">86.10</text>
+<text class="ord" x="343.2" y="438.83000000000004">334</text>
+<rect class="word" x="702.0" y="439.73" width="21.32000000000005" height="7.5"/>
+<text class="txt" x="702.0" y="446.63">84.20</text>
+<text class="ord" x="702.0" y="439.33000000000004">335</text>
+<rect class="word" x="722.4" y="439.98" width="3.6200000000000045" height="7.5"/>
+<text class="txt" x="722.4" y="446.88">.</text>
+<text class="ord" x="722.4" y="439.58000000000004">336</text>
+<rect class="word" x="726.39" y="439.98" width="18.99000000000001" height="7.5"/>
+<text class="txt" x="726.39" y="446.88">86.10</text>
+<text class="ord" x="726.39" y="439.58000000000004">337</text>
+<rect class="word" x="144.0" y="447.18" width="22.849999999999994" height="7.5"/>
+<text class="txt" x="144.0" y="454.08">DIESEL</text>
+<text class="ord" x="144.0" y="446.78000000000003">338</text>
+<rect class="word" x="166.8" y="447.1" width="15.799999999999983" height="7.5"/>
+<text class="txt" x="166.8" y="454.0">PLUS</text>
+<text class="ord" x="166.8" y="446.70000000000005">339</text>
+<rect class="word" x="191.5" y="447.43" width="25.849999999999994" height="7.5"/>
+<text class="txt" x="191.5" y="454.33">87.20</text>
+<text class="ord" x="191.5" y="447.03000000000003">340</text>
+<rect class="word" x="216.0" y="447.63" width="15.400000000000006" height="7.5"/>
+<text class="txt" x="216.0" y="454.53">87.20</text>
+<text class="ord" x="216.0" y="447.23">341</text>
+<rect class="word" x="702.0" y="448.38" width="21.629999999999995" height="7.5"/>
+<text class="txt" x="702.0" y="455.28">87.20</text>
+<text class="ord" x="702.0" y="447.98">342</text>
+<rect class="word" x="722.4" y="448.38" width="2.560000000000059" height="7.5"/>
+<text class="txt" x="722.4" y="455.28">-</text>
+<text class="ord" x="722.4" y="447.98">343</text>
+<rect class="word" x="726.57" y="448.38" width="18.459999999999923" height="7.5"/>
+<text class="txt" x="726.57" y="455.28">87.20</text>
+<text class="ord" x="726.57" y="447.98">344</text>
+<rect class="word" x="144.0" y="455.58" width="33.31" height="7.5"/>
+<text class="txt" x="144.0" y="462.47999999999996">KEROSENE</text>
+<text class="ord" x="144.0" y="455.18">345</text>
+<rect class="word" x="702.44" y="456.67" width="5.5" height="6.649999999999977"/>
+<text class="txt" x="702.44" y="462.71999999999997">P</text>
+<text class="ord" x="702.44" y="456.27000000000004">346</text>
+<rect class="word" x="708.46" y="456.96" width="8.5" height="6.1299999999999955"/>
+<text class="txt" x="708.46" y="462.48999999999995">8</text>
+<text class="ord" x="708.46" y="456.56">347</text>
+<rect class="word" x="730.6" y="456.82" width="7.5" height="6.650000000000034"/>
+<text class="txt" x="730.6" y="462.87">P</text>
+<text class="ord" x="730.6" y="456.42">348</text>
+<rect class="word" x="736.31" y="456.96" width="8.5" height="6.1299999999999955"/>
+<text class="txt" x="736.31" y="462.48999999999995">8</text>
+<text class="ord" x="736.31" y="456.56">349</text>
+<text class="legend" x="4" y="588.0">page 3 · 350 words · 6 column candidates · 40 row bands</text>
+</svg>
