@@ -1,0 +1,46 @@
+# DOE PDF ingestion — runtime dependencies.
+#
+# Playwright is gone. The Looker Studio dashboard it drove turned out to be
+# backed by a dataset last refreshed in 2021, and the DOE's own weekly PDFs are
+# the live source. Nothing here starts a browser.
+
+# --- discovery and download -------------------------------------------------
+requests~=2.32
+# The article listings are server-rendered HTML; the crawler reads anchors from
+# them. This is link discovery, not data extraction — every figure comes from
+# the PDF.
+beautifulsoup4~=4.12
+lxml~=5.3
+
+# --- table extraction -------------------------------------------------------
+# Three extractors, tried in order and scored. No single one handles these
+# documents reliably: the DOE's layouts change between regions, and a table
+# that Camelot reads perfectly in NCR comes out shifted in Region IV-A.
+#
+# camelot (lattice + stream) is primary.
+camelot-py[base]~=1.0
+# opencv is what camelot's lattice mode uses to find ruling lines.
+opencv-python-headless~=4.10
+# pdfplumber is the fallback, and also does the text pass that reads the
+# region, coverage week and monitoring date out of the page header.
+pdfplumber~=0.11
+# tabula is the last resort. It needs a JVM, which the image provides.
+tabula-py~=2.10
+
+# --- transformation ---------------------------------------------------------
+pandas~=2.2
+numpy~=2.1
+
+# --- persistence ------------------------------------------------------------
+SQLAlchemy~=2.0
+PyMySQL~=1.1
+cryptography~=44.0
+
+# --- configuration ----------------------------------------------------------
+pydantic~=2.10
+pydantic-settings~=2.7
+python-dotenv~=1.0
+
+# --- scheduling and resilience ----------------------------------------------
+APScheduler~=3.11
+tenacity~=9.0
