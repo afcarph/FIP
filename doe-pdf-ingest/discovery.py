@@ -152,6 +152,16 @@ class DiscoveryProvider(ABC):
 
     name: str = "provider"
 
+    #: What the last `discover` call did, for the run log. Populated by the
+    #: provider because only it knows what "a page" means: a GraphQL provider
+    #: counts API pages, a sitemap provider would count something else. The
+    #: pipeline records it without interpreting it.
+    last_stats: dict[str, int]
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        cls.last_stats = {}
+
     @abstractmethod
     def discover(self, limit: int | None = None) -> list[DiscoveredPdf]:
         """Candidate documents, newest first."""
@@ -275,6 +285,12 @@ class GraphQlDiscoveryProvider(DiscoveryProvider):
                 break
 
         elapsed = time.monotonic() - started
+
+        self.last_stats = {
+            "graphql_pages": pages,
+            "documents_scanned": scanned,
+            "candidates_matched": len(found),
+        }
 
         log.info(
             "Discovery finished in %.2fs: %d scanned, %d matched across %d page(s)",

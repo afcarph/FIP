@@ -20,8 +20,12 @@ accessible, so a PDF not stored here is gone.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
+from collections import Counter
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import requests
@@ -36,6 +40,10 @@ from storage import finish_run, is_duplicate, session_scope, start_run, store_re
 from validator import validate
 
 log = get_logger(__name__)
+
+#: The phases a run is measured in. Named once so the model columns, the run
+#: log and the health dashboard cannot drift apart.
+PHASES = ("discovery", "download", "extraction", "validation", "import")
 
 
 class PipelineResult:
@@ -61,13 +69,83 @@ class PipelineResult:
         # `failed`, which would page someone every morning forever.
         self.rejections: list[str] = []
 
+        # Candidates that parsed into a report. Distinct from `discovered`:
+        # discovery matches on title, and a matching title is not a price
+        # table.
+        self.reports_parsed = 0
+
+        # Per-phase wall clock, in milliseconds, accumulated across documents.
+        # One total says a run got slower; it does not say whether the DOE's
+        # API, the CPU or the database was responsible, and those page
+        # different people.
+        self.phase_ms: dict[str, int] = dict.fromkeys(PHASES, 0)
+
+        #: Which extractor read each report, counted. A layout changing
+        #: silently shows up here first, as a report arriving from a different
+        #: extractor than last week.
+        self.parser_versions: Counter[str] = Counter()
+
+        #: Whatever the discovery provider chose to report about its own work.
+        self.discovery_stats: dict[str, int] = {}
+
+        #: Whole-run wall clock. Not the sum of the phases: a run also spends
+        #: time outside them, and a total that silently equalled the sum would
+        #: hide exactly that.
+        self.total_ms: int | None = None
+
+    @contextmanager
+    def timing(self, phase: str) -> Iterator[None]:
+        """Add this block's wall clock to a phase.
+
+        A context manager rather than timestamps at call sites because the
+        phases are entered from several places — a mis-paired start and stop
+        would silently under-report, and an under-reported phase looks healthy.
+        """
+        started = time.monotonic()
+
+        try:
+            yield
+        finally:
+            self.phase_ms[phase] += int((time.monotonic() - started) * 1000)
+
     def summary(self) -> str:
         return (
             f"discovered={self.discovered} downloaded={self.downloaded} "
             f"imported={self.imported} skipped={self.skipped} "
             f"records={self.records} rejected={len(self.rejections)} "
-            f"errors={len(self.errors)}"
+            f"errors={len(self.errors)} "
+            + " ".join(f"{phase}={self.phase_ms[phase]}ms" for phase in PHASES)
         )
+
+    def run_log_fields(self) -> dict[str, int | str | None]:
+        """Everything this run wants recorded, keyed by column name.
+
+        `finish_run` sets only fields the model actually has, so a key added
+        here before its migration lands is ignored rather than fatal — which
+        matters because the ingest and the schema deploy separately.
+        """
+        return {
+            "pdfs_discovered": self.discovered,
+            "pdfs_downloaded": self.downloaded,
+            "reports_discovered": self.reports_parsed,
+            "reports_imported": self.imported,
+            "reports_skipped": self.skipped,
+            "reports_rejected": len(self.rejections),
+            "records_imported": self.records,
+            "records_updated": self.replaced,
+            "discovery_duration_ms": self.phase_ms["discovery"],
+            "download_duration_ms": self.phase_ms["download"],
+            "extraction_duration_ms": self.phase_ms["extraction"],
+            "validation_duration_ms": self.phase_ms["validation"],
+            "import_duration_ms": self.phase_ms["import"],
+            "total_duration_ms": self.total_ms,
+            "parser_versions": (
+                json.dumps(dict(sorted(self.parser_versions.items())))
+                if self.parser_versions
+                else None
+            ),
+            "graphql_pages": self.discovery_stats.get("graphql_pages"),
+        }
 
     def status(self) -> str:
         """What this run should be read as.
@@ -112,7 +190,8 @@ def process_pdf(
 ) -> None:
     """Download, extract, validate and store one document."""
     try:
-        pdf = downloader.fetch(candidate.url, candidate.filename)
+        with result.timing("download"):
+            pdf = downloader.fetch(candidate.url, candidate.filename)
     except (DownloadError, requests.RequestException) as exc:
         result.rejections.append(f"{candidate.filename}: download failed: {exc}")
         return
@@ -123,14 +202,15 @@ def process_pdf(
     # Checked before extraction, which is the expensive step: most of what
     # discovery finds on a daily run was imported days ago.
     if not dry_run:
-        with session_scope() as session:
+        with result.timing("import"), session_scope() as session:
             if is_duplicate(session, pdf.checksum):
                 result.skipped += 1
                 log.info("Already imported: %s", candidate.filename)
                 return
 
     try:
-        report = extract(pdf.path, settings)
+        with result.timing("extraction"):
+            report = extract(pdf.path, settings)
     except ExtractionError as exc:
         # Not fatal for the run. A file discovery picked up that is not a price
         # table — an Oil Monitor summary, a circular — lands here, and so does
@@ -139,7 +219,14 @@ def process_pdf(
         result.rejections.append(f"{candidate.filename}: {exc}")
         return
 
-    validation = validate(report, settings)
+    result.reports_parsed += 1
+
+    if report.extractor:
+        result.parser_versions[report.extractor] += 1
+
+    with result.timing("validation"):
+        validation = validate(report, settings)
+
     result.rejections.extend(f"{candidate.filename}: {error}" for error in validation.errors)
 
     if not validation.ok:
@@ -158,7 +245,7 @@ def process_pdf(
     report.prices = validation.accepted
 
     try:
-        with session_scope() as session:
+        with result.timing("import"), session_scope() as session:
             stored = store_report(
                 session,
                 report,
@@ -192,6 +279,7 @@ def run(
     settings = settings or get_settings()
     run_id = new_run_id()
     result = PipelineResult()
+    started = time.monotonic()
 
     log.info("Run starting", extra={"run_id": run_id, "dry_run": dry_run, "backfill": backfill})
 
@@ -215,9 +303,12 @@ def run(
         )
 
         limit = None if (url or backfill) else settings.max_candidates_per_run
-        candidates = _with_retries(provider, limit, settings, result)
+
+        with result.timing("discovery"):
+            candidates = _with_retries(provider, limit, settings, result)
 
         result.discovered = len(candidates)
+        result.discovery_stats = dict(getattr(provider, "last_stats", {}) or {})
 
         for candidate in candidates:
             process_pdf(candidate, downloader, settings, result, dry_run=dry_run)
@@ -226,20 +317,15 @@ def run(
         result.errors.append(f"Run failed: {exc}")
         log.exception("Run failed")
 
+    result.total_ms = int((time.monotonic() - started) * 1000)
+
     log.info("Run finished: %s", result.summary())
 
     if log_id is not None:
         finish_run(
             log_id,
             status=result.status(),
-            counts={
-                "pdfs_discovered": result.discovered,
-                "pdfs_downloaded": result.downloaded,
-                "reports_imported": result.imported,
-                "reports_skipped": result.skipped,
-                "records_imported": result.records,
-                "records_updated": result.replaced,
-            },
+            counts=result.run_log_fields(),
             errors=[*result.errors, *result.rejections],
         )
 

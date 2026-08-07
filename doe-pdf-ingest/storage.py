@@ -242,7 +242,9 @@ def start_run() -> int:
         return run.id
 
 
-def finish_run(run_id: int, *, status: str, counts: dict[str, int], errors: list[str]) -> None:
+def finish_run(
+    run_id: int, *, status: str, counts: dict[str, int | str | None], errors: list[str]
+) -> None:
     """Close out a run log.
 
     Failures here are swallowed. The exit code and stderr already carry the
@@ -264,9 +266,14 @@ def finish_run(run_id: int, *, status: str, counts: dict[str, int], errors: list
             )
             run.status = status
 
+            # Only fields the model has. The ingest and the Laravel migration
+            # deploy separately, so a counter added ahead of its column is
+            # dropped rather than crashing the run that reports it.
             for field, value in counts.items():
                 if hasattr(run, field):
                     setattr(run, field, value)
+                else:
+                    log.debug("Run log has no column %s; skipping", field)
 
             if errors:
                 # Bounded: a layout change produces one error per row, and a

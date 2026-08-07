@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\FleetController;
 use App\Http\Controllers\Api\V1\ForecastController;
 use App\Http\Controllers\Api\V1\FuelController;
+use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OcrController;
@@ -58,6 +59,12 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware('throttle:public')->group(function (): void {
+        // Readiness: database, scheduler, disk and the PDF archive. Distinct
+        // from the liveness probe at the bottom of this file, which must not
+        // touch the database — a liveness check that does restarts healthy
+        // containers every time the database hiccups.
+        Route::get('health', [HealthController::class, 'show']);
+
         // Station directory
         Route::get('stations', [StationController::class, 'index']);
         Route::get('stations/nearby', [StationController::class, 'nearby']);
@@ -217,6 +224,10 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::middleware('role_or_permission:super_admin|system_admin|audit.view')->group(function (): void {
+            // Reports filesystem paths, disk capacity and the database driver,
+            // which are useful to an operator and to nobody else.
+            Route::get('system', [HealthController::class, 'system']);
+
             Route::get('audit-logs', [AuditController::class, 'index']);
             Route::get('login-attempts', [AuditController::class, 'loginAttempts']);
             Route::get('api-metrics', [AuditController::class, 'apiMetrics']);

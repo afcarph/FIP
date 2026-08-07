@@ -16,17 +16,12 @@
 	<string>6.0</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- The staging host serves plain HTTP on an IP with no certificate, so
-		     ATS blocks it outright. Scoped to that one host: NSAllowsArbitraryLoads
-		     would disable transport security for every request the app makes,
-		     including production. Remove this entry once staging has TLS. -->
+		<!-- Staging and production are HTTPS, so the only exception left is
+		     for a developer's own machine. NSAllowsArbitraryLoads is
+		     deliberately absent: it would disable transport security for every
+		     request the app makes, everywhere. -->
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>54.179.40.243</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
 			<key>localhost</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>

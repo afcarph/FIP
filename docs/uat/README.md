@@ -2,8 +2,9 @@
 
 Two thin clients over the existing Laravel `/api/v1/fuel/*` endpoints, built for
 user acceptance testing rather than production. No mock data: every figure on
-every screen came from staging at `http://54.179.40.243/api/v1` while these
-screenshots were taken.
+every screen came from staging at `https://fip.nelleeph.com/api/v1` while these
+screenshots were taken. (The screenshots predate the domain; they were captured
+against the same host at its bare IP.)
 
 Staging held, at the time of testing:
 
@@ -29,7 +30,7 @@ whichever host you are testing.
 Mobile:
 
 ```bash
-cd mobile && flutter run --dart-define=API_BASE_URL=http://54.179.40.243/api/v1
+cd mobile && flutter run --dart-define=API_BASE_URL=https://fip.nelleeph.com/api/v1
 ```
 
 The build-time value is only the default — Settings can repoint the app at
@@ -76,12 +77,17 @@ message, and the screen said the API had failed. It reproduced only on a wiped
 simulator, which is why it survived earlier testing. Fixed in `50bc7c1`, with a
 test that fails without the fix.
 
-**Neither platform could reach staging at all.** Staging serves plain HTTP on an
-IP: iOS ATS and Android cleartext policy both block that by default. Exceptions
-are now scoped to that one host, in `ios/Runner/Info.plist` and
-`android/app/src/main/res/xml/network_security_config.xml`, each with a note to
-delete it once staging has TLS. **Staging has no TLS — credentials and tokens
-cross the wire in plaintext. It should not be used with real accounts.**
+**Neither platform could reach staging at all.** At the time of testing staging
+served plain HTTP on a bare IP, which iOS ATS and Android cleartext policy both
+block. Scoped exceptions were added for that one host rather than switching
+`NSAllowsArbitraryLoads` or `usesCleartextTraffic` on globally.
+
+**Since resolved.** Staging now answers on `https://fip.nelleeph.com` with a
+Let's Encrypt certificate, TLS 1.3, HTTP→HTTPS redirect and HSTS
+(`max-age=31536000; includeSubDomains; preload`). Both exceptions have been
+removed; only localhost and the Android emulator alias remain, for local
+development. The earlier warning about plaintext credentials no longer
+applies.
 
 **Trend charts smoothed between weeks.** Both clients drew monotone curves
 through weekly points, which renders prices for days the DOE never published.

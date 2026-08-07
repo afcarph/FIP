@@ -219,6 +219,33 @@ class ImportRun(Base):
     records_imported: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     records_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    #: Candidates that parsed into a report, which is not the same as the
+    #: candidates discovered: the DOE publishes LPG sheets and circulars whose
+    #: titles match, and those are discovered and never become reports.
+    reports_discovered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: Documents refused: unreadable layout, failed validation, download error.
+    #: Per-document and expected — see PipelineResult.rejections.
+    reports_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Phase timings, in milliseconds. Held separately because one total tells
+    # you a run got slower and nothing about which part did — and the parts
+    # fail differently: discovery is a third party's API, extraction is CPU,
+    # import is the database.
+    discovery_duration_ms: Mapped[int | None] = mapped_column(Integer)
+    download_duration_ms: Mapped[int | None] = mapped_column(Integer)
+    extraction_duration_ms: Mapped[int | None] = mapped_column(Integer)
+    validation_duration_ms: Mapped[int | None] = mapped_column(Integer)
+    import_duration_ms: Mapped[int | None] = mapped_column(Integer)
+    total_duration_ms: Mapped[int | None] = mapped_column(Integer)
+
+    #: Which extractor read each report this run, as JSON. When a layout
+    #: changes silently, the first visible sign is a report arriving from a
+    #: different extractor than the week before.
+    parser_versions: Mapped[str | None] = mapped_column(Text)
+    #: Pages of the document library walked. A daily run should stay at 1; a
+    #: creeping number means the lookback window is no longer sufficient.
+    graphql_pages: Mapped[int | None] = mapped_column(Integer)
+
     status: Mapped[str] = mapped_column(String(16), nullable=False, default=STATUS_RUNNING)
     errors: Mapped[str | None] = mapped_column(Text)
     run_id: Mapped[str | None] = mapped_column(String(32))
