@@ -94,9 +94,31 @@ _NON_BRAND_HEADERS = {
 _AREA_HEADERS = ("CITY/MUNICIPALITY", "CITY", "MUNICIPALITY", "AREA")
 
 
+#: Dimension headings, matched by prefix.
+_DIMENSION_PREFIXES = (
+    "AREA",
+    "PROVINCE",
+    "CITY",
+    "MUNICIPALITY",
+    "PRODUCT",
+    "OVERALL",
+    "COMMON",
+    "RANGE",
+    "PRICE",
+)
+
+
 def is_brand_column(name: str) -> bool:
-    """Whether a header names a company rather than a dimension."""
-    return name.upper() not in _NON_BRAND_HEADERS
+    """Whether a header names a company rather than a dimension.
+
+    Matched by prefix, not equality. The DOE's own export appends artifacts to
+    some headings — "Common Price Rowcol" appears on the Cebu pages — and an
+    exact-match test admits that as a brand, then files spreadsheet row and
+    column indices under it as prices.
+    """
+    upper = name.upper()
+
+    return not any(upper.startswith(prefix) for prefix in _DIMENSION_PREFIXES)
 
 
 _MONTHS = "january|february|march|april|may|june|july|august|september|october|november|december"

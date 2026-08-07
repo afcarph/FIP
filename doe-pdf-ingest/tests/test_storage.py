@@ -325,3 +325,59 @@ class TestRunLog:
 
         assert "and 450 more" in errors
         assert len(errors) < 5000
+
+
+class TestValidationFilters:
+    """Rejecting a row has to mean not storing it.
+
+    The first live import against staging stored 104 rows that validation had
+    counted as rejected — spreadsheet indices and out-of-range values — because
+    the count was kept and the list was not.
+    """
+
+    def test_rejected_rows_are_not_in_the_accepted_set(self) -> None:
+        result = validate(
+            a_report(
+                prices=[
+                    AreaPrice(
+                        "Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 79.5, 87.5
+                    ),
+                    AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", "Shell", 2.0, 8.0),
+                    AreaPrice("Quezon City", None, "DIESEL", "diesel", "Shell", 92.8, 95.7),
+                ]
+            )
+        )
+
+        assert result.rejected_rows == 1
+        assert len(result.accepted) == 2
+        assert all(price.brand != "Shell" or price.min_price > 10 for price in result.accepted)
+
+    def test_a_reversed_range_is_not_accepted(self) -> None:
+        result = validate(
+            a_report(
+                prices=[
+                    AreaPrice(
+                        "Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 95.0, 79.0
+                    ),
+                    AreaPrice("Quezon City", None, "DIESEL", "diesel", "Shell", 92.8, 95.7),
+                ]
+            )
+        )
+
+        assert len(result.accepted) == 1
+
+    def test_storing_the_accepted_set_keeps_implausible_values_out(self, session: Session) -> None:
+        report = a_report(
+            prices=[
+                AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", "Petron", 79.5, 87.5),
+                AreaPrice("Quezon City", None, "RON 95", "gasoline_ron95", "Shell", 2.0, 8.0),
+            ]
+        )
+        report.prices = validate(report).accepted
+
+        store(session, report, "c" * 64)
+        session.commit()
+
+        stored = session.scalars(select(FuelPrice.min_price)).all()
+
+        assert [float(value) for value in stored] == [79.5]

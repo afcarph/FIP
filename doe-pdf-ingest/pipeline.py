@@ -122,6 +122,9 @@ def process_pdf(
         result.records += validation.valid_rows
         return
 
+    # Only what validation passed. See ValidationResult.accepted.
+    report.prices = validation.accepted
+
     try:
         with session_scope() as session:
             stored = store_report(

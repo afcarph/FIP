@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
-from extractor import ExtractedReport
+from extractor import AreaPrice, ExtractedReport
 from logger import get_logger
 from settings import Settings, get_settings
 
@@ -42,6 +42,12 @@ class ValidationResult:
     warnings: list[str] = field(default_factory=list)
     valid_rows: int = 0
     rejected_rows: int = 0
+    #: The rows that passed. Storing `report.prices` instead writes the
+    #: rejected ones too, which is what happened on the first live import: 104
+    #: rows of spreadsheet indices and out-of-range values were counted as
+    #: rejected and saved anyway. Counting a row as rejected has to mean it is
+    #: not stored, or the count is just commentary.
+    accepted: list[AreaPrice] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -162,6 +168,7 @@ def _validate_prices(report: ExtractedReport, result: ValidationResult, settings
             continue
 
         result.valid_rows += 1
+        result.accepted.append(price)
 
     total = result.valid_rows + result.rejected_rows
 
