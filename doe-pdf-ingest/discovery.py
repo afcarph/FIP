@@ -5,13 +5,19 @@ no feed and no API: ``prod-cms.doe.gov.ph`` is a Liferay instance whose
 document library is not browsable, and the only way to a PDF is the article
 that links it.
 
-So discovery is a two-step crawl:
+Discovery reads the listing pages, which embed the attachment links in their
+cards:
 
     /articles/group/liquid-fuels?category=Price+Monitoring   (paginated)
-        ↓  article links
-    /articles/{id}--{slug}
-        ↓  attachment links
+        ↓  attachment links, straight from the cards
     prod-cms.doe.gov.ph/documents/d/guest/{name}
+
+It deliberately does *not* follow the individual article pages. Those are
+client-rendered shells: fetched over HTTP they contain the site chrome, the
+title and nothing else, and even in a real browser the body arrives empty. The
+Liferay content API behind them (`/o/headless-delivery/v1.0/`) answers 404 for
+the ids in the article URLs, which are not content ids. Crawling them costs a
+request each and returns nothing — the listing already has what is needed.
 
 **Filenames are not trusted for anything.** They are inconsistent in a way that
 would break any convention-based approach:
@@ -58,6 +64,15 @@ _RELEVANT = re.compile(
 #: Liferay's public document path.
 _DOCUMENT_PATH = re.compile(r"/documents/d/", re.IGNORECASE)
 
+#: Site chrome served from the same document path — logos, social icons,
+#: seals. Without this every page contributes a dozen candidate "PDFs" that
+#: are actually PNGs, each costing a download to reject.
+_CHROME = re.compile(
+    r"(logo|facebook|instagram|twitter|viber|youtube|tiktok|seal|banner|icon"
+    r"|bagong_ph|transparency|foi|dpo)",
+    re.IGNORECASE,
+)
+
 
 class DiscoveryError(RuntimeError):
     """The listing could not be crawled."""
@@ -95,9 +110,9 @@ class PdfDiscovery:
     def discover(self, pages: int | None = None) -> list[DiscoveredPdf]:
         """Every PDF linked from the recent listings, newest first.
 
-        Failures in one category or page are logged and skipped rather than
-        raised: the DOE portal is not highly available, and losing Region V
-        because its article 500s should not cost NCR too.
+        A failing category or page is logged and skipped rather than raised:
+        the DOE portal is not highly available, and losing Price Monitoring
+        because its listing 500s should not cost Oil Monitor too.
         """
         pages = pages or self.settings.listing_pages
         seen: set[str] = set()
@@ -108,26 +123,61 @@ class PdfDiscovery:
                 url = self.settings.listing_url(category, page)
 
                 try:
-                    articles = self._article_links(url)
+                    soup = self._fetch_html(url)
                 except DiscoveryError as exc:
                     log.warning("Listing unavailable", extra={"url": url, "error": str(exc)})
                     continue
 
-                if not articles:
-                    # An empty page means the end of the archive, not an error.
+                page_pdfs = self._document_links(soup, url, category)
+
+                if not page_pdfs:
+                    # No documents on this page means the end of the archive
+                    # for this category, not an error.
                     break
 
-                for article_url, title in articles:
-                    for pdf in self._article_pdfs(article_url, title):
-                        if pdf.url in seen:
-                            continue
+                for pdf in page_pdfs:
+                    if pdf.url in seen:
+                        continue
 
-                        seen.add(pdf.url)
-                        found.append(pdf)
+                    seen.add(pdf.url)
+                    found.append(pdf)
 
         log.info("Discovery finished", extra={"pdfs": len(found), "pages": pages})
 
         return found
+
+    def _document_links(
+        self, soup: BeautifulSoup, source: str, category: str
+    ) -> list[DiscoveredPdf]:
+        """Attachment links on a listing page.
+
+        Both anchors and image sources are considered: the cards link some
+        documents and embed others as thumbnails whose URL is the document
+        itself.
+        """
+        pdfs: list[DiscoveredPdf] = []
+
+        for element in soup.find_all(["a", "img"]):
+            href = str(element.get("href") or element.get("src") or "")
+            label = (
+                element.get_text(strip=True)
+                if element.name == "a"
+                else str(element.get("alt") or "")
+            )
+
+            if not self._looks_like_document(href, label):
+                continue
+
+            pdfs.append(
+                DiscoveredPdf(
+                    url=urljoin(self.settings.cms_base_url, href),
+                    label=label or category,
+                    article_url=source,
+                    article_title=category,
+                )
+            )
+
+        return pdfs
 
     def _article_links(self, listing_url: str) -> list[tuple[str, str]]:
         """`(url, title)` for every article on a listing page."""
@@ -189,6 +239,9 @@ class PdfDiscovery:
         header and not by its URL.
         """
         if not _DOCUMENT_PATH.search(href):
+            return False
+
+        if _CHROME.search(href):
             return False
 
         return bool(_RELEVANT.search(href) or _RELEVANT.search(label))

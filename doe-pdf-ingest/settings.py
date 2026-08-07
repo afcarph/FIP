@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     #: Backfill depth, used only by `--backfill`.
     backfill_pages: int = Field(default=168, ge=1)
 
+    #: Most candidates a normal run will process.
+    #:
+    #: The listing pages embed the *whole* archive in their cards — one page
+    #: yields around 1,800 documents going back years, not the fortnight the
+    #: pagination implies. Unbounded, every morning would re-download the lot.
+    #: The listing is ordered newest first, so the cap keeps a daily run to
+    #: what is plausibly new; `--backfill` lifts it.
+    max_candidates_per_run: int = Field(default=40, ge=1)
+
     # --- download -----------------------------------------------------------
     download_dir: Path = Field(default=BASE_DIR / "storage" / "pdfs")
     request_timeout_s: int = Field(default=60, ge=5)

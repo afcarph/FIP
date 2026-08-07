@@ -178,6 +178,9 @@ def run(
             pages = settings.backfill_pages if backfill else settings.listing_pages
             candidates = _with_retries(discovery, pages, settings, result)
 
+        if not backfill and not url:
+            candidates = candidates[: settings.max_candidates_per_run]
+
         result.discovered = len(candidates)
 
         for candidate in candidates:
