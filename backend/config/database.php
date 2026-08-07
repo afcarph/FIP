@@ -44,6 +44,32 @@ return [
             ]) : [],
         ],
 
+        // The DOE scraper's own database. A separate connection rather than a
+        // second set of tables in `mysql`, because the scraper owns this schema
+        // and creates it itself — Laravel reads it and never migrates it. It
+        // also carries a `fuel_price_history` of its own, with a different
+        // shape from the platform's, which two tables in one database could not.
+        //
+        // Read-only by convention: nothing in the app writes here. The bridge
+        // command reads from it and writes to `mysql` through PriceService.
+        'doe' => [
+            'driver' => 'mysql',
+            'host' => env('DOE_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DOE_DB_PORT', '3306'),
+            'database' => env('DOE_DB_DATABASE', 'fip_doe'),
+            'username' => env('DOE_DB_USERNAME', env('DB_USERNAME', 'fip')),
+            'password' => env('DOE_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_0900_ai_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => 'InnoDB',
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'database' => env('DB_DATABASE', database_path('database.sqlite')),

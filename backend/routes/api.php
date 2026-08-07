@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\FleetController;
 use App\Http\Controllers\Api\V1\ForecastController;
+use App\Http\Controllers\Api\V1\FuelController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OcrController;
@@ -76,6 +77,24 @@ Route::prefix('v1')->group(function (): void {
         Route::get('forecasts', [ForecastController::class, 'index']);
         Route::get('forecasts/history', [ForecastController::class, 'history']);
         Route::get('forecasts/accuracy', [ForecastController::class, 'accuracy']);
+
+        // DOE prices, as published. Separate from /prices above, which is the
+        // platform's own view: operator-maintained, user-corrected, and joined
+        // to the station directory. These are the official figures, unedited,
+        // and are what to cite when a user asks where a price came from.
+        //
+        // Order matters. `fuel/compare` and the rest are literal segments and
+        // must be declared before `fuel/company/{company}` — otherwise a
+        // request for /fuel/latest is matched by nothing and 404s, or worse,
+        // is read as a company named "latest".
+        Route::get('fuel/latest', [FuelController::class, 'latest']);
+        Route::get('fuel/history', [FuelController::class, 'history']);
+        Route::get('fuel/stations', [FuelController::class, 'stations']);
+        Route::get('fuel/search', [FuelController::class, 'search']);
+        Route::get('fuel/compare', [FuelController::class, 'compare']);
+        Route::get('fuel/insights', [FuelController::class, 'insights']);
+        Route::get('fuel/company/{company}', [FuelController::class, 'company']);
+        Route::get('fuel/city/{city}', [FuelController::class, 'city']);
 
         // Community reports (read-only for guests)
         Route::get('reports', [CrowdReportController::class, 'index']);
