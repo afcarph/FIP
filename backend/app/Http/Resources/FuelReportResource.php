@@ -32,6 +32,8 @@ class FuelReportResource extends JsonResource
             // document it came from, not a claim.
             'source_url' => $this->source_url,
             'checksum' => $this->checksum,
+            'extractor' => $this->extractor,
+            'quality' => $this->quality,
             'areas_count' => $this->areas_count,
             'rows_count' => $this->rows_count,
             'prices' => FuelPriceResource::collection($this->whenLoaded('prices')),

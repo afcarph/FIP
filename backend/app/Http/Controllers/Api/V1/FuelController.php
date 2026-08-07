@@ -173,6 +173,32 @@ class FuelController extends Controller
     }
 
     /**
+     * @OA\Get(path="/fuel/reports", tags={"DOE Fuel Reports"},
+     *   summary="Every imported report, newest week first",
+     *
+     *   @OA\Parameter(name="region", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", maximum=200)),
+     *
+     *   @OA\Response(response=200, description="Paginated reports"))
+     */
+    public function reports(Request $request): JsonResponse
+    {
+        // Distinct from `/fuel/imports`, which returns the *current* report per
+        // region. A history view needs every week held, and deriving that from
+        // the latest-per-region payload is not possible — it is a different
+        // question, not a wider page of the same one.
+        $query = FuelReport::query()->orderByDesc('coverage_start')->orderBy('region');
+
+        if ($request->filled('region')) {
+            $query->forRegion((string) $request->query('region'));
+        }
+
+        $paginator = $query->paginate($this->perPage($request))->withQueryString();
+
+        return ApiResponse::paginated($paginator, FuelReportResource::collection($paginator));
+    }
+
+    /**
      * @OA\Get(path="/fuel/imports", tags={"DOE Fuel Reports"},
      *   summary="Ingestion health, for the admin dashboard",
      *

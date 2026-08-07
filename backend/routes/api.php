@@ -89,6 +89,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('fuel/brands', [FuelController::class, 'brands']);
         Route::get('fuel/search', [FuelController::class, 'search']);
         Route::get('fuel/trends', [FuelController::class, 'trends']);
+        Route::get('fuel/reports', [FuelController::class, 'reports']);
         Route::get('fuel/imports', [FuelController::class, 'imports']);
 
         // Community reports (read-only for guests)
