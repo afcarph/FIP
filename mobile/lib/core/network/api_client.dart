@@ -34,6 +34,9 @@ class ApiClient {
   /// Non-null while a refresh is in flight; every concurrent 401 awaits it.
   Completer<bool>? _refreshCompleter;
 
+  /// Non-null once the device identifier has been read or generated.
+  Future<String>? _deviceUuidFuture;
+
   Dio get raw => _dio;
 
   void _configure() {
@@ -161,15 +164,43 @@ class ApiClient {
   Future<void> clearSession() => _storage.delete(key: _tokenKey);
 
   /// Stable per-install identifier used for device management and biometrics.
+  ///
+  /// Serialised for the same reason the token refresh is. Every request stamps
+  /// `X-Device-Id`, so a screen that fires several at once calls this several
+  /// times at once — and on a fresh install each of those calls finds nothing
+  /// stored and races to write. On iOS the concurrent keychain write throws,
+  /// which Dio reports as `DioExceptionType.unknown` with no message; the user
+  /// sees "the API returned an error" on the first screen of their first
+  /// launch, and never again. Sharing one in-flight future means the second
+  /// caller awaits the first rather than duplicating it.
   Future<String> deviceUuid() async {
-    var uuid = await _storage.read(key: _deviceKey);
+    final pending = _deviceUuidFuture;
 
-    if (uuid == null) {
-      uuid =
-          DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
-          (100000 + DateTime.now().millisecond * 7).toRadixString(36);
-      await _storage.write(key: _deviceKey, value: uuid);
+    if (pending != null) return pending;
+
+    final future = _resolveDeviceUuid();
+    _deviceUuidFuture = future;
+
+    try {
+      return await future;
+    } catch (_) {
+      // A failure must not be cached, or one bad read poisons every later
+      // request for the life of the process.
+      _deviceUuidFuture = null;
+      rethrow;
     }
+  }
+
+  Future<String> _resolveDeviceUuid() async {
+    final stored = await _storage.read(key: _deviceKey);
+
+    if (stored != null) return stored;
+
+    final uuid =
+        DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
+        (100000 + DateTime.now().millisecond * 7).toRadixString(36);
+
+    await _storage.write(key: _deviceKey, value: uuid);
 
     return uuid;
   }
