@@ -92,6 +92,9 @@ equals the page size.
 
 ## Clients
 
+The interactive map is **MapLibre GL JS** over OSM-derived tiles, with Google
+used only for navigation URLs — see [maps.md](maps.md).
+
 **`frontend/`** — Next.js 15 App Router. The `(doe)` route group is public and
 carries Dashboard, Search, History and API Status. `(app)` is authenticated and
 carries the platform proper, including `/admin/system`.

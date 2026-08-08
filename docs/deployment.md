@@ -30,6 +30,7 @@ Backend `.env` — the values that matter for RC1:
 | `SESSION_SECURE_COOKIE` | `true` | Session cookies sent over plain HTTP |
 | `DOE_PDF_ARCHIVE_PATH` | absolute, writable, on persistent disk | Originals lost, so an extractor fix cannot be re-run |
 | `DOE_SCHEDULER_STALE_AFTER_HOURS` | `26` | Health check either never fires or fires daily |
+| `NEXT_PUBLIC_MAP_STYLE_URL` | MapTiler style URL | The map falls back to a keyless low-detail development basemap and says so on screen |
 
 Ingest `.env` (`doe-pdf-ingest/`): database DSN, `GRAPHQL_ENDPOINT`,
 `LOOKBACK_DAYS`, `GRAPHQL_MAX_PAGES`, `PDF_ARCHIVE_PATH`. The archive path must

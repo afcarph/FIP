@@ -24,7 +24,7 @@ export default function MapPage() {
     loading: locating,
     request,
     isBlocked,
-  } = useGeolocation();
+  } = useGeolocation({ immediate: false });
   const { data: fuelTypes } = useFuelTypes();
 
   const [fuelTypeId, setFuelTypeId] = React.useState<number | undefined>();
@@ -166,9 +166,12 @@ export default function MapPage() {
         <div className="lg:col-span-3">
           <StationMap
             stations={ranked}
-            centre={{ lat: latitude, lng: longitude }}
-            fuelTypeId={fuelTypeId}
-            loading={isLoading}
+            // Only once the user has actually shared a position. Passing the
+            // Makati fallback would drop a "you are here" dot on a place they
+            // have never been.
+            centre={usingFallback ? null : { latitude, longitude }}
+            onUseMyLocation={request}
+            locating={locating}
             className="h-[520px]"
           />
         </div>
