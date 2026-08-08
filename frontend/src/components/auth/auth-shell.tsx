@@ -29,15 +29,18 @@ export function AuthShell({
           {/* The real mark, not a generic pump glyph on a tile. Same asset as
               the header and the favicon, so the first screen a user sees is
               the brand rather than a placeholder. */}
+          {/* The full lockup at its own aspect ratio — 824x1169. Forcing it
+              into a square box squashes it, and the wordmark below already
+              carries the name, so the heading beside it is redundant. */}
           <Image
             src="/fip-logo.png"
-            alt=""
-            width={72}
-            height={72}
+            alt="Fuel Intelligence Platform"
+            width={824}
+            height={1169}
             priority
-            className="mb-3 size-16"
+            className="mb-2 h-32 w-auto"
           />
-          <h1 className="text-xl font-semibold">Fuel Intelligence Platform</h1>
+          <h1 className="sr-only">Fuel Intelligence Platform</h1>
         </div>
 
         <Card glass>

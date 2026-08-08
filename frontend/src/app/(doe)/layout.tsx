@@ -33,11 +33,12 @@ export default function DoeLayout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            {/* The supplied artwork. next/image serves a resized, modern
-                format at the rendered size — the master is 1254px and 1 MB,
-                which is right for the source and wrong for a 40px header. */}
+            {/* The emblem, not the full lockup: at 40px the lockup's wordmark
+                and tagline are unreadable and only shrink the emblem to make
+                room for themselves. The name is already set in text beside
+                this, so repeating it in pixels buys nothing. */}
             <Image
-              src="/fip-logo.png"
+              src="/fip-mark-square.png"
               alt="Fuel Intelligence Platform"
               width={40}
               height={40}
