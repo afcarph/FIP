@@ -35,6 +35,23 @@ import 'maplibre-gl/dist/maplibre-gl.css';
  * one with no map at all.
  */
 
+/**
+ * MapLibre v6 resolves its worker URL from `import.meta.url`, and refuses any
+ * base that is not http(s) — returning an empty string rather than throwing.
+ * Next's production bundle replaces `import.meta.url` with a module path, so
+ * the default resolution yields `new Worker("")`: the worker dies, and with it
+ * every vector tile and glyph, while the style, sprites and DOM markers load
+ * normally. The result is a blank basemap with no error in sight.
+ *
+ * Pointing MapLibre at a same-origin copy of its own worker is the supported
+ * fix (setWorkerUrl is public API in 6.2.0). The copy is kept in step with the
+ * installed package by scripts/sync-maplibre-worker.mjs — never edit it, and
+ * never let it drift from the version in node_modules.
+ */
+if (typeof window !== 'undefined') {
+  maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+}
+
 const SOURCE = 'fip-stations';
 const CLUSTERS = 'fip-clusters';
 const CLUSTER_COUNT = 'fip-cluster-count';

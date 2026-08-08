@@ -17,6 +17,8 @@ let capturedErrorHandler: ((event: unknown) => void) | null = null;
 let sourceData: { features: Array<{ properties: { id: number } }> } | null = null;
 const layerHandlers = new Map<string, (event: unknown) => void>();
 
+const workerUrls: string[] = [];
+
 vi.mock('maplibre-gl', () => {
   class Marker {
     element: HTMLElement;
@@ -77,6 +79,10 @@ vi.mock('maplibre-gl', () => {
     Marker,
     NavigationControl: class {},
     ScaleControl: class {},
+    // The component points MapLibre at a same-origin worker at import time;
+    // without this the module cannot even load under test. Recorded rather
+    // than ignored, so the assertion below can prove the call still happens.
+    setWorkerUrl: vi.fn((url: string) => workerUrls.push(url)),
   };
 });
 
@@ -212,5 +218,13 @@ describe('StationMap', () => {
     act(() => capturedErrorHandler?.({ error: new Error('Failed to fetch style: 403') }));
 
     expect(screen.getByText(/map temporarily unavailable/i)).toBeTruthy();
+  });
+});
+
+describe('MapLibre worker', () => {
+  it('points MapLibre at the same-origin worker copy', () => {
+    // MapLibre v6 resolves an empty worker URL under Next's production bundle,
+    // which silently blanks the basemap. Regression guard for that.
+    expect(workerUrls).toContain('/maplibre-gl-worker.mjs');
   });
 });
