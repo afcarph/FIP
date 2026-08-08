@@ -1,39 +1,110 @@
 #!/usr/bin/env node
 /**
- * Copy MapLibre's worker into public/ so the app can serve it same-origin.
+ * Copy MapLibre's worker — and everything it imports — into public/.
  *
- * MapLibre v6 derives its worker URL from `import.meta.url`. Next's production
- * bundle rewrites that to a module path, MapLibre rejects any non-http(s) base
- * and returns an empty string, and `new Worker("")` fails silently — no tiles,
- * no glyphs, a blank basemap and no error. station-map.tsx therefore calls
- * setWorkerUrl('/maplibre-gl-worker.mjs'), which only works if that file is
- * actually there.
+ * Two failures made this necessary, and both were invisible until a browser
+ * rendered nothing. MapLibre v6 derives its worker URL from `import.meta.url`;
+ * Next's production bundle rewrites that to a module path, MapLibre rejects any
+ * non-http(s) base and returns an empty string, and `new Worker("")` fails
+ * silently. station-map.tsx therefore pins the worker to a same-origin path.
  *
- * The copy must match the installed package exactly. A worker from a different
- * MapLibre version than the main bundle is the kind of mismatch that produces
- * incoherent runtime failures, so this runs on install and before every build
- * rather than being maintained by hand. Never edit the copied file.
+ * The second failure was assuming that worker was self-contained. It is not —
+ * it statically imports ./maplibre-gl-shared.mjs, so serving the worker alone
+ * gives a 404 on the sibling, the module graph dies before evaluation, and the
+ * symptom is once again a blank map with an HTTP 200 next to it.
+ *
+ * So this resolves the worker's imports rather than trusting a hard-coded list:
+ * if a future MapLibre changes its dependency graph, the build fails loudly
+ * here instead of shipping a map that renders nothing.
  */
 
-import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const source = join(root, 'node_modules', 'maplibre-gl', 'dist', 'maplibre-gl-worker.mjs');
-const destination = join(root, 'public', 'maplibre-gl-worker.mjs');
+const dist = join(root, 'node_modules', 'maplibre-gl', 'dist');
+const publicDir = join(root, 'public');
 
-if (!existsSync(source)) {
-  // Loud, not silent: a missing worker only shows up as a blank map at
-  // runtime, which is exactly the failure this script exists to prevent.
-  console.error(
-    `sync-maplibre-worker: ${source} not found.\n` +
-      'Install dependencies first, or check whether the MapLibre package layout changed.',
-  );
-  process.exit(1);
+const WORKER = 'maplibre-gl-worker.mjs';
+
+/** Static `from "./x.mjs"` and `import "./x.mjs"` specifiers, relative only. */
+export function relativeImports(source) {
+  const found = new Set();
+
+  for (const pattern of [/\bfrom\s*["'](\.[^"']+)["']/g, /\bimport\s*["'](\.[^"']+)["']/g]) {
+    for (const match of source.matchAll(pattern)) {
+      // Only siblings can be honoured: the worker is served from the public
+      // root, so anything above it has nowhere to resolve to.
+      const specifier = match[1].replace(/^\.\//, '');
+
+      if (specifier.includes('/')) {
+        fail(`worker imports "${match[1]}", which is not a sibling module. This script only mirrors siblings; the layout has changed and needs review.`);
+      }
+
+      found.add(specifier);
+    }
+  }
+
+  return [...found];
 }
 
-mkdirSync(dirname(destination), { recursive: true });
-copyFileSync(source, destination);
+/** Throws so callers can test the failure paths; the CLI turns it into exit 1. */
+function fail(message) {
+  throw new Error(`sync-maplibre-worker: ${message}`);
+}
 
-console.log(`sync-maplibre-worker: copied ${statSync(destination).size} bytes to public/maplibre-gl-worker.mjs`);
+export function sync({ quiet = false } = {}) {
+  const workerSource = join(dist, WORKER);
+
+  if (!existsSync(workerSource)) {
+    fail(`${workerSource} not found. Install dependencies first, or check whether the MapLibre package layout changed.`);
+  }
+
+  const source = readFileSync(workerSource, 'utf8');
+  const dependencies = relativeImports(source);
+  const wanted = [WORKER, ...dependencies];
+
+  mkdirSync(publicDir, { recursive: true });
+
+  for (const name of wanted) {
+    const from = join(dist, name);
+
+    if (!existsSync(from)) {
+      fail(`worker depends on "${name}" but ${from} does not exist. Serving the worker without it produces a 404 and a blank map.`);
+    }
+
+    copyFileSync(from, join(publicDir, name));
+
+    if (!existsSync(join(publicDir, name))) fail(`failed to write public/${name}`);
+  }
+
+  // Drop dependencies from a previous MapLibre whose graph has since changed.
+  // Scoped to the maplibre-gl-*.mjs namespace so nothing else in public/ is at
+  // risk, and the current worker's own files are never candidates.
+  for (const name of readdirSync(publicDir)) {
+    if (/^maplibre-gl.*\.mjs$/.test(name) && !wanted.includes(name)) {
+      unlinkSync(join(publicDir, name));
+      if (!quiet) console.log(`sync-maplibre-worker: removed stale public/${name}`);
+    }
+  }
+
+  if (!quiet) {
+    for (const name of wanted) {
+      console.log(`sync-maplibre-worker: ${name} (${statSync(join(publicDir, name)).size} bytes)`);
+    }
+  }
+
+  return wanted;
+}
+
+// Only run when invoked directly, so the tests can import the helpers.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  try {
+    sync();
+  } catch (error) {
+    // Loud and non-zero: a silent miss here ships a map that renders nothing.
+    console.error(error.message);
+    process.exit(1);
+  }
+}
