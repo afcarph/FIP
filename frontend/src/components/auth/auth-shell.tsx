@@ -1,4 +1,4 @@
-import { Fuel } from 'lucide-react';
+import Image from 'next/image';
 import * as React from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,9 +26,17 @@ export function AuthShell({
     >
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Fuel className="size-6" aria-hidden="true" />
-          </div>
+          {/* The real mark, not a generic pump glyph on a tile. Same asset as
+              the header and the favicon, so the first screen a user sees is
+              the brand rather than a placeholder. */}
+          <Image
+            src="/fip-logo.png"
+            alt=""
+            width={72}
+            height={72}
+            priority
+            className="mb-3 size-16"
+          />
           <h1 className="text-xl font-semibold">Fuel Intelligence Platform</h1>
         </div>
 
