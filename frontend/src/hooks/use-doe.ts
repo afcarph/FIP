@@ -102,6 +102,22 @@ export interface AreaSummary {
   reports: number;
 }
 
+/**
+ * The platform's fuel codes with the DOE's own product labels.
+ *
+ * Fixed by `fuel_types` rather than derived from whatever the current page
+ * happens to contain, so the filter options do not change as you filter.
+ */
+export const FUEL_TYPE_OPTIONS = [
+  { code: 'gasoline_ron91', label: 'RON 91' },
+  { code: 'gasoline_ron95', label: 'RON 95' },
+  { code: 'gasoline_ron97', label: 'RON 97' },
+  { code: 'gasoline_ron100', label: 'RON 100' },
+  { code: 'diesel', label: 'Diesel' },
+  { code: 'diesel_premium', label: 'Diesel Plus' },
+  { code: 'kerosene', label: 'Kerosene' },
+] as const;
+
 export interface BrandSummary {
   brand: string;
   areas: number;

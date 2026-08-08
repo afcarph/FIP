@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, BarChart3, History, Search } from 'lucide-react';
+import { Activity, BarChart3, History, Search, Table2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { href: '/doe', label: 'Dashboard', icon: BarChart3 },
   { href: '/doe/search', label: 'Search', icon: Search },
+  { href: '/doe/explorer', label: 'Explorer', icon: Table2 },
   { href: '/doe/history', label: 'History', icon: History },
   { href: '/doe/status', label: 'API Status', icon: Activity },
 ];

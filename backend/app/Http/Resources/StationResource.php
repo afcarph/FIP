@@ -56,6 +56,15 @@ class StationResource extends JsonResource
                 'is_stale' => $price->isStale(),
                 'effective_at' => $price->effective_at?->toIso8601String(),
             ])->values()),
+            // The DOE's weekly area monitoring, when this station qualifies
+            // for it. Additive: absent unless the caller asked for it, so no
+            // existing consumer sees a changed payload. See
+            // DoeStationReference for the seven conditions and why each one
+            // is there.
+            'doe_reference' => $this->when(
+                isset($this->doe_reference),
+                fn () => $this->doe_reference,
+            ),
             'amenities' => $this->whenLoaded('amenities', fn () => $this->amenities->map->only(['id', 'code', 'name', 'icon'])),
             'payment_methods' => $this->whenLoaded('paymentMethods', fn () => $this->paymentMethods->map->only(['id', 'code', 'name', 'icon'])),
             'hours' => $this->whenLoaded('hours', fn () => $this->hours->map->only(['day_of_week', 'opens_at', 'closes_at', 'is_closed'])),

@@ -116,6 +116,45 @@ export interface Station {
   amenities?: Array<{ id: number; code: string; name: string; icon: string | null }>;
   payment_methods?: Array<{ id: number; code: string; name: string; icon: string | null }>;
   photos?: Array<{ id: number; url: string; caption: string | null; is_primary: boolean }>;
+  /** Present on the station detail response only. See DoeReference. */
+  doe_reference?: DoeReference;
+}
+
+/**
+ * The DOE's weekly area monitoring, as it relates to one station.
+ *
+ * `matched: false` means the department publishes nothing that can honestly
+ * be attached to this forecourt — the UI must present it as a regional
+ * reference and never as this station's price. `reason` says which of the
+ * seven conditions failed, so the page can be specific.
+ */
+export interface DoeReference {
+  matched: boolean;
+  reason: string;
+  /** Only on the unmatched path. Always "DOE Regional Reference". */
+  label?: string;
+  doe_region?: string;
+  doe_area?: string;
+  brand?: string;
+  station_region?: string;
+  station_area?: string;
+  station_province?: string;
+  doe_province?: string;
+  prices: Array<{
+    product: string;
+    fuel_code: string | null;
+    min_price: number | null;
+    max_price: number | null;
+  }>;
+  report?: {
+    id: number;
+    coverage_start: string;
+    coverage_end: string;
+    coverage_label: string;
+    monitoring_date: string | null;
+    source_url: string | null;
+  } | null;
+  attribution: { source: string; basis: string };
 }
 
 export interface CheapestStation {

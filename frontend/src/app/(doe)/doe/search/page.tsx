@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import { Card, PriceRange, QueryState } from '@/components/doe/states';
 import {
+  FUEL_TYPE_OPTIONS,
   useDoeAreas,
   useDoeBrands,
   useDoeRegions,
@@ -19,15 +20,6 @@ import {
  * platform's fuel types, and deriving it from whatever the current page
  * happens to contain would make the filter options change as you filter.
  */
-const FUEL_TYPES = [
-  { code: 'gasoline_ron91', label: 'RON 91' },
-  { code: 'gasoline_ron95', label: 'RON 95' },
-  { code: 'gasoline_ron97', label: 'RON 97' },
-  { code: 'gasoline_ron100', label: 'RON 100' },
-  { code: 'diesel', label: 'Diesel' },
-  { code: 'diesel_premium', label: 'Diesel Plus' },
-  { code: 'kerosene', label: 'Kerosene' },
-];
 
 /** Debounce so a typed area name does not fire a request per keystroke. */
 function useDebounced<T>(value: T, delay = 300): T {
@@ -155,7 +147,7 @@ export default function DoeSearchPage() {
               onChange={(e) => setFuelCode(e.target.value)}
             >
               <option value="">All fuel types</option>
-              {FUEL_TYPES.map((fuel) => (
+              {FUEL_TYPE_OPTIONS.map((fuel) => (
                 <option key={fuel.code} value={fuel.code}>
                   {fuel.label}
                 </option>

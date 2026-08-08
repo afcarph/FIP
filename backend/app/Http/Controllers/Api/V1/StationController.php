@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Doe\Services\DoeStationReference;
 use App\Domain\Station\Models\GasStation;
 use App\Domain\Station\Repositories\GasStationRepository;
 use App\Http\Controllers\Controller;
@@ -19,7 +20,10 @@ use Illuminate\Http\Request;
  */
 class StationController extends Controller
 {
-    public function __construct(private readonly GasStationRepository $stations) {}
+    public function __construct(
+        private readonly GasStationRepository $stations,
+        private readonly DoeStationReference $doe,
+    ) {}
 
     /**
      * @OA\Get(path="/stations", tags={"Stations"}, summary="Browse the station directory",
@@ -115,6 +119,12 @@ class StationController extends Controller
         $station = $this->stations->findBySlug($slug);
 
         abort_if($station === null, 404);
+
+        // Attached to the detail view only. The directory listing does not
+        // carry it: resolving a reference per row would read the week's
+        // prices for every station on the page, and the card only needs it
+        // once the user has opened one.
+        $station->doe_reference = $this->doe->for($station);
 
         return ApiResponse::success(new StationResource($station));
     }
