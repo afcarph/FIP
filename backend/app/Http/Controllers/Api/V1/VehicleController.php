@@ -12,10 +12,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Vehicle\StoreFuelReadingRequest;
 use App\Http\Requests\Vehicle\StoreVehicleRequest;
 use App\Http\Requests\Vehicle\UpdateVehicleRequest;
+use App\Http\Resources\FuelReadingResource;
 use App\Http\Resources\VehicleResource;
 use App\Support\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * @OA\Tag(name="Vehicles", description="Vehicle registry, odometer and documents")
@@ -182,6 +184,47 @@ class VehicleController extends Controller
                 'fuel_level_at' => $vehicle->fuel_level_at?->toIso8601String(),
                 'fuel_status' => $this->fuelLevels->statusFor($vehicle->current_fuel_pct),
             ],
+        ]);
+    }
+
+    /**
+     * @OA\Get(path="/vehicles/{vehicle}/fuel-readings", tags={"Vehicles"}, security={{"bearerAuth":{}}},
+     *   summary="Fuel level history",
+     *
+     *   @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
+     *   @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
+     *   @OA\Parameter(name="source", in="query", @OA\Schema(type="string")),
+     *
+     *   @OA\Response(response=200, description="Paginated readings, newest first"))
+     */
+    public function fuelReadings(Request $request, Vehicle $vehicle): JsonResponse
+    {
+        // Reading the history is a read on the vehicle, not a write, so this
+        // is the `view` gate rather than the `update` one that recording uses.
+        $this->authorize('view', $vehicle);
+
+        $paginator = $vehicle->fuelReadings()
+            ->when($request->has('from'), fn ($q) => $q->where(
+                'recorded_at', '>=', Carbon::parse($request->string('from')->toString())->startOfDay(),
+            ))
+            ->when($request->has('to'), fn ($q) => $q->where(
+                'recorded_at', '<=', Carbon::parse($request->string('to')->toString())->endOfDay(),
+            ))
+            ->when($request->has('source'), fn ($q) => $q->where('source', $request->string('source')->toString()))
+            // Newest first, matching every other history endpoint. A chart
+            // wants the reverse, but paginating oldest-first would put the
+            // useful page last.
+            ->latest('recorded_at')
+            ->paginate(min((int) $request->integer('per_page', 100), 500));
+
+        return ApiResponse::paginated($paginator, FuelReadingResource::collection($paginator), [
+            'current' => [
+                'fuel_pct' => $vehicle->current_fuel_pct,
+                'fuel_litres' => $vehicle->current_fuel_litres,
+                'recorded_at' => $vehicle->fuel_level_at?->toIso8601String(),
+                'status' => $this->fuelLevels->statusFor($vehicle->current_fuel_pct),
+            ],
+            'tank_capacity' => $vehicle->tank_capacity,
         ]);
     }
 

@@ -14,10 +14,14 @@ import type {
   FleetDashboard,
   Forecast,
   FuelPurchase,
+  FuelReading,
+  FuelReadingHistory,
+  FuelReadingResult,
   FuelType,
   HeatMapCell,
   MonthlyPoint,
   PriceComparison,
+  ReceiptScanResult,
   RefuelRecommendation,
   RegionalMovement,
   SavingsAnalysis,
@@ -25,6 +29,7 @@ import type {
   TrendPoint,
   User,
   Vehicle,
+  VehicleEfficiency,
 } from '@/types/api';
 
 /**
@@ -50,6 +55,9 @@ export const queryKeys = {
   forecasts: ['forecasts'] as const,
   vehicles: (filters?: Record<string, unknown>) => ['vehicles', filters] as const,
   vehicle: (id: number) => ['vehicles', id] as const,
+  vehicleEfficiency: (id: number) => ['vehicles', id, 'efficiency'] as const,
+  fuelReadings: (id: number, filters?: Record<string, unknown>) =>
+    ['vehicles', id, 'fuel-readings', filters] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
   notifications: (unread: boolean) => ['notifications', unread] as const,
@@ -218,6 +226,50 @@ export function useVehicle(id: number | undefined) {
   });
 }
 
+/**
+ * Fuel level history.
+ *
+ * The API paginates newest-first, which is right for a list and wrong for a
+ * chart, so the series is reversed once here rather than in every consumer.
+ * `meta.current` rides along so a caller does not need a second request to
+ * label the latest point.
+ */
+export function useFuelReadings(id: number | undefined, filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.fuelReadings(id ?? 0, filters),
+    queryFn: async (): Promise<FuelReadingHistory> => {
+      const envelope = await api.get<FuelReading[]>(
+        `/vehicles/${id}/fuel-readings`,
+        filters as never,
+      );
+
+      const meta = envelope.meta as
+        | { current?: FuelReadingHistory['current']; tank_capacity?: number | null }
+        | undefined;
+
+      return {
+        readings: [...(envelope.data ?? [])].reverse(),
+        current: meta?.current ?? {
+          fuel_pct: null,
+          fuel_litres: null,
+          recorded_at: null,
+          status: null,
+        },
+        tank_capacity: meta?.tank_capacity ?? null,
+      };
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useVehicleEfficiency(id: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.vehicleEfficiency(id ?? 0),
+    queryFn: async () => (await api.get<VehicleEfficiency>(`/vehicles/${id}/efficiency`)).data,
+    enabled: Boolean(id),
+  });
+}
+
 export function useCreateVehicle() {
   const queryClient = useQueryClient();
 
@@ -227,6 +279,22 @@ export function useCreateVehicle() {
     onSuccess: () => {
       // The dashboard shows a vehicles section and an empty state that depends
       // on whether any exist, so both caches have to be dropped.
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+  });
+}
+
+export function useRecordFuelReading(vehicleId: number | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { fuel_pct: number; recorded_at?: string }) =>
+      (await api.post<FuelReadingResult>(`/vehicles/${vehicleId}/fuel-readings`, payload)).data,
+    onSuccess: () => {
+      // A reading changes the vehicle's cached level, so both the detail page
+      // and every list showing a fuel column are now stale. The broad
+      // ['vehicles'] key covers the list regardless of its filter combination.
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
@@ -253,6 +321,25 @@ export function useExpenseSummary(filters: Record<string, unknown> = {}) {
           savings: SavingsAnalysis;
         }>('/expenses/summary', filters as never)
       ).data,
+  });
+}
+
+/**
+ * Read a fill-up off a photographed receipt.
+ *
+ * Nothing is invalidated on success because nothing was written — the scan
+ * returns a draft, and the ordinary useLogFillUp mutation is still what creates
+ * the purchase once the user has checked the figures.
+ */
+export function useScanReceipt() {
+  return useMutation({
+    mutationFn: async ({ file, vehicleId }: { file: File; vehicleId?: number }) => {
+      const form = new FormData();
+      form.append('image', file);
+      if (vehicleId) form.append('vehicle_id', String(vehicleId));
+
+      return (await api.upload<ReceiptScanResult>('/expenses/scan-receipt', form)).data;
+    },
   });
 }
 

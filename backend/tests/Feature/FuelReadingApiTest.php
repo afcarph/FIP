@@ -184,6 +184,91 @@ class FuelReadingApiTest extends TestCase
         $this->assertDatabaseCount('vehicle_fuel_readings', 1);
     }
 
+    // ------------------------------------------------------------ history ---
+
+    public function test_it_returns_the_reading_history_newest_first(): void
+    {
+        $user = $this->actingAsRole('user');
+        $vehicle = Vehicle::factory()->create(['owner_id' => $user->id, 'tank_capacity' => 50.0]);
+
+        foreach ([[90, 3], [70, 2], [55, 1]] as [$pct, $hoursAgo]) {
+            $this->postJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings", [
+                'fuel_pct' => $pct,
+                'recorded_at' => now()->subHours($hoursAgo)->toDateTimeString(),
+            ]);
+        }
+
+        $response = $this->getJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings");
+
+        $this->assertApiSuccess($response);
+        $this->assertCount(3, $response->json('data'));
+        $this->assertSame(55.0, $response->json('data.0.fuel_pct'), 'Newest reading comes first.');
+        $this->assertSame(90.0, $response->json('data.2.fuel_pct'));
+        $this->assertSame(-15.0, $response->json('data.0.delta_pct'));
+        $this->assertNull($response->json('data.2.delta_pct'), 'The first reading has no predecessor.');
+    }
+
+    public function test_the_history_carries_the_current_state_and_tank_capacity(): void
+    {
+        $user = $this->actingAsRole('user');
+        $vehicle = Vehicle::factory()->create(['owner_id' => $user->id, 'tank_capacity' => 50.0]);
+
+        $this->postJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings", ['fuel_pct' => 8]);
+
+        $response = $this->getJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings");
+
+        $this->assertSame(8.0, $response->json('meta.current.fuel_pct'));
+        $this->assertSame('CRITICAL', $response->json('meta.current.status'));
+        $this->assertSame(50.0, $response->json('meta.tank_capacity'));
+    }
+
+    public function test_the_history_can_be_filtered_by_date_and_source(): void
+    {
+        $user = $this->actingAsRole('user');
+        $vehicle = Vehicle::factory()->create(['owner_id' => $user->id]);
+
+        $this->postJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings", [
+            'fuel_pct' => 90, 'recorded_at' => now()->subDays(10)->toDateTimeString(),
+        ]);
+        $this->postJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings", ['fuel_pct' => 40]);
+
+        $recent = $this->getJson(
+            "/api/v1/vehicles/{$vehicle->id}/fuel-readings?from=".now()->subDay()->toDateString(),
+        );
+        $this->assertCount(1, $recent->json('data'));
+
+        $simulated = $this->getJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings?source=simulated");
+        $this->assertCount(0, $simulated->json('data'), 'Nothing here was simulated.');
+    }
+
+    public function test_a_stranger_cannot_read_another_vehicles_history(): void
+    {
+        $this->actingAsRole('user');
+        $vehicle = Vehicle::factory()->create(['owner_id' => User::factory()->create()->id]);
+
+        $this->getJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings")->assertStatus(403);
+    }
+
+    public function test_the_history_endpoint_requires_authentication(): void
+    {
+        $vehicle = Vehicle::factory()->create();
+
+        $this->getJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings")->assertStatus(401);
+    }
+
+    public function test_a_vehicle_with_no_readings_returns_an_empty_history(): void
+    {
+        $user = $this->actingAsRole('user');
+        $vehicle = Vehicle::factory()->create(['owner_id' => $user->id]);
+
+        $response = $this->getJson("/api/v1/vehicles/{$vehicle->id}/fuel-readings");
+
+        $this->assertApiSuccess($response);
+        $this->assertCount(0, $response->json('data'));
+        $this->assertNull($response->json('meta.current.fuel_pct'));
+        $this->assertNull($response->json('meta.current.status'));
+    }
+
     // ------------------------------------------------- VehicleResource ---
 
     public function test_the_vehicle_resource_exposes_the_fuel_block(): void

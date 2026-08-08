@@ -41,6 +41,7 @@ parameters:
                 - app/Http/Resources/DriverResource.php
                 - app/Http/Resources/ForecastResource.php
                 - app/Http/Resources/FuelPurchaseResource.php
+                - app/Http/Resources/FuelReadingResource.php
                 - app/Http/Resources/OcrScanResource.php
                 - app/Http/Resources/PriceReportResource.php
                 - app/Http/Resources/StationResource.php

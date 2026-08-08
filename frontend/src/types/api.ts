@@ -169,6 +169,9 @@ export interface CheapestStation {
   distance_km: number;
 }
 
+/** Tank level bands, computed server-side from config/fip.php thresholds. */
+export type FuelStatus = 'NORMAL' | 'LOW' | 'CRITICAL';
+
 export interface Vehicle {
   id: number;
   nickname: string | null;
@@ -184,6 +187,18 @@ export interface Vehicle {
   fleet?: { id: number; name: string } | null;
   tank_capacity: number | null;
   current_odometer: number;
+  /**
+   * Every field is null until someone records a reading, and `status` is null
+   * rather than NORMAL in that case — the API distinguishes "the tank is fine"
+   * from "nobody has told us", and the UI has to keep that distinction.
+   */
+  fuel: {
+    current_percentage: number | null;
+    current_litres: number | null;
+    recorded_at: string | null;
+    status: FuelStatus | null;
+    is_stale: boolean;
+  };
   efficiency: {
     baseline_km_per_litre: number | null;
     avg_km_per_litre: number | null;
@@ -201,6 +216,87 @@ export interface Vehicle {
   maintenance?: Array<{ service: string; status: string; due_at: string | null }>;
   status: string;
   photo_path: string | null;
+  created_at?: string;
+}
+
+/** GET /vehicles/{id}/efficiency — one point per fill-up, oldest first. */
+export interface VehicleEfficiency {
+  baseline_km_per_litre: number | null;
+  avg_km_per_litre: number | null;
+  deviation_pct: number | null;
+  estimated_range_km: number | null;
+  series: Array<{
+    date: string;
+    km_per_litre: number | null;
+    cost_per_km: number | null;
+    price_per_litre: number;
+  }>;
+}
+
+/** One sample of what the tank held, from GET /vehicles/{id}/fuel-readings. */
+export interface FuelReading {
+  id: number;
+  fuel_pct: number;
+  fuel_litres: number | null;
+  /** Null on the first reading — an absence, not a zero. */
+  delta_pct: number | null;
+  source: string;
+  recorded_at: string;
+  /** Set when a rise is explained by a recorded fill-up. */
+  fuel_purchase_id: number | null;
+  created_at: string | null;
+}
+
+/** The history endpoint, reshaped by the hook into series plus current state. */
+export interface FuelReadingHistory {
+  readings: FuelReading[];
+  current: {
+    fuel_pct: number | null;
+    fuel_litres: number | null;
+    recorded_at: string | null;
+    status: FuelStatus | null;
+  };
+  tank_capacity: number | null;
+}
+
+/**
+ * POST /expenses/scan-receipt — a draft fill-up read off a photograph.
+ *
+ * Deliberately not a FuelPurchase: nothing is recorded until the user submits
+ * the ordinary expense form, so every field here is a suggestion.
+ */
+export interface ReceiptScanResult {
+  receipt_path: string;
+  draft: {
+    litres: number | null;
+    price_per_litre: number | null;
+    total_cost: number | null;
+    odometer: number | null;
+    purchased_at: string | null;
+    fuel_type_id: number | null;
+    station_hint: string | null;
+    station_id: number | null;
+  };
+  confidence: number;
+  warnings: string[];
+  needs_review: boolean;
+  station_candidates: Array<{ id: number; name: string; brand: string | null }>;
+}
+
+/** POST /vehicles/{id}/fuel-readings — the reading, plus the vehicle it moved. */
+export interface FuelReadingResult {
+  id: number;
+  fuel_pct: number;
+  fuel_litres: number | null;
+  delta_pct: number | null;
+  source: string;
+  recorded_at: string;
+  vehicle: {
+    current_fuel_pct: number | null;
+    current_fuel_litres: number | null;
+    fuel_level_at: string | null;
+    fuel_status: FuelStatus | null;
+  };
 }
 
 export interface ForecastDriver {

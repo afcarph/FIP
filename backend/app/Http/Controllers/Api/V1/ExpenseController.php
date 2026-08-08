@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\Expense\Services\FuelExpenseService;
+use App\Domain\Expense\Services\ReceiptScanService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Expense\StoreFuelPurchaseRequest;
@@ -21,7 +22,42 @@ use Illuminate\Support\Carbon;
  */
 class ExpenseController extends Controller
 {
-    public function __construct(private readonly FuelExpenseService $expenses) {}
+    public function __construct(
+        private readonly FuelExpenseService $expenses,
+        private readonly ReceiptScanService $receipts,
+    ) {}
+
+    /**
+     * @OA\Post(path="/expenses/scan-receipt", tags={"Expenses"}, security={{"bearerAuth":{}}},
+     *   summary="Read a fill-up off a photographed receipt",
+     *
+     *   @OA\Response(response=200, description="Draft values with confidence; nothing is recorded"),
+     *   @OA\Response(response=422, description="Unsupported or oversized image"),
+     *   @OA\Response(response=503, description="AI service unavailable"))
+     */
+    public function scanReceipt(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'image' => ['required', 'file', 'image', 'max:8192'],
+            'vehicle_id' => ['nullable', 'integer', 'exists:vehicles,id'],
+        ]);
+
+        $vehicle = null;
+
+        if (isset($data['vehicle_id'])) {
+            $vehicle = Vehicle::findOrFail($data['vehicle_id']);
+            // Scanning against a vehicle reveals its odometer in the warning
+            // text, so it needs the same gate as logging a fill-up would.
+            $this->authorize('update', $vehicle);
+        }
+
+        $result = $this->receipts->scan($request->file('image'), $vehicle);
+
+        return ApiResponse::success([
+            ...$result,
+            'station_candidates' => $this->receipts->stationCandidates($result['draft']['station_hint'] ?? null),
+        ], 'Receipt scanned — check the figures before saving.');
+    }
 
     /**
      * @OA\Get(path="/expenses", tags={"Expenses"}, security={{"bearerAuth":{}}},

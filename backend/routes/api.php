@@ -134,6 +134,7 @@ Route::prefix('v1')->group(function (): void {
         // Vehicles
         Route::apiResource('vehicles', VehicleController::class);
         Route::post('vehicles/{vehicle}/odometer', [VehicleController::class, 'recordOdometer']);
+        Route::get('vehicles/{vehicle}/fuel-readings', [VehicleController::class, 'fuelReadings']);
         Route::post('vehicles/{vehicle}/fuel-readings', [VehicleController::class, 'recordFuelReading']);
         Route::get('vehicles/{vehicle}/efficiency', [VehicleController::class, 'efficiency']);
 
@@ -145,6 +146,11 @@ Route::prefix('v1')->group(function (): void {
 
         // Expenses
         Route::get('expenses/summary', [ExpenseController::class, 'summary']);
+        // Reading a receipt is as expensive as any other OCR call, so it takes
+        // the same tighter budget rather than the general authenticated one.
+        Route::middleware('throttle:ocr')->group(function (): void {
+            Route::post('expenses/scan-receipt', [ExpenseController::class, 'scanReceipt']);
+        });
         Route::apiResource('expenses', ExpenseController::class)->except(['show']);
 
         // Station management
