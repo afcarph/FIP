@@ -169,6 +169,51 @@ export interface CheapestStation {
   distance_km: number;
 }
 
+/**
+ * A fuel anomaly, from GET /fleet/fraud-alerts.
+ *
+ * One table serves two detectors: alerts raised from a purchase carry
+ * `purchase`, alerts raised from a level reading carry `reading`, and neither
+ * is guaranteed. `evidence.signals` is what the detector actually measured —
+ * shaped per rule, so the UI renders it per rule rather than assuming fields.
+ */
+export interface AlertSignal {
+  type: string;
+  weight: number;
+  detail: Record<string, string | number | null>;
+}
+
+export type AlertStatus = 'open' | 'investigating' | 'confirmed' | 'dismissed';
+
+export interface FleetAlert {
+  id: number;
+  alert_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  score: number;
+  status: AlertStatus;
+  detected_at: string;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  vehicle: { id: number; plate_number: string; nickname: string | null } | null;
+  driver: { id: number; first_name: string; last_name: string } | null;
+  purchase: { id: number; litres: number; total_cost: number; purchased_at: string } | null;
+  reading: {
+    id: number;
+    fuel_pct: number;
+    fuel_litres: number | null;
+    delta_pct: number | null;
+    source: string;
+    recorded_at: string;
+  } | null;
+  evidence: {
+    signals?: AlertSignal[];
+    source?: string;
+    fuel_pct?: number;
+    delta_pct?: number;
+    recorded_at?: string;
+  } | null;
+}
+
 /** Tank level bands, computed server-side from config/fip.php thresholds. */
 export type FuelStatus = 'NORMAL' | 'LOW' | 'CRITICAL';
 

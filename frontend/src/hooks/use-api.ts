@@ -11,6 +11,7 @@ import type {
   DashboardData,
   ExecutiveDashboard,
   ExpenseSummary,
+  FleetAlert,
   FleetDashboard,
   Forecast,
   FuelPurchase,
@@ -58,6 +59,7 @@ export const queryKeys = {
   vehicleEfficiency: (id: number) => ['vehicles', id, 'efficiency'] as const,
   fuelReadings: (id: number, filters?: Record<string, unknown>) =>
     ['vehicles', id, 'fuel-readings', filters] as const,
+  fleetAlerts: (filters?: Record<string, unknown>) => ['fleet', 'alerts', filters] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
   notifications: (unread: boolean) => ['notifications', unread] as const,
@@ -206,6 +208,41 @@ export function useStation(slug: string) {
     queryKey: queryKeys.station(slug),
     queryFn: async () => (await api.get<Station>(`/stations/${slug}`)).data,
     enabled: Boolean(slug),
+  });
+}
+
+// ---------------------------------------------------------------- alerts ---
+
+export function useFleetAlerts(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.fleetAlerts(filters),
+    queryFn: async () => (await api.get<FleetAlert[]>('/fleet/fraud-alerts', filters as never)).data,
+  });
+}
+
+export function useResolveAlert() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+      note,
+    }: {
+      id: number;
+      status: 'investigating' | 'confirmed' | 'dismissed';
+      note?: string;
+    }) =>
+      (await api.patch(`/fleet/fraud-alerts/${id}`, {
+        status,
+        ...(note ? { resolution_note: note } : {}),
+      })).data,
+    onSuccess: () => {
+      // The list is filtered by status, so resolving moves a row between
+      // filters; the fleet dashboard also counts open alerts.
+      queryClient.invalidateQueries({ queryKey: ['fleet', 'alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
   });
 }
 

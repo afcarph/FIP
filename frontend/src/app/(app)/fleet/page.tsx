@@ -1,11 +1,13 @@
 'use client';
 
 import { AlertTriangle, Car, Gauge, ShieldAlert, TrendingDown, Users, Wrench } from 'lucide-react';
+import Link from 'next/link';
 
 import { ExpenseChart } from '@/components/charts/expense-chart';
 import { RequireRole } from '@/components/auth/require-role';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,8 +36,12 @@ function FleetPageBody() {
           </p>
         </div>
 
-        {/* Alerts linked to /fleet/fraud-alerts, which does not exist. The
-            open-alert count is still shown in the cards below. */}
+        <Button asChild size="sm" variant="outline">
+          <Link href="/fleet/alerts">
+            <ShieldAlert aria-hidden="true" />
+            Review anomalies
+          </Link>
+        </Button>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -86,7 +92,12 @@ function FleetPageBody() {
               <ShieldAlert className="size-4 text-destructive" aria-hidden="true" />
               Fuel anomalies
             </CardTitle>
-            <CardDescription>Open alerts needing review</CardDescription>
+            <CardDescription>
+              Open alerts needing review ·{' '}
+              <Link href="/fleet/alerts" className="text-primary hover:underline">
+                see all
+              </Link>
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-3">

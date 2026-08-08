@@ -137,7 +137,10 @@ class FleetController extends Controller
             ->forUser($request->user())
             ->when($request->has('status'), fn ($q) => $q->where('status', $request->string('status')->toString()), fn ($q) => $q->unresolved())
             ->when($request->has('severity'), fn ($q) => $q->where('severity', $request->string('severity')->toString()))
-            ->with(['vehicle:id,plate_number,nickname', 'driver:id,first_name,last_name', 'purchase'])
+            // `reading` joins the level-based alerts: an alert raised by a fuel
+            // drop has no purchase behind it, so without this the operator sees
+            // a severity and a score with nothing to look at.
+            ->with(['vehicle:id,plate_number,nickname', 'driver:id,first_name,last_name', 'purchase', 'reading'])
             ->latest('detected_at')
             ->paginate(min((int) $request->integer('per_page', 20), 100));
 
