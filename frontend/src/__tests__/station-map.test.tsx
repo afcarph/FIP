@@ -14,6 +14,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const markerInstances: Array<{ lngLat: [number, number]; element: HTMLElement }> = [];
 let mapConstructorThrows = false;
 let capturedErrorHandler: ((event: unknown) => void) | null = null;
+let sourceData: { features: Array<{ properties: { id: number } }> } | null = null;
+const layerHandlers = new Map<string, (event: unknown) => void>();
 
 vi.mock('maplibre-gl', () => {
   class Marker {
@@ -45,8 +47,26 @@ vi.mock('maplibre-gl', () => {
     }
 
     addControl() {}
-    on(event: string, handler: (payload: unknown) => void) {
-      if (event === 'error') capturedErrorHandler = handler;
+
+    on(event: string, a?: unknown, b?: unknown) {
+      if (event === 'error') capturedErrorHandler = a as (payload: unknown) => void;
+      // Layer-scoped handlers arrive as (event, layerId, handler).
+      if (typeof a === 'string' && typeof b === 'function') {
+        layerHandlers.set(`${event}:${a}`, b as (payload: unknown) => void);
+      }
+      // Style load drives layer creation.
+      if (event === 'load' && typeof a === 'function') (a as () => void)();
+    }
+
+    addSource(_id: string, options: { data: typeof sourceData }) {
+      sourceData = options.data;
+    }
+    getSource() {
+      return sourceData ? { setData: (d: typeof sourceData) => { sourceData = d; } } : undefined;
+    }
+    addLayer() {}
+    getCanvas() {
+      return { style: {} };
     }
     easeTo() {}
     remove() {}
@@ -88,6 +108,8 @@ describe('StationMap', () => {
     markerInstances.length = 0;
     mapConstructorThrows = false;
     capturedErrorHandler = null;
+    sourceData = null;
+    layerHandlers.clear();
   });
 
   it('initialises the map and renders a canvas container', () => {
@@ -96,11 +118,14 @@ describe('StationMap', () => {
     expect(screen.getByTestId('maplibre-canvas')).toBeTruthy();
   });
 
-  it('creates a marker for a station with valid coordinates', () => {
+  it('adds a clustered source containing the station', () => {
+    // Stations are a GeoJSON source, not a DOM marker each: MapLibre clusters
+    // sources, and a node per station stops scaling well before a national
+    // directory does.
     render(<StationMap stations={[station()]} />);
 
-    expect(markerInstances).toHaveLength(1);
-    expect(markerInstances[0].lngLat).toEqual([121.0245, 14.5561]);
+    expect(sourceData?.features).toHaveLength(1);
+    expect(sourceData?.features[0]?.properties.id).toBe(1);
   });
 
   it('skips a station with missing coordinates', () => {
@@ -108,29 +133,42 @@ describe('StationMap', () => {
     // the user this forecourt is somewhere it is not.
     render(<StationMap stations={[station({ latitude: null, longitude: null })]} />);
 
-    expect(markerInstances).toHaveLength(0);
+    expect(sourceData?.features ?? []).toHaveLength(0);
   });
 
   it('skips a station at null island', () => {
     render(<StationMap stations={[station({ latitude: 0, longitude: 0 })]} />);
 
-    expect(markerInstances).toHaveLength(0);
+    expect(sourceData?.features ?? []).toHaveLength(0);
   });
 
   it('skips a station outside the Philippines', () => {
     render(<StationMap stations={[station({ latitude: 51.5074, longitude: -0.1278 })]} />);
 
-    expect(markerInstances).toHaveLength(0);
+    expect(sourceData?.features ?? []).toHaveLength(0);
   });
 
-  it('reports the station back when its marker is clicked', () => {
+  it('reports the station back when its point is clicked', () => {
     const onSelect = vi.fn();
 
     render(<StationMap stations={[station()]} onSelect={onSelect} />);
-    fireEvent.click(markerInstances[0].element);
+
+    layerHandlers.get('click:fip-points')?.({
+      features: [{ properties: { id: 1 } }],
+    });
 
     expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(onSelect.mock.calls[0][0].name).toBe('Petron Ayala Avenue');
+    expect(onSelect.mock.calls[0]?.[0].name).toBe('Petron Ayala Avenue');
+  });
+
+  it('zooms into a cluster instead of opening a station', () => {
+    // A cluster is several stations; there is nothing single to open.
+    const onSelect = vi.fn();
+
+    render(<StationMap stations={[station()]} onSelect={onSelect} />);
+
+    expect(layerHandlers.has('click:fip-clusters')).toBe(true);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('asks for location only when the button is pressed', () => {

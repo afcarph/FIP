@@ -35,6 +35,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
  * one with no map at all.
  */
 
+const SOURCE = 'fip-stations';
+const CLUSTERS = 'fip-clusters';
+const CLUSTER_COUNT = 'fip-cluster-count';
+const POINTS = 'fip-points';
+
 interface StationMapProps {
   stations: Station[];
   centre?: { latitude: number; longitude: number } | null;
@@ -72,6 +77,14 @@ export function StationMap({
   const userMarker = React.useRef<MapLibreMarker | null>(null);
 
   const [failed, setFailed] = React.useState(false);
+  const [ready, setReady] = React.useState(false);
+
+  const plottableRef = React.useRef<Station[]>([]);
+  const onSelectRef = React.useRef(onSelect);
+
+  React.useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   // Only stations we can honestly place. A missing or impossible coordinate is
   // skipped rather than defaulted — a marker in the wrong place is worse than
@@ -80,6 +93,8 @@ export function StationMap({
     () => stations.filter((s) => hasPlottableCoordinates(s.latitude, s.longitude)),
     [stations],
   );
+
+  plottableRef.current = plottable;
 
   React.useEffect(() => {
     if (map.current || !container.current) return;
@@ -116,6 +131,8 @@ export function StationMap({
       }
     });
 
+    instance.on('load', () => setReady(true));
+
     map.current = instance;
 
     // Captured now, not read at cleanup time: by then the ref may point at a
@@ -133,47 +150,124 @@ export function StationMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Station markers, reconciled rather than rebuilt: tearing every marker down
-  // on each render makes the map flicker and loses the open popup.
+  // Stations as a clustered GeoJSON source rather than one DOM node each.
+  // MapLibre clusters a source, not markers, and a marker per station stops
+  // being viable long before a national directory does.
+  const featureCollection = React.useMemo(
+    () => ({
+      type: 'FeatureCollection' as const,
+      features: plottable.map((station) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [station.longitude, station.latitude] },
+        properties: {
+          id: station.id,
+          colour: station.brand?.color_hex ?? '#0f766e',
+          selected: station.id === selectedId ? 1 : 0,
+        },
+      })),
+    }),
+    [plottable, selectedId],
+  );
+
   React.useEffect(() => {
     const instance = map.current;
 
-    if (!instance || failed) return;
+    if (!instance || failed || !ready) return;
 
-    const wanted = new Set(plottable.map((station) => station.id));
+    const existing = instance.getSource(SOURCE) as maplibregl.GeoJSONSource | undefined;
 
-    for (const [id, marker] of markers.current) {
-      if (!wanted.has(id)) {
-        marker.remove();
-        markers.current.delete(id);
-      }
+    if (existing) {
+      existing.setData(featureCollection);
+
+      return;
     }
 
-    for (const station of plottable) {
-      if (markers.current.has(station.id)) continue;
+    instance.addSource(SOURCE, {
+      type: 'geojson',
+      data: featureCollection,
+      cluster: true,
+      // Below this zoom points group; above it they separate on their own, so
+      // a handful of stations in one city still read as individual pins.
+      clusterMaxZoom: 13,
+      clusterRadius: 45,
+    });
 
-      const element = document.createElement('button');
-      element.type = 'button';
-      element.setAttribute('aria-label', station.name);
-      element.className =
-        'grid size-7 place-items-center rounded-full border-2 border-white bg-primary text-[10px] font-bold text-primary-foreground shadow-md';
-      element.textContent = (station.brand?.name ?? station.name).slice(0, 1).toUpperCase();
+    instance.addLayer({
+      id: CLUSTERS,
+      type: 'circle',
+      source: SOURCE,
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': '#0f766e',
+        'circle-opacity': 0.85,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+        'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28],
+      },
+    });
 
-      if (station.brand?.color_hex) element.style.backgroundColor = station.brand.color_hex;
+    instance.addLayer({
+      id: CLUSTER_COUNT,
+      type: 'symbol',
+      source: SOURCE,
+      filter: ['has', 'point_count'],
+      layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 },
+      paint: { 'text-color': '#ffffff' },
+    });
 
-      element.addEventListener('click', (event) => {
-        event.stopPropagation();
-        onSelect?.(station);
+    instance.addLayer({
+      id: POINTS,
+      type: 'circle',
+      source: SOURCE,
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': ['get', 'colour'],
+        'circle-radius': ['case', ['==', ['get', 'selected'], 1], 11, 7],
+        'circle-stroke-width': ['case', ['==', ['get', 'selected'], 1], 3, 2],
+        'circle-stroke-color': '#ffffff',
+      },
+    });
+
+    // Clicking a cluster zooms into it rather than opening anything — there
+    // is no single station to open.
+    instance.on('click', CLUSTERS, (event) => {
+      const feature = event.features?.[0];
+      const clusterId = feature?.properties?.cluster_id;
+      const source = instance.getSource(SOURCE) as maplibregl.GeoJSONSource;
+
+      if (clusterId == null) return;
+
+      const geometry = feature?.geometry;
+
+      // Clusters are always points; anything else means the source is not
+      // what this handler was registered against.
+      if (geometry?.type !== 'Point') return;
+
+      const [longitude, latitude] = geometry.coordinates;
+
+      if (longitude === undefined || latitude === undefined) return;
+
+      void source.getClusterExpansionZoom(clusterId).then((zoom) => {
+        instance.easeTo({ center: [longitude, latitude], zoom });
       });
+    });
 
-      markers.current.set(
-        station.id,
-        new maplibregl.Marker({ element })
-          .setLngLat([station.longitude, station.latitude])
-          .addTo(instance),
-      );
+    instance.on('click', POINTS, (event) => {
+      const id = event.features?.[0]?.properties?.id;
+      const station = plottableRef.current.find((candidate) => candidate.id === id);
+
+      if (station) onSelectRef.current?.(station);
+    });
+
+    for (const layer of [CLUSTERS, POINTS]) {
+      instance.on('mouseenter', layer, () => {
+        instance.getCanvas().style.cursor = 'pointer';
+      });
+      instance.on('mouseleave', layer, () => {
+        instance.getCanvas().style.cursor = '';
+      });
     }
-  }, [plottable, onSelect, failed]);
+  }, [featureCollection, failed, ready]);
 
   // The user's own position, when they have chosen to share it.
   React.useEffect(() => {
