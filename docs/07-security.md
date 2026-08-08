@@ -237,6 +237,7 @@ office NAT does not exhaust one budget for everybody behind it.
 | Fill-up records with coordinates | expense tracking, fraud detection | 5 years (financial records) |
 | Report geotags | anti-fraud verification | 90 days, then coarsened |
 | Device identifiers, FCM tokens | push delivery | until the device is removed |
+| Vehicle location history | fleet vehicle monitoring | configurable — **pending approval**, see Location handling |
 
 ### Subject rights
 
@@ -255,13 +256,59 @@ deleting the fill-up rows, so aggregate analytics remain correct.
 ### Location handling
 
 Location is the most sensitive category here, so it is deliberately
-constrained:
+constrained. There are two distinct kinds of location in FIP and conflating
+them would misdescribe both.
 
-- Requested at point of use, never in the background.
-- Report geotags are stored as a *distance from the station*, not as a track.
-- Declining location still yields a usable product — the map falls back to
-  Metro Manila with a visible notice, rather than nagging.
-- No location data is shared with third parties.
+**Point-of-use location (all users).** The map and the nearby-station search
+ask for a position at the moment they need one and keep nothing. Report geotags
+are stored as a *distance from the station*, not as a track. Declining still
+yields a usable product — the map falls back to Metro Manila with a visible
+notice, rather than nagging.
+
+**Fleet vehicle tracking (registered driver devices only).** A device that has
+been registered to a vehicle reports its position periodically **while the FIP
+mobile application is open and in use**, so that a fleet operator can see where
+their vehicles are and associate fuel events with a place.
+
+| Question | Answer |
+|----------|--------|
+| Why is it collected? | To show a fleet operator the current and recent location of their own vehicles, and to give fuel and anomaly records an operating context |
+| Which devices? | Only devices explicitly registered through the app and associated with a vehicle. An unregistered device reports nothing |
+| Whose data? | The vehicle, the registered device, and the driver assigned to that vehicle at the time |
+| Continuous or periodic? | **Periodic.** Sampled on an interval, not streamed. The interval is configuration (`location.sampling_interval_seconds`), not a fixed product promise |
+| While the app is active? | **Yes** — and only then |
+| Background tracking? | **No.** FIP does not request background location. iOS declares `NSLocationWhenInUseUsageDescription` only, with no `UIBackgroundModes`; Android requests only foreground location. When the app is backgrounded or closed, collection stops |
+| If permission is denied? | Tracking is skipped. The app keeps working: everything except vehicle tracking behaves exactly as before, and the app does not re-prompt on a loop |
+| Can it be disabled? | Yes — revoke the OS permission, or revoke the device registration server-side, which stops ingestion for that device immediately |
+| If GPS is unavailable? | Nothing is recorded. No position is invented, and no last-known value is resubmitted as if it were current |
+
+**What is stored.** Latitude, longitude, accuracy, and where the platform
+supplies them altitude, speed and heading; the device's own timestamp
+(`recorded_at`) and the server's receipt time (`received_at`); and the device
+and vehicle it belongs to. The vehicle is stamped at write time, so reassigning
+a device later does not rewrite where it has been.
+
+**Access.** Location is tenant-scoped like every other fleet record — an
+operator sees only their own company's vehicles. Two separate permissions
+apply, because they answer different questions: `devices.location.view` for
+where a vehicle *is now*, and `devices.location.history` for where it *has
+been*. The second is deliberately not implied by the first.
+
+**Auditability.** Device registration, vehicle association and revocation are
+written to the immutable audit log. Location rows themselves are not audited
+individually — the volume would drown the log — but every read path that
+exposes history is permission-gated.
+
+**Retention.** Location history is pruned on a schedule, and the period is
+configuration (`location.retention_days`) rather than something chosen in
+code. ⚠️ **The configured default is provisional and requires business and
+privacy approval before this feature is operated on real drivers.** The nearest
+approved precedents in this document are 90 days for report geotags and 30 days
+for generated reports, but neither is a movement track of an identifiable
+person, and the correct period for one is a decision for the business rather
+than for this implementation.
+
+No location data is shared with third parties.
 
 ---
 
