@@ -71,6 +71,31 @@ return [
         'stale_after_minutes' => (int) env('FIP_FUEL_STALE_MINUTES', 720),
     ],
 
+    'fuel_anomaly' => [
+        // A fall of at least this many percentage points, inside this many
+        // minutes, with no fill-up to explain it. The pair matters more than
+        // either number: 40 points over a working day is a delivery round,
+        // 40 points in a minute is not.
+        'drop_pct' => (float) env('FIP_FUEL_DROP_PCT', 15.0),
+        'drop_window_minutes' => (int) env('FIP_FUEL_DROP_WINDOW_MINUTES', 15),
+
+        // Fuel appearing with no purchase behind it. Worth flagging for the
+        // same reason as a drop: either the gauge is lying or the paperwork is.
+        'gain_pct' => (float) env('FIP_FUEL_GAIN_PCT', 10.0),
+
+        // A fall immediately undone by a comparable rise. No tank refills
+        // itself, so the likeliest explanation is the sensor, not the fuel.
+        'sensor_reversal_pct' => (float) env('FIP_FUEL_SENSOR_REVERSAL_PCT', 15.0),
+
+        // How close a fill-up must be, in time, to explain a rise.
+        'purchase_match_minutes' => (int) env('FIP_FUEL_PURCHASE_MATCH_MINUTES', 90),
+
+        // Combined score at or above which an alert is raised. Separate from
+        // the purchase-fraud threshold: these are different signals with
+        // different false-positive costs, and tuning one must not move the other.
+        'score_threshold' => (float) env('FIP_FUEL_ANOMALY_THRESHOLD', 0.65),
+    ],
+
     'maintenance' => [
         'due_soon_days' => (int) env('FIP_MAINTENANCE_DUE_SOON_DAYS', 14),
         'due_soon_km' => (int) env('FIP_MAINTENANCE_DUE_SOON_KM', 500),

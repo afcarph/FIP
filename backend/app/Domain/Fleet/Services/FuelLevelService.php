@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Fleet\Services;
 
+use App\Domain\Fleet\Contracts\FuelAnomalyScreener;
 use App\Domain\Fleet\Models\VehicleFuelReading;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Exceptions\DomainException;
@@ -33,6 +34,8 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class FuelLevelService
 {
+    public function __construct(private FuelAnomalyScreener $anomalies) {}
+
     /**
      * Record a reading and refresh the vehicle's cached level.
      *
@@ -83,6 +86,12 @@ final readonly class FuelLevelService
 
             return $reading;
         });
+
+        // Screened after the transaction commits, not inside it: an alert is a
+        // separate record about a reading that is already a fact, and a
+        // detector that failed should not roll back the measurement it was
+        // called to examine.
+        $this->anomalies->screen($reading);
 
         return $reading->refresh();
     }

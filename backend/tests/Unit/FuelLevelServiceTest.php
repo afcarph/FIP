@@ -4,18 +4,25 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Domain\Fleet\Contracts\FuelAnomalyScreener;
 use App\Domain\Fleet\Models\VehicleFuelReading;
 use App\Domain\Fleet\Services\FuelLevelService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Exceptions\DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 /**
  * The vehicle's cached level is what every dashboard reads, and `delta_pct` is
- * what Phase 2's drop detection will scan. Both are computed once at write time
- * and trusted everywhere afterwards, so the arithmetic and the ordering rules
- * are worth pinning precisely.
+ * what the drop detector scans. Both are computed once at write time and
+ * trusted everywhere afterwards, so the arithmetic and the ordering rules are
+ * worth pinning precisely.
+ *
+ * The anomaly screener is stubbed out here. These tests are about ordering and
+ * derived values, and letting the real detector run would mean asserting on
+ * arithmetic while alerts fired in the background — the separation the
+ * FuelAnomalyScreener port exists to allow. Detection has its own tests.
  */
 class FuelLevelServiceTest extends TestCase
 {
@@ -30,7 +37,10 @@ class FuelLevelServiceTest extends TestCase
         parent::setUp();
         $this->seedPlatform();
 
-        $this->service = new FuelLevelService;
+        $screener = Mockery::mock(FuelAnomalyScreener::class);
+        $screener->shouldReceive('screen')->andReturnNull();
+
+        $this->service = new FuelLevelService($screener);
         $this->vehicle = Vehicle::factory()->create(['tank_capacity' => 50.0]);
     }
 
@@ -289,6 +299,12 @@ class FuelLevelServiceTest extends TestCase
             $this->vehicle->fresh()->current_fuel_pct,
             'The dashboard must fall back to the newest genuine reading, not keep a purged value.',
         );
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 
     public function test_purging_every_reading_clears_the_vehicle_state(): void
