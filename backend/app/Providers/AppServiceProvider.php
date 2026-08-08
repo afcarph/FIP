@@ -9,6 +9,7 @@ use App\Services\External\FcmClient;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -65,6 +66,8 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        $this->passObjectStorageCredentialsToServe();
+
         // Surface slow queries in the log so regressions are caught early.
         DB::listen(function ($query): void {
             if ($query->time > 500) {
@@ -75,5 +78,38 @@ class AppServiceProvider extends ServiceProvider
                 ]);
             }
         });
+    }
+
+    /**
+     * Let `artisan serve` see the object-storage credentials.
+     *
+     * ServeCommand forwards a fixed whitelist of environment variables to the
+     * PHP built-in server it spawns and blanks everything else, so the
+     * credentials Docker Compose supplies never reach the process that actually
+     * handles requests. Every S3 write through the local HTTP API therefore
+     * failed with `InvalidAccessKeyId`, while the same call from `artisan
+     * tinker` — a process that inherits the full environment — succeeded. That
+     * split is what made it look like an application bug: receipt scanning and
+     * the older price-board scanning both 500'd only over HTTP.
+     *
+     * Scoped to non-production because nothing else runs `artisan serve`:
+     * production is served by PHP-FPM, which has the environment already.
+     */
+    private function passObjectStorageCredentialsToServe(): void
+    {
+        if ($this->app->isProduction() || ! class_exists(ServeCommand::class)) {
+            return;
+        }
+
+        ServeCommand::$passthroughVariables = array_values(array_unique([
+            ...ServeCommand::$passthroughVariables,
+            'AWS_ACCESS_KEY_ID',
+            'AWS_SECRET_ACCESS_KEY',
+            'AWS_DEFAULT_REGION',
+            'AWS_BUCKET',
+            'AWS_ENDPOINT',
+            'AWS_USE_PATH_STYLE_ENDPOINT',
+            'AWS_URL',
+        ]));
     }
 }
