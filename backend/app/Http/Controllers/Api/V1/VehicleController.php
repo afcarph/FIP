@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Fleet\Services\FuelLevelService;
 use App\Domain\Maintenance\Services\MaintenanceService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Repositories\VehicleRepository;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Vehicle\StoreFuelReadingRequest;
 use App\Http\Requests\Vehicle\StoreVehicleRequest;
 use App\Http\Requests\Vehicle\UpdateVehicleRequest;
 use App\Http\Resources\VehicleResource;
@@ -23,6 +25,7 @@ class VehicleController extends Controller
     public function __construct(
         private readonly VehicleRepository $vehicles,
         private readonly MaintenanceService $maintenance,
+        private readonly FuelLevelService $fuelLevels,
     ) {}
 
     /**
@@ -144,6 +147,41 @@ class VehicleController extends Controller
             'reading' => (float) $reading->reading,
             'recorded_at' => $reading->recorded_at->toIso8601String(),
             'current_odometer' => $vehicle->current_odometer,
+        ]);
+    }
+
+    /**
+     * @OA\Post(path="/vehicles/{vehicle}/fuel-readings", tags={"Vehicles"}, security={{"bearerAuth":{}}},
+     *   summary="Record a fuel level reading",
+     *
+     *   @OA\Response(response=201, description="Reading recorded"),
+     *   @OA\Response(response=422, description="Level out of range, or dated in the future"))
+     */
+    public function recordFuelReading(StoreFuelReadingRequest $request, Vehicle $vehicle): JsonResponse
+    {
+        // Same gate as an odometer reading: recording what a vehicle is doing
+        // is an update to it, which an assigned driver may perform.
+        $this->authorize('update', $vehicle);
+
+        $reading = $this->fuelLevels->record($vehicle, $request->validated() + [
+            'recorded_by' => $request->user()->getKey(),
+        ]);
+
+        $vehicle->refresh();
+
+        return ApiResponse::created([
+            'id' => $reading->getKey(),
+            'fuel_pct' => $reading->fuel_pct,
+            'fuel_litres' => $reading->fuel_litres,
+            'delta_pct' => $reading->delta_pct,
+            'source' => $reading->source,
+            'recorded_at' => $reading->recorded_at->toIso8601String(),
+            'vehicle' => [
+                'current_fuel_pct' => $vehicle->current_fuel_pct,
+                'current_fuel_litres' => $vehicle->current_fuel_litres,
+                'fuel_level_at' => $vehicle->fuel_level_at?->toIso8601String(),
+                'fuel_status' => $this->fuelLevels->statusFor($vehicle->current_fuel_pct),
+            ],
         ]);
     }
 

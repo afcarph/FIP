@@ -134,6 +134,7 @@ Route::prefix('v1')->group(function (): void {
         // Vehicles
         Route::apiResource('vehicles', VehicleController::class);
         Route::post('vehicles/{vehicle}/odometer', [VehicleController::class, 'recordOdometer']);
+        Route::post('vehicles/{vehicle}/fuel-readings', [VehicleController::class, 'recordFuelReading']);
         Route::get('vehicles/{vehicle}/efficiency', [VehicleController::class, 'efficiency']);
 
         // Maintenance

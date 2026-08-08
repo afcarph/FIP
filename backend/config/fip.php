@@ -56,6 +56,21 @@ return [
         'severity_bands' => ['low' => 0.65, 'medium' => 0.75, 'high' => 0.85, 'critical' => 0.95],
     ],
 
+    'fuel_level' => [
+        // Tank level bands, as a percentage. A vehicle at or below `low_pct` is
+        // LOW, at or below `critical_pct` is CRITICAL, and anything above is
+        // NORMAL. Bands rather than a single warning point because "top up
+        // today" and "you may not reach a station" are different instructions.
+        'low_pct' => (float) env('FIP_FUEL_LOW_PCT', 25.0),
+        'critical_pct' => (float) env('FIP_FUEL_CRITICAL_PCT', 10.0),
+
+        // Beyond this, the stored level is reported as stale rather than
+        // current. A reading is a sample, not a subscription: a tank that read
+        // 80% last Tuesday tells you nothing about the tank today, and showing
+        // it unqualified would be worse than showing nothing.
+        'stale_after_minutes' => (int) env('FIP_FUEL_STALE_MINUTES', 720),
+    ],
+
     'maintenance' => [
         'due_soon_days' => (int) env('FIP_MAINTENANCE_DUE_SOON_DAYS', 14),
         'due_soon_km' => (int) env('FIP_MAINTENANCE_DUE_SOON_KM', 500),

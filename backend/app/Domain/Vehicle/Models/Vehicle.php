@@ -8,6 +8,7 @@ use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\Expense\Models\Trip;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
+use App\Domain\Fleet\Models\VehicleFuelReading;
 use App\Domain\Maintenance\Models\MaintenanceRecord;
 use App\Domain\Maintenance\Models\MaintenanceSchedule;
 use App\Domain\Pricing\Models\FuelType;
@@ -47,6 +48,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $engine_displacement_cc
  * @property float|null $tank_capacity
  * @property float $current_odometer
+ * @property float|null $current_fuel_pct
+ * @property float|null $current_fuel_litres
+ * @property Carbon|null $fuel_level_at
  * @property float|null $baseline_km_per_litre
  * @property float|null $avg_km_per_litre
  * @property Carbon|null $registration_expiry
@@ -68,6 +72,8 @@ use Illuminate\Support\Carbon;
  * @property-read Fleet|null $fleet
  * @property-read Collection<int, FuelPurchase> $fuelPurchases
  * @property-read int|null $fuel_purchases_count
+ * @property-read Collection<int, VehicleFuelReading> $fuelReadings
+ * @property-read int|null $fuel_readings_count
  * @property-read FuelType $fuelType
  * @property-read string $display_name
  * @property-read Collection<int, MaintenanceRecord> $maintenanceRecords
@@ -150,6 +156,13 @@ class Vehicle extends Model
         'insurance_expiry', 'photo_path', 'status',
     ];
 
+    /**
+     * `current_fuel_pct`, `current_fuel_litres` and `fuel_level_at` are
+     * deliberately absent from $fillable. They are a cache of the newest row in
+     * `vehicle_fuel_readings` and belong to FuelLevelService; letting a vehicle
+     * update set them would allow the dashboard to disagree with the history it
+     * is supposed to summarise.
+     */
     protected function casts(): array
     {
         return [
@@ -159,6 +172,9 @@ class Vehicle extends Model
             'current_odometer' => 'float',
             'baseline_km_per_litre' => 'float',
             'avg_km_per_litre' => 'float',
+            'current_fuel_pct' => 'float',
+            'current_fuel_litres' => 'float',
+            'fuel_level_at' => 'datetime',
             'registration_expiry' => 'date',
             'insurance_expiry' => 'date',
         ];
@@ -291,6 +307,12 @@ class Vehicle extends Model
     public function odometerReadings(): HasMany
     {
         return $this->hasMany(OdometerReading::class);
+    }
+
+    /** @return HasMany<VehicleFuelReading, $this> */
+    public function fuelReadings(): HasMany
+    {
+        return $this->hasMany(VehicleFuelReading::class);
     }
 
     public function documents(): HasMany

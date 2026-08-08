@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Fleet\Services\FuelLevelService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,6 +32,19 @@ class VehicleResource extends JsonResource
             'fleet' => $this->whenLoaded('fleet', fn () => $this->fleet ? ['id' => $this->fleet->id, 'name' => $this->fleet->name] : null),
             'tank_capacity' => $this->tank_capacity,
             'current_odometer' => $this->current_odometer,
+            // Additive: existing clients ignore the block, and every field is
+            // null on a vehicle nobody has reported a level for. `status` is
+            // null rather than NORMAL in that case — no reading is not the same
+            // as a healthy reading, and a dashboard that conflates them shows a
+            // reassuring green for a vehicle it knows nothing about.
+            'fuel' => [
+                'current_percentage' => $this->current_fuel_pct,
+                'current_litres' => $this->current_fuel_litres,
+                'recorded_at' => $this->fuel_level_at?->toIso8601String(),
+                'status' => app(FuelLevelService::class)->statusFor($this->current_fuel_pct),
+                'is_stale' => $this->current_fuel_pct !== null
+                    && app(FuelLevelService::class)->isStale($this->fuel_level_at),
+            ],
             'efficiency' => [
                 'baseline_km_per_litre' => $this->baseline_km_per_litre,
                 'avg_km_per_litre' => $this->avg_km_per_litre,
