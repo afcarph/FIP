@@ -17,7 +17,14 @@ import { cn, formatCurrency, formatDistance, formatRelative } from '@/lib/utils'
 const RADII = [2, 5, 10, 25];
 
 export default function MapPage() {
-  const { latitude, longitude, usingFallback, loading: locating, request } = useGeolocation();
+  const {
+    latitude,
+    longitude,
+    usingFallback,
+    loading: locating,
+    request,
+    isBlocked,
+  } = useGeolocation();
   const { data: fuelTypes } = useFuelTypes();
 
   const [fuelTypeId, setFuelTypeId] = React.useState<number | undefined>();
@@ -49,19 +56,42 @@ export default function MapPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Fuel near you</h1>
           <p className="text-sm text-muted-foreground">
-            {usingFallback
-              ? 'Showing prices around Makati — enable location for results near you'
-              : `Live prices within ${radius} km`}
+            {!usingFallback
+              ? `Live prices within ${radius} km`
+              : isBlocked
+                ? 'Showing prices around Makati — this site is blocked from using your location'
+                : 'Showing prices around Makati — enable location for results near you'}
           </p>
         </div>
 
-        {usingFallback ? (
+        {/* A blocked permission cannot be re-requested from script — the
+            browser refuses without prompting. Offering the button anyway is
+            what made this look broken: it fails in about two milliseconds and
+            nothing on screen changes. */}
+        {usingFallback && !isBlocked ? (
           <Button variant="outline" size="sm" onClick={request} loading={locating}>
             <Navigation aria-hidden="true" />
             Use my location
           </Button>
         ) : null}
       </header>
+
+      {isBlocked ? (
+        <Card>
+          <CardContent className="flex items-start gap-3 p-4 text-sm">
+            <Navigation className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div>
+              <p className="font-medium">Location is blocked for this site</p>
+              <p className="text-muted-foreground">
+                Your browser has been told to refuse location for{' '}
+                <span className="font-mono">fip.nelleeph.com</span>, and it will not ask again
+                until you change that. Open the padlock in the address bar, set Location to
+                Allow, then reload. Until then everything below is centred on Makati.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Filters */}
       <Card>

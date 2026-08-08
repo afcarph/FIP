@@ -72,6 +72,40 @@ export function useGeolocation(options: { immediate?: boolean } = {}) {
     );
   }, []);
 
+  // Ask the browser what it already decided, so the UI can tell "we have not
+  // asked yet" apart from "the user said no and we cannot ask again". Without
+  // this the two look identical: getCurrentPosition rejects a denied
+  // permission in about two milliseconds, which reads as a button that does
+  // nothing.
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return;
+
+    navigator.permissions
+      .query({ name: 'geolocation' as PermissionName })
+      .then((status) => {
+        if (cancelled) return;
+
+        setState((previous) => ({ ...previous, permission: status.state }));
+
+        // Re-enabling it in site settings should not need a page reload.
+        status.onchange = () => {
+          setState((previous) => ({ ...previous, permission: status.state }));
+
+          if (status.state === 'granted') request();
+        };
+      })
+      // Firefox and older Safari do not expose the geolocation permission
+      // here. Leaving the state as `unknown` is correct — it means we do not
+      // know, not that it is denied.
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [request]);
+
   React.useEffect(() => {
     if (immediate) request();
   }, [immediate, request]);
@@ -79,6 +113,12 @@ export function useGeolocation(options: { immediate?: boolean } = {}) {
   const usingFallback = state.latitude === null;
 
   return {
+    /**
+     * The browser has refused and will not prompt again. Nothing the page can
+     * do will change this — only the user, in site settings — so the UI has
+     * to say so rather than offering a button that fails silently.
+     */
+    isBlocked: state.permission === 'denied',
     ...state,
     latitude: state.latitude ?? DEFAULT_LAT,
     longitude: state.longitude ?? DEFAULT_LNG,
