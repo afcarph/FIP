@@ -33,19 +33,54 @@
         </report>
     </coverage>
 
+    <!--
+        Each variable is declared twice — as <env> and as <server> — and both
+        are force="true". That is not redundancy.
+
+        PHPUnit's force="true" overwrites getenv() and $_ENV, but it does not
+        touch $_SERVER. Docker Compose puts its `environment:` entries into
+        $_SERVER as well, and Laravel's Env repository consults its
+        ServerConstAdapter *before* the $_ENV one — so a value set only via
+        <env> is read correctly by getenv() and then ignored by config().
+
+        The symptoms were specific. The container supplies DB_DATABASE=fip, so
+        `config('database.connections.sqlite.database')` resolved to a file
+        literally named `fip` in the project root: the suite ran against a
+        tracked SQLite database and rewrote it on every run, instead of the
+        :memory: database this file has always claimed to configure. The same
+        leak supplied MAIL_MAILER=smtp, which is why the password-reset test
+        tried to reach a real mail host and returned 500.
+
+        Declaring both keeps the file authoritative wherever it runs — a laptop,
+        this container, or CI — rather than describing an environment it does
+        not actually produce.
+    -->
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="APP_KEY" value="base64:kR8kZ6nT4vXqYpLmNbVcXzAsDfGhJkLqWeRtYuIoPas="/>
-        <env name="JWT_SECRET" value="testing-jwt-secret-please-change-in-real-environments"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="CACHE_STORE" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="FILESYSTEM_DISK" value="local"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="AI_SERVICE_URL" value="http://ai-service.test"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <server name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_KEY" value="base64:kR8kZ6nT4vXqYpLmNbVcXzAsDfGhJkLqWeRtYuIoPas=" force="true"/>
+        <server name="APP_KEY" value="base64:kR8kZ6nT4vXqYpLmNbVcXzAsDfGhJkLqWeRtYuIoPas=" force="true"/>
+        <env name="JWT_SECRET" value="testing-jwt-secret-please-change-in-real-environments" force="true"/>
+        <server name="JWT_SECRET" value="testing-jwt-secret-please-change-in-real-environments" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <server name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <server name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <server name="CACHE_STORE" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <server name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <server name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <server name="MAIL_MAILER" value="array" force="true"/>
+        <env name="FILESYSTEM_DISK" value="local" force="true"/>
+        <server name="FILESYSTEM_DISK" value="local" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <server name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="AI_SERVICE_URL" value="http://ai-service.test" force="true"/>
+        <server name="AI_SERVICE_URL" value="http://ai-service.test" force="true"/>
+        <env name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <server name="TELESCOPE_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>
