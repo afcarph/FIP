@@ -15,7 +15,7 @@ Ranked by consequence rather than by likelihood:
 | Fleet fuel and route data | a competitor learns a logistics operator's cost base and routes | tenant scoping at query, policy and middleware level |
 | User credentials | account takeover, and reuse elsewhere | bcrypt cost 12, breach checking, MFA, lockout |
 | Price integrity | poisoned prices send drivers to the wrong station; the product's core claim fails | geofence, band check, source precedence, moderation |
-| Personal location history | movement patterns of identifiable people | coarse storage, retention limits, no third-party sharing |
+| Personal location history | movement patterns of identifiable people | foreground-only collection, tenant scoping, a separate permission for history, scheduled pruning, no third-party sharing |
 | Administrative access | total platform compromise | role separation, mandatory MFA, immutable audit log |
 
 The third is unusual and worth dwelling on. Most platforms treat data
@@ -309,6 +309,9 @@ person, and the correct period for one is a decision for the business rather
 than for this implementation.
 
 No location data is shared with third parties.
+
+The full assessment — lawful basis, subject rights, and the open retention
+decision — is in [12-privacy-impact-assessment.md](12-privacy-impact-assessment.md).
 
 ---
 
