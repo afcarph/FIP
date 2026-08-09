@@ -68,7 +68,7 @@ final readonly class LocationIngestService
                 continue;
             }
 
-            $recordedAt = Carbon::parse($point['recorded_at']);
+            $recordedAt = $this->normalise($point['recorded_at']);
 
             $rows[$recordedAt->toDateTimeString()] = [
                 'device_id' => $device->getKey(),
@@ -182,7 +182,7 @@ final readonly class LocationIngestService
         }
 
         try {
-            $recordedAt = Carbon::parse($point['recorded_at']);
+            $recordedAt = $this->normalise($point['recorded_at']);
         } catch (\Throwable) {
             return 'recorded_at is not a parseable timestamp';
         }
@@ -215,6 +215,25 @@ final readonly class LocationIngestService
         }
 
         return null;
+    }
+
+    /**
+     * Parse a client timestamp into the application's timezone.
+     *
+     * A device reports UTC; the server and MySQL both run Asia/Manila. Eloquent
+     * writes a Carbon using whatever zone it carries, so parsing without
+     * converting stored `recorded_at` as a UTC wall-clock next to a
+     * `received_at` written in local time — two columns in one row on different
+     * clocks, eight hours apart.
+     *
+     * It was not merely untidy. Reading the column back cast it as local time,
+     * so a replayed older position compared as *newer* than the stored newest
+     * and overwrote the cached last-known location; history queries built from
+     * now() would have missed by the same eight hours.
+     */
+    private function normalise(mixed $value): Carbon
+    {
+        return Carbon::parse($value)->setTimezone(config('app.timezone'));
     }
 
     private function optional(array $point, string $key): ?float

@@ -150,6 +150,50 @@ class DeviceLocationTest extends TestCase
         );
     }
 
+    public function test_a_utc_timestamp_is_stored_on_the_same_clock_as_the_receipt(): void
+    {
+        // A device reports UTC; the server and MySQL run Asia/Manila. Parsing
+        // without converting stored recorded_at as a UTC wall-clock beside a
+        // local received_at — two columns in one row eight hours apart. Reading
+        // it back as local time then made an older replayed position compare as
+        // newer, and it overwrote the cached last-known location.
+        $this->submit([$this->point([
+            'latitude' => 14.1,
+            'recorded_at' => now()->subMinutes(3)->utc()->toIso8601String(),
+        ])]);
+
+        $stored = DeviceLocation::first();
+
+        // The point is deliberately three minutes old, so the expected gap is
+        // ~180s. The bug produced ~8 hours, so anything under ten minutes
+        // proves the two columns share a clock without pinning the test to the
+        // exact age it chose.
+        $this->assertLessThan(
+            600,
+            abs($stored->recorded_at->diffInSeconds($stored->received_at)),
+            'recorded_at and received_at must be on the same clock.',
+        );
+    }
+
+    public function test_a_replayed_older_utc_point_cannot_overwrite_a_newer_position(): void
+    {
+        $this->submit([$this->point([
+            'latitude' => 11.0,
+            'recorded_at' => now()->subMinutes(2)->utc()->toIso8601String(),
+        ])]);
+
+        $this->submit([$this->point([
+            'latitude' => 22.0,
+            'recorded_at' => now()->subMinutes(9)->utc()->toIso8601String(),
+        ])]);
+
+        $this->assertSame(
+            11.0,
+            $this->device->fresh()->last_latitude,
+            'The older position must not win, whatever timezone it arrived in.',
+        );
+    }
+
     // ------------------------------------------------------------ security ---
 
     public function test_an_unauthenticated_submission_is_rejected(): void
