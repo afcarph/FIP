@@ -215,6 +215,7 @@ return [
         'fleet_manager' => 'fleet_manager',
         'company_manager' => 'company_manager',
         'driver' => 'driver',
+        'viewer' => 'viewer',
         'user' => 'user',
         'guest' => 'guest',
     ],

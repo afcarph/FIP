@@ -66,8 +66,17 @@ class VehicleResource extends JsonResource
                     ? $this->insurance_expiry->diffInDays(now(), false) * -1
                     : null,
             ],
+            // `id` is the drivers-table key. `user_id` is added alongside it
+            // because a client only ever knows who is signed in, and without
+            // it there is no reliable way to answer "is this my vehicle?" —
+            // matching on name would break on two drivers sharing one.
+            // Additive: nothing that reads `id` or `name` is affected.
             'assigned_driver' => $this->whenLoaded('currentAssignment', fn () => $this->currentAssignment?->driver
-                ? ['id' => $this->currentAssignment->driver->id, 'name' => $this->currentAssignment->driver->full_name]
+                ? [
+                    'id' => $this->currentAssignment->driver->id,
+                    'user_id' => $this->currentAssignment->driver->user_id,
+                    'name' => $this->currentAssignment->driver->full_name,
+                ]
                 : null),
             'maintenance' => $this->whenLoaded('maintenanceSchedules', fn () => $this->maintenanceSchedules
                 ->whereIn('status', ['due_soon', 'overdue'])

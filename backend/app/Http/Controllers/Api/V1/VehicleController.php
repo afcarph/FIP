@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Ai\Models\FraudAlert;
 use App\Domain\Fleet\Services\FuelLevelService;
 use App\Domain\Maintenance\Services\MaintenanceService;
+use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Repositories\VehicleRepository;
 use App\Http\Controllers\Controller;
@@ -197,6 +199,65 @@ class VehicleController extends Controller
      *
      *   @OA\Response(response=200, description="Paginated readings, newest first"))
      */
+    /**
+     * @OA\Get(path="/vehicles/{vehicle}/alerts", tags={"Vehicles"}, security={{"bearerAuth":{}}},
+     *   summary="Fuel alerts raised against one vehicle",
+     *
+     *   @OA\Response(response=200, description="Alerts"),
+     *   @OA\Response(response=403, description="Not your vehicle, and no fraud.view"))
+     */
+    /**
+     * @OA\Get(path="/vehicles/{vehicle}/location", tags={"Vehicles"}, security={{"bearerAuth":{}}},
+     *   summary="Latest known position of one vehicle",
+     *
+     *   @OA\Response(response=200, description="Position, or null when none is known"),
+     *   @OA\Response(response=403, description="Not your vehicle, and no devices.location.view"))
+     */
+    public function location(Vehicle $vehicle): JsonResponse
+    {
+        $this->authorize('viewLatestLocation', $vehicle);
+
+        // The device cache, the same source /fleet/locations reads, so the two
+        // endpoints cannot disagree about where a vehicle is. Scoped to one
+        // vehicle by construction rather than by filtering a fleet-wide list.
+        $device = UserDevice::query()
+            ->active()
+            ->where('vehicle_id', $vehicle->getKey())
+            ->whereNotNull('last_location_at')
+            ->latest('last_location_at')
+            ->first();
+
+        return ApiResponse::success($device === null ? null : [
+            'vehicle_id' => $vehicle->getKey(),
+            'latitude' => $device->last_latitude,
+            'longitude' => $device->last_longitude,
+            'recorded_at' => $device->last_location_at?->toIso8601String(),
+            'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+        ]);
+    }
+
+    public function alerts(Request $request, Vehicle $vehicle): JsonResponse
+    {
+        // Scoped to one vehicle by construction. A driver reaches their own
+        // assigned vehicle without holding any fraud permission; a manager
+        // reaches any vehicle in their tenant because they hold fraud.view.
+        // Neither can read another company's alerts.
+        $this->authorize('viewAlerts', $vehicle);
+
+        $paginator = FraudAlert::query()
+            ->where('vehicle_id', $vehicle->getKey())
+            ->when(
+                $request->has('status'),
+                fn ($q) => $q->where('status', $request->string('status')->toString()),
+                fn ($q) => $q->unresolved(),
+            )
+            ->with(['purchase', 'reading'])
+            ->latest('detected_at')
+            ->paginate(min((int) $request->integer('per_page', 20), 50));
+
+        return ApiResponse::paginated($paginator);
+    }
+
     public function fuelReadings(Request $request, Vehicle $vehicle): JsonResponse
     {
         // Reading the history is a read on the vehicle, not a write, so this

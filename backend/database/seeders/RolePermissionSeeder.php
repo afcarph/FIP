@@ -81,7 +81,11 @@ class RolePermissionSeeder extends Seeder
             'label' => 'Company Manager',
             'level' => 4,
             'permissions' => [
-                'users.view', 'vehicles.view', 'vehicles.create', 'vehicles.update',
+                // Creates and edits people inside their own company. Deleting a
+                // user and minting roles stay with platform administrators:
+                // both are irreversible in ways a tenant admin should not own.
+                'users.view', 'users.create', 'users.update',
+                'vehicles.view', 'vehicles.create', 'vehicles.update',
                 'fleet.view', 'fleet.manage', 'fleet.reports',
                 'drivers.view', 'drivers.manage',
                 'expenses.view', 'expenses.create', 'expenses.update',
@@ -114,6 +118,25 @@ class RolePermissionSeeder extends Seeder
                 'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
                 'maintenance.view', 'maintenance.manage',
                 'prices.view', 'stations.view', 'reports.view', 'analytics.view', 'ai.use',
+            ],
+        ],
+        /*
+         * Read-only oversight. Sees the fleet, its vehicles, its alerts and the
+         * reports; changes nothing.
+         *
+         * Deliberately without drivers.view — a viewer has no reason to read a
+         * staff roster — and without any devices permission, so neither live
+         * positions nor location history are reachable. Read-only here is the
+         * absence of write permissions rather than a flag: no entry in this set
+         * grants a mutation.
+         */
+        'viewer' => [
+            'label' => 'Fleet Viewer',
+            'level' => 8,
+            'permissions' => [
+                'fleet.view', 'vehicles.view', 'fraud.view',
+                'reports.view', 'analytics.view',
+                'prices.view', 'stations.view',
             ],
         ],
         'guest' => [

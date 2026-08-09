@@ -85,6 +85,11 @@ class DeviceController extends Controller
 
         $data = $request->validate([
             'device_name' => ['nullable', 'string', 'max:120'],
+            // Build attribution. A device registered before the app sent these
+            // has no way to report them otherwise: registration is skipped once
+            // setup is complete, and re-registering would clear fcm_token.
+            'app_version' => ['sometimes', 'nullable', 'string', 'max:24'],
+            'os_version' => ['sometimes', 'nullable', 'string', 'max:32'],
             // Null detaches. Absent leaves the association alone — the two are
             // different intentions and a PATCH has to tell them apart.
             'vehicle_id' => ['sometimes', 'nullable', 'integer', 'exists:vehicles,id'],
@@ -92,6 +97,12 @@ class DeviceController extends Controller
 
         if (array_key_exists('device_name', $data)) {
             $device->forceFill(['device_name' => $data['device_name']])->save();
+        }
+
+        foreach (['app_version', 'os_version'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $device->forceFill([$field => $data[$field]])->save();
+            }
         }
 
         if (array_key_exists('vehicle_id', $data)) {

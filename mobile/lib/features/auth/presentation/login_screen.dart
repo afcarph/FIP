@@ -132,31 +132,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(LucideIcons.fuel, color: scheme.onPrimary, size: 26),
+                    // The actual FIP mark, not a generic fuel glyph. The
+                    // artwork carries its own colour, so it sits on the
+                    // surface rather than inside a tinted tile that would
+                    // fight it.
+                    Image.asset(
+                      'assets/images/fip-mark.png',
+                      width: 72,
+                      height: 72,
+                      semanticLabel: 'Fuel Intelligence Platform',
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Welcome back',
+                      'Fuel Intelligence Platform',
                       textAlign: TextAlign.center,
                       style: Theme.of(
                         context,
-                      ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+                      ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
+                    // The product's own promise rather than a generic greeting.
+                    // It is the first thing a new operator reads, and it sets
+                    // the expectation that this is a fleet tool.
                     Text(
-                      'Sign in to track prices and your fuel spend',
+                      'See your fleet. Understand your fuel.\nAct with confidence.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.45,
+                      ),
                     ),
                     const SizedBox(height: 28),
                     if (_error != null) ...[

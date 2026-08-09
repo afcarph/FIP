@@ -9,11 +9,27 @@ import 'features/doe/presentation/doe_history_screen.dart';
 import 'features/doe/presentation/doe_home_screen.dart';
 import 'features/doe/presentation/doe_search_screen.dart';
 import 'features/doe/presentation/doe_settings_screen.dart';
-import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/expenses/presentation/expenses_screen.dart';
 import 'features/map/presentation/map_screen.dart';
 import 'features/scanner/presentation/scanner_screen.dart';
+import 'features/fleet/presentation/alerts_screen.dart';
+import 'core/auth/fip_role.dart';
+import 'features/admin/presentation/platform_home_screen.dart';
+import 'features/admin/presentation/privacy_settings_screen.dart';
+import 'features/admin/presentation/system_screen.dart';
+import 'features/admin/presentation/users_admin_screen.dart';
+import 'features/driver/presentation/driver_home_screen.dart';
+import 'features/driver/presentation/my_vehicle_screen.dart';
+import 'features/reports/presentation/reports_screen.dart';
+import 'features/fleet/presentation/fip_home_screen.dart';
+import 'features/fleet/presentation/fleet_screen.dart';
+import 'features/fleet/presentation/fuel_intelligence_screen.dart';
+import 'features/fleet/presentation/live_map_screen.dart';
+import 'features/fleet/presentation/more_screen.dart';
+import 'features/fleet/presentation/vehicle_detail_screen.dart';
 import 'features/vehicles/presentation/vehicles_screen.dart';
+import 'shared/widgets/fip/fip_chrome.dart';
+import 'features/fleet/data/fleet_providers.dart';
 import 'shared/providers/app_providers.dart';
 
 /// Router with an auth redirect.
@@ -27,7 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     // The DOE section is the UAT surface and needs no account. Landing on
     // /dashboard would bounce a signed-out tester to /login with no route to
     // the screens they were asked to test.
-    initialLocation: '/doe',
+    initialLocation: '/home',
     redirect: (context, state) {
       // Hold the splash until the stored token has been checked, otherwise a
       // signed-in user is briefly bounced to the login screen.
@@ -39,7 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation.startsWith('/doe');
 
       if (!auth.isAuthenticated && !isPublic) return '/login';
-      if (auth.isAuthenticated && state.matchedLocation == '/login') return '/dashboard';
+      if (auth.isAuthenticated && state.matchedLocation == '/login') return auth.fipRole.home;
 
       return null;
     },
@@ -58,10 +74,34 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/doe/settings', builder: (context, state) => const DoeSettingsScreen()),
         ],
       ),
+      // The FIP fleet shell. Five destinations, fleet-first.
       ShellRoute(
-        builder: (context, state, child) => _AppScaffold(child: child),
+        builder: (context, state, child) => _FipScaffold(child: child),
         routes: [
-          GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
+          // One route, two audiences. A driver has one vehicle and no business
+          // seeing the rest of the fleet, so the role decides the screen rather
+          // than the fleet home hiding rows.
+          GoRoute(path: '/home', builder: (context, state) => const _RoleHome()),
+          GoRoute(path: '/fleet', builder: (context, state) => const FleetScreen()),
+          GoRoute(
+            path: '/fleet/:id',
+            builder: (context, state) => VehicleDetailScreen(
+              vehicleId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
+          ),
+          GoRoute(path: '/live-map', builder: (context, state) => const LiveMapScreen()),
+          GoRoute(path: '/alerts', builder: (context, state) => const AlertsScreen()),
+          GoRoute(path: '/more', builder: (context, state) => const MoreScreen()),
+          // App settings live in the DOE folder for historical reasons but are
+          // app-level (API host, appearance). Routed inside the FIP shell so
+          // opening them does not strand the user in the DOE navigation.
+          GoRoute(path: '/settings', builder: (context, state) => const DoeSettingsScreen()),
+          GoRoute(path: '/platform', builder: (context, state) => const PlatformHomeScreen()),
+          GoRoute(path: '/system', builder: (context, state) => const SystemScreen()),
+          GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen()),
+          GoRoute(path: '/admin/users', builder: (context, state) => const UsersAdminScreen()),
+          GoRoute(path: '/admin/settings', builder: (context, state) => const PrivacySettingsScreen()),
+          GoRoute(path: '/my-vehicle', builder: (context, state) => const MyVehicleScreen()),
           GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
           GoRoute(path: '/scan', builder: (context, state) => const ScannerScreen()),
           GoRoute(path: '/expenses', builder: (context, state) => const ExpensesScreen()),
@@ -69,6 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/assistant', builder: (context, state) => const AssistantScreen()),
         ],
       ),
+      GoRoute(path: '/fuel', builder: (context, state) => const FuelIntelligenceScreen()),
     ],
     errorBuilder:
         (context, state) => Scaffold(
@@ -83,8 +124,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 Text(state.matchedLocation, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: () => context.go('/dashboard'),
-                  child: const Text('Back to dashboard'),
+                  onPressed: () => context.go('/home'),
+                  child: const Text('Back to home'),
                 ),
               ],
             ),
@@ -95,10 +136,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 /// Bottom navigation for the DOE section.
 ///
-/// Separate from [_AppScaffold] rather than folded into it: these four screens
-/// read the department's published weekly figures and are browsable signed
-/// out, while the app's own destinations all need an account. One bar covering
-/// both would offer a signed-out tester three tabs that bounce to login.
+/// Kept separate from the FIP shell: these screens read the department's
+/// published weekly figures and are browsable signed out, while every FIP
+/// destination needs an account. One bar covering both would offer a
+/// signed-out tester tabs that bounce to login. The Fleet destination is the
+/// way back into the app.
 class _DoeScaffold extends StatelessWidget {
   const _DoeScaffold({required this.child});
 
@@ -109,6 +151,7 @@ class _DoeScaffold extends StatelessWidget {
     (path: '/doe/search', icon: LucideIcons.search, label: 'Search'),
     (path: '/doe/history', icon: LucideIcons.chartLine, label: 'History'),
     (path: '/doe/settings', icon: LucideIcons.settings, label: 'Settings'),
+    (path: '/home', icon: LucideIcons.truck, label: 'Fleet'),
   ];
 
   @override
@@ -135,43 +178,52 @@ class _DoeScaffold extends StatelessWidget {
   }
 }
 
-/// Bottom navigation shell.
+/// The FIP shell.
 ///
-/// Five destinations, with the scanner in the centre as a raised action — it
-/// is the app's signature interaction and deserves the most reachable spot
-/// on a phone held one-handed.
-class _AppScaffold extends StatelessWidget {
-  const _AppScaffold({required this.child});
+/// Home, Fleet, Map, Alerts, More — named for what an operator is doing
+/// rather than for the data behind each screen. The alert count rides on the
+/// Alerts tab because it is the only destination that can be urgent.
+class _FipScaffold extends ConsumerWidget {
+  const _FipScaffold({required this.child});
 
   final Widget child;
 
-  static const _destinations = [
-    (path: '/dashboard', icon: LucideIcons.house, label: 'Home'),
-    (path: '/map', icon: LucideIcons.map, label: 'Map'),
-    (path: '/scan', icon: LucideIcons.scanLine, label: 'Scan'),
-    (path: '/expenses', icon: LucideIcons.receipt, label: 'Expenses'),
-    (path: '/assistant', icon: LucideIcons.sparkles, label: 'Advisor'),
-  ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
-    final index = _destinations.indexWhere((destination) => location.startsWith(destination.path));
+    final alerts = ref.watch(fleetAlertsProvider);
 
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index < 0 ? 0 : index,
-        onDestinationSelected: (selected) => context.go(_destinations[selected].path),
-        destinations: [
-          for (final destination in _destinations)
-            NavigationDestination(
-              icon: Icon(destination.icon),
-              selectedIcon: Icon(destination.icon, color: Theme.of(context).colorScheme.primary),
-              label: destination.label,
-            ),
-        ],
+      bottomNavigationBar: FipBottomNav(
+        location: location,
+        destinations: ref.watch(authProvider).fipRole.destinations,
+        alertCount: alerts.maybeWhen(data: (list) => list.length, orElse: () => 0),
       ),
     );
+  }
+}
+
+/// Home resolves by role: drivers see their own vehicle, everyone else sees
+/// the fleet. A driver who also holds a fleet role keeps the fleet view.
+class _RoleHome extends ConsumerWidget {
+  const _RoleHome();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return switch (ref.watch(authProvider).fipRole) {
+      // One vehicle, one job.
+      FipRole.driver => const DriverHomeScreen(),
+
+      // A platform administrator reaching /home directly still belongs on the
+      // platform view rather than in one tenant's operations.
+      FipRole.superAdmin => const PlatformHomeScreen(),
+
+      // Company admin, fleet manager and viewer share the operational surface.
+      // The viewer's copy is narrower because the endpoints it cannot reach
+      // return 403 and render as honest empty states, not because it is a
+      // different screen.
+      _ => const FipHomeScreen(),
+    };
   }
 }

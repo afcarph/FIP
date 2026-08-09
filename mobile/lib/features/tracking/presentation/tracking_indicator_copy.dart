@@ -78,11 +78,15 @@ class TrackingCopy {
         );
 
       case TrackingStatus.deviceNotRegistered:
+        // A driver is authorised to register their own phone and attach it to
+        // the vehicle they are assigned, so telling them to find an
+        // administrator was both wrong and a dead end.
         return const TrackingCopy(
-          headline: 'Device not registered',
+          headline: 'Device not set up',
           detail:
-              'This device is not linked to a vehicle. Your fleet administrator can set that up.',
+              'Link this phone to your assigned vehicle to start sharing your position.',
           tone: TrackingTone.attention,
+          action: 'Set up device',
         );
 
       case TrackingStatus.deviceRevoked:

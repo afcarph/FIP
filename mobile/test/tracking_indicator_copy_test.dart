@@ -72,18 +72,25 @@ void main() {
     expect(services.action, 'Open settings');
   });
 
-  test('administrator-only states do not offer the driver a dead-end button', () {
-    for (final status in [TrackingStatus.deviceNotRegistered, TrackingStatus.deviceRevoked]) {
-      final copy = TrackingCopy.forStatus(status);
+  test('a revoked device offers no dead-end button', () {
+    // Only an administrator can restore a revoked device, so there is nothing
+    // the driver could usefully tap.
+    final copy = TrackingCopy.forStatus(TrackingStatus.deviceRevoked);
 
-      expect(copy.tone, TrackingTone.attention);
-      expect(
-        copy.action,
-        isNull,
-        reason: '$status cannot be resolved on the device, so offering an action would mislead',
-      );
-      expect(copy.detail.toLowerCase(), contains('administrator'));
-    }
+    expect(copy.tone, TrackingTone.attention);
+    expect(copy.action, isNull);
+    expect(copy.detail.toLowerCase(), contains('administrator'));
+  });
+
+  test('an unregistered device points the driver at setup, not at an admin', () {
+    // A driver is authorised to register their own device and attach it to
+    // their assigned vehicle, so the old "ask your administrator" copy was
+    // both wrong and a dead end.
+    final copy = TrackingCopy.forStatus(TrackingStatus.deviceNotRegistered);
+
+    expect(copy.action, 'Set up device');
+    expect(copy.detail.toLowerCase(), isNot(contains('administrator')));
+    expect(copy.detail.toLowerCase(), contains('assigned vehicle'));
   });
 
   test('no state claims background collection', () {

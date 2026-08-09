@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/tracking_service.dart';
 import 'tracking_indicator_copy.dart';
+import '../../driver/data/device_setup.dart';
 import 'tracking_providers.dart';
 
 /// A persistent banner saying whether location is being collected.
@@ -74,6 +75,8 @@ class TrackingIndicator extends ConsumerWidget {
                       child: TextButton(
                         onPressed: () => switch (status) {
                           TrackingStatus.permissionDenied => controller.enable(),
+                          TrackingStatus.deviceNotRegistered =>
+                            ref.read(deviceSetupProvider.notifier).completeSetup(),
                           _ => controller.openSettings(status),
                         },
                         style: TextButton.styleFrom(

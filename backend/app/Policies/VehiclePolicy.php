@@ -73,6 +73,48 @@ class VehiclePolicy
             && $user->hasAnyRole([config('fip.roles.fleet_manager'), config('fip.roles.company_manager')]);
     }
 
+    /**
+     * Who may read the fuel alerts raised against one vehicle.
+     *
+     * Two different people pass this for two different reasons. A manager
+     * holds `fraud.view` and may look at any vehicle in their tenant. A driver
+     * holds no fraud permission at all and may look at exactly the vehicle
+     * they are assigned to — which is why this is not `view`: that would let a
+     * driver walk the company's vehicle ids and read every alert, which is
+     * company-wide access by enumeration.
+     */
+    public function viewAlerts(User $user, Vehicle $vehicle): bool
+    {
+        // Tenant scope first: neither reason survives crossing a company.
+        if (! $this->hasAccess($user, $vehicle)) {
+            return false;
+        }
+
+        return $user->can('fraud.view') || $this->isAssignedDriver($user, $vehicle);
+    }
+
+    /**
+     * Who may read the latest known position of one vehicle.
+     *
+     * Same shape as viewAlerts, and for the same reason. A manager holds
+     * `devices.location.view` and may look at any vehicle in their tenant. A
+     * driver holds no location permission at all and may look at exactly the
+     * vehicle they are assigned — which is the position their own phone is
+     * producing. Refusing that made the driver's own screen report their
+     * vehicle as Offline while the server held a fresh fix for it.
+     *
+     * Not `view`: that would let a driver walk the company's vehicle ids and
+     * read every position, which is fleet-wide tracking by enumeration.
+     */
+    public function viewLatestLocation(User $user, Vehicle $vehicle): bool
+    {
+        if (! $this->hasAccess($user, $vehicle)) {
+            return false;
+        }
+
+        return $user->can('devices.location.view') || $this->isAssignedDriver($user, $vehicle);
+    }
+
     private function hasAccess(User $user, Vehicle $vehicle): bool
     {
         return $user->isPlatformAdministrator()

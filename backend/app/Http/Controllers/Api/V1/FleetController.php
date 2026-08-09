@@ -34,6 +34,9 @@ class FleetController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        // Tenant scoping says which fleet; the permission says whether you may read one at all.
+        abort_unless($request->user()->can('fleet.view'), 403);
+
         $fleets = Fleet::query()
             ->forUser($request->user())
             ->withCount(['vehicles', 'drivers'])
@@ -62,8 +65,23 @@ class FleetController extends Controller
      *
      *   @OA\Response(response=200, description="Vehicles, drivers, spend, fraud and maintenance"))
      */
+    /**
+     * Fleet-wide aggregates for one company.
+     *
+     * Note for platform administrators: this returns 403 for an account with
+     * no `company_id`, which includes the seeded super administrator. That is
+     * deliberate and unchanged — the aggregates are computed for a single
+     * tenant, and a platform admin has no default one. They can still read
+     * /fleet, /fleet/drivers and /fleet/fraud-alerts, which are scoped by the
+     * query rather than by the caller's company. Choosing a company to inspect
+     * would need either a company parameter or impersonation; neither exists,
+     * and neither is implied by this endpoint.
+     */
     public function dashboard(Request $request): JsonResponse
     {
+        // Fleet-wide aggregates. Scoping alone let any signed-in company member read them.
+        abort_unless($request->user()->can('fleet.view'), 403);
+
         $user = $request->user();
 
         abort_if($user->company_id === null, 403, 'Your account is not linked to a company.');
@@ -80,6 +98,9 @@ class FleetController extends Controller
      */
     public function drivers(Request $request): JsonResponse
     {
+        // A roster of colleagues is not something every company member should read.
+        abort_unless($request->user()->can('drivers.view'), 403);
+
         $paginator = Driver::query()
             ->forUser($request->user())
             ->when($request->has('fleet_id'), fn ($q) => $q->where('fleet_id', $request->integer('fleet_id')))
@@ -107,7 +128,17 @@ class FleetController extends Controller
         $vehicle = Vehicle::findOrFail($data['vehicle_id']);
         $driver = Driver::findOrFail($data['driver_id']);
 
+        // Two separate questions, and conflating them was the bug. `update` on
+        // the vehicle answers "is this vehicle yours to touch", which an
+        // assigned driver legitimately passes -- they record odometer
+        // readings. Deciding who drives what is a management action, so it is
+        // gated on the management capability as well.
         $this->authorize('update', $vehicle);
+        abort_unless(
+            $request->user()->canAny(['fleet.assign_drivers', 'fleet.manage']),
+            403,
+            'Assigning drivers to vehicles requires fleet management permission.',
+        );
         abort_unless($driver->company_id === $vehicle->company_id, 422, 'Driver and vehicle belong to different companies.');
 
         // A vehicle and a driver may each hold only one live assignment.
@@ -223,6 +254,9 @@ class FleetController extends Controller
      */
     public function fraudAlerts(Request $request): JsonResponse
     {
+        // Company-wide alerts. Drivers read their own vehicle via /vehicles/{vehicle}/alerts instead.
+        abort_unless($request->user()->can('fraud.view'), 403);
+
         $paginator = FraudAlert::query()
             ->forUser($request->user())
             ->when($request->has('status'), fn ($q) => $q->where('status', $request->string('status')->toString()), fn ($q) => $q->unresolved())
@@ -243,9 +277,18 @@ class FleetController extends Controller
      */
     public function resolveFraudAlert(Request $request, FraudAlert $alert): JsonResponse
     {
+        // Company membership says the alert is yours to see. Resolving it is a
+        // different capability, and `fraud.resolve` already exists to express
+        // it -- the check was simply never made, so anyone in the company
+        // could close an alert, including the driver it was raised against.
         abort_unless(
             $request->user()->isPlatformAdministrator() || $alert->company_id === $request->user()->company_id,
             403,
+        );
+        abort_unless(
+            $request->user()->can('fraud.resolve'),
+            403,
+            'Resolving a fuel alert requires the fraud.resolve permission.',
         );
 
         $data = $request->validate([

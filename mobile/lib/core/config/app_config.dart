@@ -24,8 +24,6 @@ class AppConfig {
   /// the two apart at runtime.
   static bool get usingEmulatorDefault => apiBaseUrl == _emulatorHost;
 
-  static const String googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
-
   static const String appName = 'Fuel Intelligence Platform';
 
   /// Metro Manila centre — used when the user declines location access, so
