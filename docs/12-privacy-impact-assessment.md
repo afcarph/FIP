@@ -18,7 +18,7 @@ finishes reading protects nobody.
 | **Purpose** | Show a fleet operator where their own vehicles are, and give fuel and anomaly records an operating context |
 | **Lawful basis** | Employment/contractual — an operator monitoring vehicles they own, driven by people they engage. **To be confirmed by the business**, along with the driver-facing notice |
 | **Data subjects** | Drivers carrying a registered device in a company vehicle |
-| **Categories** | Coordinates, accuracy, and where the platform supplies them altitude, speed and heading; device clock and server receipt time; device and vehicle identifiers |
+| **Categories** | Coordinates, accuracy, and where the platform supplies them altitude, speed and heading; device clock (`recorded_at`) and server receipt time (`received_at`), both stored in the application timezone `Asia/Manila` rather than UTC, consistent with the rest of the schema; device and vehicle identifiers |
 | **Special category data** | None collected. Note that a movement track can *imply* sensitive facts — a clinic visit, a place of worship, a union office — even though FIP never records them as such. This is the main reason retention is bounded |
 | **Volume** | One sample per interval (default 120s) per active device, only while the app is open, skipping samples where the vehicle has not moved 50 m |
 

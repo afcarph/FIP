@@ -288,6 +288,14 @@ supplies them altitude, speed and heading; the device's own timestamp
 and vehicle it belongs to. The vehicle is stamped at write time, so reassigning
 a device later does not rewrite where it has been.
 
+**Timestamps.** Both `recorded_at` and `received_at` are stored in the
+application timezone, `Asia/Manila` — not UTC. This matches every other
+timestamp in the schema. A device reporting UTC is converted on the way in, so
+that the two columns of a single row are always on one clock: when they were
+not, a replayed position compared as newer than the current one and moved a
+vehicle backwards on the map. Clients reading the API should treat returned
+times as `Asia/Manila` unless an offset says otherwise.
+
 **Access.** Location is tenant-scoped like every other fleet record — an
 operator sees only their own company's vehicles. Two separate permissions
 apply, because they answer different questions: `devices.location.view` for
