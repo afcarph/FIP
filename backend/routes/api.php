@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\MfaController;
 use App\Http\Controllers\Api\V1\CrowdReportController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\FleetController;
 use App\Http\Controllers\Api\V1\ForecastController;
@@ -183,12 +184,28 @@ Route::prefix('v1')->group(function (): void {
         Route::get('assistant/sessions/{session}', [AssistantController::class, 'transcript']);
         Route::get('routes', [RouteController::class, 'index']);
 
+        // Devices — registration and location reporting from the driver app.
+        Route::get('devices', [DeviceController::class, 'index']);
+        Route::post('devices', [DeviceController::class, 'store']);
+        Route::get('devices/{device}', [DeviceController::class, 'show']);
+        Route::patch('devices/{device}', [DeviceController::class, 'update']);
+        Route::delete('devices/{device}', [DeviceController::class, 'destroy']);
+
+        // Location ingestion carries its own budget: a fleet flushing offline
+        // queues is a different traffic shape from someone browsing the app,
+        // and sharing a limiter would let one starve the other.
+        Route::middleware('throttle:location')->group(function (): void {
+            Route::post('devices/location', [DeviceController::class, 'storeLocation']);
+        });
+
         // Fleet
         Route::prefix('fleet')->group(function (): void {
             Route::get('/', [FleetController::class, 'index']);
             Route::get('dashboard', [FleetController::class, 'dashboard']);
             Route::get('drivers', [FleetController::class, 'drivers']);
             Route::post('assignments', [FleetController::class, 'assign']);
+            Route::get('locations', [FleetController::class, 'vehicleLocations']);
+            Route::get('vehicles/{vehicle}/locations', [FleetController::class, 'vehicleLocationHistory']);
             Route::get('fraud-alerts', [FleetController::class, 'fraudAlerts']);
             Route::patch('fraud-alerts/{alert}', [FleetController::class, 'resolveFraudAlert']);
         });

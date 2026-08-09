@@ -5,16 +5,21 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Ai\Models\FraudAlert;
+use App\Domain\Fleet\Models\DeviceLocation;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
 use App\Domain\Reporting\Services\DashboardService;
+use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Models\VehicleAssignment;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DeviceLocationResource;
 use App\Http\Resources\DriverResource;
+use App\Support\Exceptions\DomainException;
 use App\Support\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * @OA\Tag(name="Fleet", description="Fleets, drivers, assignments and fraud alerts")
@@ -122,6 +127,91 @@ class FleetController extends Controller
             'vehicle' => $vehicle->plate_number,
             'driver' => $driver->full_name,
             'assigned_at' => $assignment->assigned_at->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * @OA\Get(path="/fleet/locations", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="Latest known position of each tracked vehicle",
+     *
+     *   @OA\Response(response=200, description="One row per vehicle with a reporting device"))
+     */
+    public function vehicleLocations(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('devices.location.view'), 403);
+
+        // Read from the device's cached position rather than aggregating the
+        // history table: one row per vehicle, no window function, and the cache
+        // is maintained on write precisely so this query stays trivial.
+        $devices = UserDevice::query()
+            ->active()
+            ->whereNotNull('vehicle_id')
+            ->whereNotNull('last_location_at')
+            ->whereHas('vehicle', fn ($q) => $q->forUser($request->user()))
+            ->with('vehicle:id,plate_number,nickname,make_id,model_id,status')
+            ->get();
+
+        return ApiResponse::success($devices->map(static fn (UserDevice $device) => [
+            'vehicle_id' => $device->vehicle_id,
+            'plate_number' => $device->vehicle?->plate_number,
+            'display_name' => $device->vehicle?->display_name,
+            'device_id' => $device->getKey(),
+            'latitude' => $device->last_latitude,
+            'longitude' => $device->last_longitude,
+            'recorded_at' => $device->last_location_at?->toIso8601String(),
+            'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+        ])->values()->all());
+    }
+
+    /**
+     * @OA\Get(path="/fleet/vehicles/{vehicle}/locations", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="Location history for one vehicle",
+     *
+     *   @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date-time")),
+     *   @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date-time")),
+     *
+     *   @OA\Response(response=200, description="Bounded, ordered history"),
+     *   @OA\Response(response=422, description="Window too wide"))
+     */
+    public function vehicleLocationHistory(Request $request, Vehicle $vehicle): JsonResponse
+    {
+        // Two gates, not one. Seeing where a vehicle is now and reconstructing
+        // where it has been are different questions about a person's movements,
+        // so history carries its own permission on top of the vehicle policy.
+        $this->authorize('view', $vehicle);
+        abort_unless($request->user()->can('devices.location.history'), 403);
+
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        $maxDays = (int) config('fip.location.max_history_days');
+
+        $to = isset($data['to']) ? Carbon::parse($data['to']) : now();
+        $from = isset($data['from']) ? Carbon::parse($data['from']) : $to->copy()->subDay();
+
+        if ($from->diffInDays($to) > $maxDays) {
+            throw new DomainException(
+                sprintf('A history window may span at most %d days.', $maxDays),
+                'history_window_too_wide',
+                422,
+            );
+        }
+
+        $paginator = DeviceLocation::query()
+            ->where('vehicle_id', $vehicle->getKey())
+            ->whereBetween('recorded_at', [$from, $to])
+            // Oldest first: a track is read forwards, and a caller drawing a
+            // line does not want to reverse the page.
+            ->orderBy('recorded_at')
+            ->paginate(min(
+                (int) $request->integer('per_page', 500),
+                (int) config('fip.location.max_history_rows'),
+            ));
+
+        return ApiResponse::paginated($paginator, DeviceLocationResource::collection($paginator), [
+            'window' => ['from' => $from->toIso8601String(), 'to' => $to->toIso8601String()],
         ]);
     }
 

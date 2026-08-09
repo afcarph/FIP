@@ -24,7 +24,12 @@ class RouteServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
-        foreach (['auth', 'public', 'authenticated', 'ai', 'ocr', 'reports'] as $name) {
+        // Driven from the config keys rather than a list repeated here. The
+        // two had to be edited together, and adding `throttle:location` to a
+        // route while the name was missing from this provider failed at
+        // request time with "Rate limiter [location] is not defined" — a
+        // runtime error for what is really a declaration.
+        foreach (array_keys((array) config('fip.rate_limits', [])) as $name) {
             [$attempts, $minutes] = array_pad(
                 explode(',', (string) config("fip.rate_limits.{$name}")),
                 2,

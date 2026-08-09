@@ -31,6 +31,10 @@ class RolePermissionSeeder extends Seeder
         'expenses' => ['expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete'],
         'maintenance' => ['maintenance.view', 'maintenance.manage'],
         'fraud' => ['fraud.view', 'fraud.resolve'],
+        // Seeing where a vehicle *is* and reconstructing where it *has been*
+        // are different questions about a person's movements, so history is a
+        // separate grant rather than something implied by the first.
+        'devices' => ['devices.view', 'devices.manage', 'devices.location.view', 'devices.location.history'],
         'reports' => ['reports.view', 'reports.platform', 'station.reports'],
         'analytics' => ['analytics.view', 'analytics.platform'],
         'ai' => ['ai.use', 'ai.manage'],
@@ -69,6 +73,7 @@ class RolePermissionSeeder extends Seeder
                 'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
                 'maintenance.view', 'maintenance.manage',
                 'fraud.view', 'fraud.resolve',
+                'devices.view', 'devices.manage', 'devices.location.view', 'devices.location.history',
                 'reports.view', 'analytics.view', 'prices.view', 'stations.view', 'ai.use',
             ],
         ],
@@ -82,6 +87,10 @@ class RolePermissionSeeder extends Seeder
                 'expenses.view', 'expenses.create', 'expenses.update',
                 'maintenance.view', 'maintenance.manage',
                 'fraud.view', 'reports.view', 'analytics.view',
+                // Current position, deliberately without history: seeing the
+                // fleet on a map now is an operational need; replaying a
+                // driver's week is a different one, and needs granting.
+                'devices.view', 'devices.location.view',
                 'prices.view', 'stations.view', 'ai.use',
             ],
         ],
@@ -90,6 +99,10 @@ class RolePermissionSeeder extends Seeder
             'level' => 6,
             'permissions' => [
                 'vehicles.view', 'expenses.view', 'expenses.create',
+                // A driver registers and revokes their own handset. They get no
+                // location permission: reporting is authorised by the device
+                // registration, not by a permission to read other people.
+                'devices.view', 'devices.manage',
                 'maintenance.view', 'prices.view', 'stations.view', 'ai.use',
             ],
         ],

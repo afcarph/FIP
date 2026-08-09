@@ -8,10 +8,12 @@ use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\Pricing\Models\PriceReport;
 use App\Domain\Station\Models\GasStation;
 use App\Domain\User\Models\User;
+use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Policies\FuelPurchasePolicy;
 use App\Policies\GasStationPolicy;
 use App\Policies\PriceReportPolicy;
+use App\Policies\UserDevicePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VehiclePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -25,6 +27,7 @@ class AuthServiceProvider extends ServiceProvider
         GasStation::class => GasStationPolicy::class,
         FuelPurchase::class => FuelPurchasePolicy::class,
         PriceReport::class => PriceReportPolicy::class,
+        UserDevice::class => UserDevicePolicy::class,
     ];
 
     public function boot(): void

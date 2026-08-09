@@ -63,4 +63,9 @@ Schedule::call(function (): void {
 
 // Housekeeping.
 Schedule::command('queue:prune-failed --hours=336')->weekly()->onOneServer();
-Schedule::command('model:prune')->daily()->onOneServer();
+// --path is required, not decorative: model:prune defaults to app/Models,
+// which does not exist in this project — every model lives under
+// app/Domain/<Context>/Models. Without it the command scans an empty path and
+// reports success having pruned nothing, which is how a retention policy
+// becomes a promise instead of a mechanism.
+Schedule::command('model:prune', ['--path' => 'app/Domain'])->daily()->onOneServer();

@@ -96,6 +96,58 @@ return [
         'score_threshold' => (float) env('FIP_FUEL_ANOMALY_THRESHOLD', 0.65),
     ],
 
+    'location' => [
+        /*
+         * How often a driver device samples its position, in seconds, while the
+         * app is open. Served to the client rather than compiled into it, so
+         * the cadence can be tuned without shipping a build.
+         *
+         * No product requirement in this repository states a frequency, so this
+         * is a starting point rather than a promise: 120s is frequent enough to
+         * follow a vehicle around a city and infrequent enough not to hold the
+         * GPS radio awake. Revisit it against real battery data.
+         */
+        'sampling_interval_seconds' => (int) env('FIP_LOCATION_SAMPLING_SECONDS', 120),
+
+        // Skip a sample when the device has barely moved. A vehicle parked for
+        // an hour should cost one row, not thirty identical ones.
+        'minimum_distance_metres' => (int) env('FIP_LOCATION_MIN_DISTANCE_M', 50),
+
+        // Readings less accurate than this are rejected: a 2 km "fix" from a
+        // cell tower is worse than no position, because it looks like a position.
+        'max_accuracy_metres' => (int) env('FIP_LOCATION_MAX_ACCURACY_M', 1000),
+
+        // How far a device clock may run ahead of the server before a reading
+        // is refused. Phones drift; time machines do not exist.
+        'max_clock_skew_minutes' => (int) env('FIP_LOCATION_MAX_SKEW_MINUTES', 5),
+
+        // Largest batch one flush may carry, so an offline queue cannot arrive
+        // as a single unbounded insert.
+        'max_batch_size' => (int) env('FIP_LOCATION_MAX_BATCH', 200),
+
+        // Widest window a history query may request, and the most rows it may
+        // return. Unbounded history over a fleet is both a performance problem
+        // and a surveillance one.
+        'max_history_days' => (int) env('FIP_LOCATION_MAX_HISTORY_DAYS', 31),
+        'max_history_rows' => (int) env('FIP_LOCATION_MAX_HISTORY_ROWS', 5_000),
+
+        /*
+         * ⚠️ PROVISIONAL — REQUIRES BUSINESS AND PRIVACY APPROVAL.
+         *
+         * No approved retention period exists for a movement track. The nearest
+         * precedents in docs/07-security.md are 90 days for report geotags and
+         * 30 days for generated reports, and neither is a record of where an
+         * identifiable person has been.
+         *
+         * 30 is the shortest existing retention in this file, chosen so the
+         * default errs towards deleting sooner rather than keeping longer. It
+         * is deliberately not presented as the right answer. Set
+         * FIP_LOCATION_RETENTION_DAYS once the business has decided, and update
+         * the personal-data table in docs/07-security.md at the same time.
+         */
+        'retention_days' => (int) env('FIP_LOCATION_RETENTION_DAYS', 30),
+    ],
+
     'maintenance' => [
         'due_soon_days' => (int) env('FIP_MAINTENANCE_DUE_SOON_DAYS', 14),
         'due_soon_km' => (int) env('FIP_MAINTENANCE_DUE_SOON_KM', 500),
@@ -134,6 +186,10 @@ return [
         'authenticated' => env('FIP_RL_AUTH_USER', '120,1'),
         'ai' => env('FIP_RL_AI', '20,1'),
         'ocr' => env('FIP_RL_OCR', '10,1'),
+        // Generous per minute because a device flushes a queue in batches after
+        // signal returns, but still bounded so a compromised token cannot
+        // firehose the location table.
+        'location' => env('FIP_RL_LOCATION', '60,1'),
         'reports' => env('FIP_RL_REPORTS', '10,5'),
     ],
 
