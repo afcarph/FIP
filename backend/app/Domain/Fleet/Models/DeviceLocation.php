@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Fleet\Models;
 
+use App\Domain\Fleet\Services\LocationRetentionService;
 use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use Illuminate\Database\Eloquent\Builder;
@@ -83,8 +84,14 @@ class DeviceLocation extends Model
      */
     public function prunable(): Builder
     {
-        $days = (int) config('fip.location.retention_days');
+        // The administrator's setting first, the environment fallback second.
+        // Resolved rather than injected because the pruner instantiates models
+        // itself, and a period read at prune time is the period in force now.
+        $days = app(LocationRetentionService::class)->days();
 
+        // Nothing configured anywhere means delete nothing. An absent setting
+        // is not an instruction to erase a driver's history, and a pruner that
+        // reads a missing value as "older than zero days" would erase all of it.
         if ($days <= 0) {
             return static::query()->whereRaw('1 = 0');
         }

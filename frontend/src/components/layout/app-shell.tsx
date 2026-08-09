@@ -14,6 +14,7 @@ import {
   Receipt,
   Settings,
   Shield,
+  ShieldCheck,
   Sun,
   TrendingUp,
   Truck,
@@ -60,6 +61,12 @@ const FLEET_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Admin console', icon: Shield, roles: ['super_admin', 'system_admin'] },
+  {
+    href: '/admin/settings',
+    label: 'Privacy & retention',
+    icon: ShieldCheck,
+    roles: ['super_admin', 'system_admin'],
+  },
 ];
 
 /**

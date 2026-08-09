@@ -60,11 +60,12 @@ finishes reading protects nobody.
 ⚠️ **This is the outstanding item, and the feature should not be operated on
 real drivers until it is closed.**
 
-No approved retention period exists for a movement track. The configured
-default is **30 days** (`fip.location.retention_days`), chosen only because it
-is the shortest retention already present in the platform, so the default errs
-towards deleting sooner rather than keeping longer. It is a placeholder, not a
-recommendation.
+No approved retention period exists for a movement track. The fallback is
+**30 days** (`fip.location.retention_days`), chosen only because it is the
+shortest retention already present in the platform, so the default errs towards
+deleting sooner rather than keeping longer. It is a placeholder, not a
+recommendation, and the platform now says so out loud rather than leaving it
+to be inferred from a config comment.
 
 The nearest approved precedents are neither equivalent:
 
@@ -76,16 +77,24 @@ The nearest approved precedents are neither equivalent:
 
 **Required before launch:**
 
-1. Business and privacy owners agree a period, and set
-   `FIP_LOCATION_RETENTION_DAYS`.
+1. Business and privacy owners agree a period, and an administrator sets it
+   under *Admin → Privacy & data retention*. The change is audited, so the
+   decision has an owner and a date rather than living in a deployment file.
 2. The personal-data table in [07-security.md](07-security.md) is updated with
    the agreed figure.
 3. The driver-facing notice and the lawful basis in §12.1 are confirmed.
 
-Setting the period to `0` disables pruning rather than deleting everything —
-an unset value must never be read as "delete it all" — so an unconfigured
-environment accumulates rather than destroys. That is the safer failure, but it
-is still a failure, and it is why the decision cannot be deferred indefinitely.
+Until step 1 happens the setting reports itself as **provisional**, and the
+admin screen says so in as many words. That is deliberate: a period that is
+merely *in effect* should not be mistakable for one that was *chosen*, even
+when the two are the same number of days.
+
+An unset period prunes nothing rather than everything — an absent value must
+never be read as "delete it all" — so an unconfigured environment accumulates
+rather than destroys. That is the safer failure, but it is still a failure, and
+it is why the decision cannot be deferred indefinitely. The admin form will not
+accept `0` for the same reason: switching off retention entirely is not a
+decision that should be one keystroke away.
 
 ## 12.6 Verification
 

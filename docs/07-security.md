@@ -307,14 +307,36 @@ written to the immutable audit log. Location rows themselves are not audited
 individually — the volume would drown the log — but every read path that
 exposes history is permission-gated.
 
-**Retention.** Location history is pruned on a schedule, and the period is
-configuration (`location.retention_days`) rather than something chosen in
-code. ⚠️ **The configured default is provisional and requires business and
-privacy approval before this feature is operated on real drivers.** The nearest
-approved precedents in this document are 90 days for report geotags and 30 days
-for generated reports, but neither is a movement track of an identifiable
-person, and the correct period for one is a decision for the business rather
-than for this implementation.
+**Retention.** Location history is pruned on a schedule. The period is set by
+an administrator under *Admin → Privacy & data retention*, held in the
+`settings` table, and gated on `settings.manage` — a permission only
+`super_admin` and `system_admin` hold. A fleet manager who can see where a
+vehicle has been cannot decide how long that record survives.
+
+The environment variable `FIP_LOCATION_RETENTION_DAYS` remains as an
+installation fallback for a system nobody has configured yet, but it cannot
+override an administrator's value; when the two disagree the setting reports
+`requires_review` so somebody reconciles them. An unset period prunes nothing
+rather than everything: a missing value is not an instruction to erase history.
+
+The setting reports its own provenance, which is the point of holding it in the
+database at all:
+
+| Status | Meaning |
+|---|---|
+| `approved` | An administrator set this deliberately |
+| `provisional` | Nobody has set it; the platform is running on the fallback |
+| `requires_review` | Configured and fallback disagree; the configured value wins |
+
+⚠️ **Until the status reads `approved`, the period is provisional and requires
+business and privacy approval before this feature is operated on real drivers.**
+The nearest approved precedents in this document are 90 days for report geotags
+and 30 days for generated reports, but neither is a movement track of an
+identifiable person, and the correct period for one is a decision for the
+business rather than for this implementation.
+
+Every change is audited with its previous value, the administrator, the time and
+the request context.
 
 No location data is shared with third parties.
 

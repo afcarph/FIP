@@ -146,6 +146,13 @@ return [
          * the personal-data table in docs/07-security.md at the same time.
          */
         'retention_days' => (int) env('FIP_LOCATION_RETENTION_DAYS', 30),
+
+        /*
+         * Upper bound on what an administrator may set through the admin UI.
+         * A year is already a long time to hold a movement track; anything
+         * beyond it should require a conversation, not a form field.
+         */
+        'retention_max_days' => (int) env('FIP_LOCATION_RETENTION_MAX_DAYS', 365),
     ],
 
     'maintenance' => [

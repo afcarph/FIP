@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\Admin\AiModelController;
 use App\Http\Controllers\Api\V1\Admin\AuditController;
 use App\Http\Controllers\Api\V1\Admin\ModerationController;
+use App\Http\Controllers\Api\V1\Admin\SettingsController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
 use App\Http\Controllers\Api\V1\AssistantController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
@@ -255,6 +256,13 @@ Route::prefix('v1')->group(function (): void {
             Route::get('audit-logs', [AuditController::class, 'index']);
             Route::get('login-attempts', [AuditController::class, 'loginAttempts']);
             Route::get('api-metrics', [AuditController::class, 'apiMetrics']);
+        });
+
+        // Retention decides what the platform deletes, so it sits behind the
+        // same permission that guards every other persisted setting.
+        Route::middleware('role_or_permission:super_admin|system_admin|settings.manage')->group(function (): void {
+            Route::get('settings/privacy', [SettingsController::class, 'privacy']);
+            Route::put('settings/privacy/location-retention', [SettingsController::class, 'updateLocationRetention']);
         });
 
         Route::middleware('role_or_permission:super_admin|system_admin|ai.manage')->group(function (): void {
