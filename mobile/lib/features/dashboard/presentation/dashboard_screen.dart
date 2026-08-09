@@ -9,6 +9,7 @@ import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/forecast_card.dart';
 import '../../../shared/widgets/stat_tile.dart';
+import '../../tracking/presentation/tracking_indicator.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -93,6 +94,13 @@ class _DashboardBody extends ConsumerWidget {
               ],
             ),
           ),
+        ),
+
+        // Above the figures, not buried under them. Whether the vehicle's
+        // position is being shared outranks any number on this screen.
+        const SliverPadding(
+          padding: EdgeInsets.fromLTRB(20, 4, 20, 4),
+          sliver: SliverToBoxAdapter(child: TrackingIndicator()),
         ),
 
         // Headline figures

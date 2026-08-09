@@ -17,10 +17,16 @@ a driver or a vehicle is outstanding.
 ⚠️ **Do not run this pilot on real drivers while the retention period reports
 `provisional`.**
 
-Check *Admin → Privacy & data retention* first. The status must read
-**Approved**, meaning an administrator set the period deliberately after
-business and privacy sign-off. See
+Check *Admin → Privacy & data retention* in the **pilot environment**. The
+status must read **Approved**, meaning an administrator set the period
+deliberately. See
 [12-privacy-impact-assessment.md](12-privacy-impact-assessment.md) §12.5.
+
+The organisation's operational retention decision is **30 days**. This is an
+operational choice, not a legal requirement — no statute sets it, and it can be
+revisited. It has been configured and verified in development; the pilot
+environment must be configured separately, because the setting lives in the
+database and does not travel with the code.
 
 A pilot is real collection from real people. Running one under a placeholder
 period means collecting movement data with no answer to "how long are you
@@ -188,11 +194,15 @@ index growth · database growth.
 Confirm the driver can tell that tracking is active, why, and what happens if
 permission is denied.
 
-> ⚠️ **Known gap, expected to fail.** The app has no persistent tracking
-> indicator today. This is recorded in the PIA as a residual risk: a driver who
-> leaves the app open off-shift keeps reporting with nothing on screen saying
-> so. Document the finding here; do not fix it mid-pilot, because changing the
-> app under test invalidates tests 3, 9 and 10.
+A persistent indicator sits above the dashboard figures, present in every
+state rather than only when something is wrong. Confirm on real devices that
+it reads correctly while driving, that the driver notices it, and that the
+switch is the only thing that starts sharing.
+
+> Previously listed as an expected failure. The indicator was built before the
+> pilot began, so this is now a test with an expected pass rather than a known
+> gap. It was deliberately added *before* any driving started — changing the
+> app mid-pilot would have invalidated tests 3, 9 and 10.
 
 ### Test 13 — Latest location
 While driving, confirm the API returns the correct vehicle, position and latest

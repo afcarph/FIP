@@ -55,17 +55,21 @@ finishes reading protects nobody.
 | Erasure | Device revocation stops collection but **retains history**, because the record of where a company vehicle went is the operator's operational record. Erasure of the history itself is a business decision and has no self-service route today |
 | Transparency | [07-security.md](07-security.md) §7.4 and the in-app permission rationale |
 
-## 12.5 Retention — the open decision
+## 12.5 Retention
 
-⚠️ **This is the outstanding item, and the feature should not be operated on
-real drivers until it is closed.**
+⚠️ **Each environment must be configured separately. The feature should not be
+operated on real drivers anywhere the status still reads `provisional`.**
 
-No approved retention period exists for a movement track. The fallback is
-**30 days** (`fip.location.retention_days`), chosen only because it is the
-shortest retention already present in the platform, so the default errs towards
-deleting sooner rather than keeping longer. It is a placeholder, not a
-recommendation, and the platform now says so out loud rather than leaving it
-to be inferred from a config comment.
+The organisation's retention period for a movement track is **30 days**. This
+is an operational decision, not a legal requirement — no statute prescribes a
+period for this data, and the figure can be revisited without anyone being in
+breach. It was chosen as the shortest retention already present in the
+platform, so it errs towards deleting sooner rather than keeping longer.
+
+The same 30 days is also the code-level fallback (`fip.location.retention_days`)
+for an installation nobody has configured. The two are deliberately distinct:
+one is a decision, the other is a default, and the setting's status
+distinguishes them even when the number is identical.
 
 The nearest approved precedents are neither equivalent:
 
@@ -75,14 +79,12 @@ The nearest approved precedents are neither equivalent:
 | Generated reports | 30 days | Derived artefacts, not personal data |
 | Fill-up records with coordinates | 5 years | Retained for statutory financial reasons |
 
-**Required before launch:**
+**Required in every environment before it carries real drivers:**
 
-1. Business and privacy owners agree a period, and an administrator sets it
-   under *Admin → Privacy & data retention*. The change is audited, so the
-   decision has an owner and a date rather than living in a deployment file.
-2. The personal-data table in [07-security.md](07-security.md) is updated with
-   the agreed figure.
-3. The driver-facing notice and the lawful basis in §12.1 are confirmed.
+1. An administrator sets the period under *Admin → Privacy & data retention*.
+   The change is audited, so the decision has an owner and a date rather than
+   living in a deployment file. Done in development; outstanding elsewhere.
+2. The driver-facing notice and the lawful basis in §12.1 are confirmed.
 
 Until step 1 happens the setting reports itself as **provisional**, and the
 admin screen says so in as many words. That is deliberate: a period that is
