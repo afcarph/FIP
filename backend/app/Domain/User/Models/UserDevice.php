@@ -32,6 +32,9 @@ use Illuminate\Support\Carbon;
  * @property float|null $last_latitude
  * @property float|null $last_longitude
  * @property Carbon|null $last_location_at
+ * @property int|null $battery_percentage
+ * @property string|null $battery_state
+ * @property Carbon|null $battery_updated_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User|null $user
@@ -72,10 +75,12 @@ class UserDevice extends Model
     ];
 
     /*
-     * Deliberately absent from $fillable: revoked_at, revoked_by and the
-     * last_* location cache. Revocation is a security decision that goes
-     * through revoke(), and the cache belongs to the ingestion service — both
-     * would be assignable from a request payload otherwise.
+     * Deliberately absent from $fillable: revoked_at, revoked_by, the last_*
+     * location cache and the battery_* health cache. Revocation is a security
+     * decision that goes through revoke(), and the two caches belong to the
+     * services that own them — all would be assignable from a request payload
+     * otherwise. Battery in particular is written only by the device reporting
+     * about itself, never by a client editing a device.
      */
 
     protected $hidden = ['biometric_key'];
@@ -89,6 +94,8 @@ class UserDevice extends Model
             'last_latitude' => 'float',
             'last_longitude' => 'float',
             'last_location_at' => 'datetime',
+            'battery_percentage' => 'integer',
+            'battery_updated_at' => 'datetime',
         ];
     }
 
@@ -101,6 +108,51 @@ class UserDevice extends Model
     public function canReportLocation(): bool
     {
         return ! $this->isRevoked() && $this->vehicle_id !== null;
+    }
+
+    /**
+     * Whether the battery reading is recent enough to mean anything.
+     *
+     * A device that stopped reporting still holds the last percentage it sent.
+     * Shown unqualified, a phone that died at 4% yesterday looks like a phone
+     * on 4% now, and someone goes looking for a van that is simply parked with
+     * a flat handset. Past this window the reading is history, not status.
+     */
+    public function hasFreshBattery(): bool
+    {
+        return $this->battery_updated_at !== null
+            && $this->battery_updated_at->gt(now()->subMinutes(
+                (int) config('fip.device_health.battery_stale_after_minutes'),
+            ));
+    }
+
+    /**
+     * Whether the device has reported recently enough to be called online.
+     *
+     * Deliberately derived from last_seen_at rather than from tracking state:
+     * "online" here means the server has heard from it, which is the only thing
+     * the server can honestly claim. A device may be online and not tracking.
+     */
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at !== null
+            && $this->last_seen_at->gt(now()->subMinutes(
+                (int) config('fip.device_health.offline_after_minutes'),
+            ));
+    }
+
+    public function isCharging(): bool
+    {
+        return in_array($this->battery_state, ['charging', 'full'], true);
+    }
+
+    /** Low enough to be worth a fleet operator's attention, and believable. */
+    public function hasLowBattery(): bool
+    {
+        return $this->hasFreshBattery()
+            && ! $this->isCharging()
+            && $this->battery_percentage !== null
+            && $this->battery_percentage <= (int) config('fip.device_health.low_battery_pct');
     }
 
     public function scopeActive(Builder $query): Builder
@@ -129,6 +181,44 @@ class UserDevice extends Model
         return $user->isPlatformAdministrator()
             ? $query
             : $query->where('user_devices.user_id', $user->getKey());
+    }
+
+    /**
+     * Devices whose health a fleet operator may see.
+     *
+     * Narrower than "every device in the company", and deliberately so. The
+     * rule elsewhere in this model is that a device belongs to a person, not a
+     * tenant — a manager runs the vehicles, not their drivers' handsets. What
+     * changes that here is the vehicle association: a phone attached to a
+     * company truck is what makes that truck visible on the map, so its charge
+     * and its silence are the operator's business.
+     *
+     * So the association is the whole test. A driver's personal handset with no
+     * vehicle on it stays invisible to their manager, exactly as before, and a
+     * driver who detaches their phone from the vehicle leaves this view with it.
+     *
+     * Revoked devices remain listed: "this device was cut off" is precisely the
+     * kind of thing a health view exists to show.
+     */
+    public function scopeForFleetHealth(Builder $query, ?User $user): Builder
+    {
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->whereNotNull('user_devices.vehicle_id');
+
+        if ($user->isPlatformAdministrator()) {
+            return $query;
+        }
+
+        // Fail closed. A user with no company has no fleet, so they see no
+        // fleet devices — not every device whose vehicle also has no company.
+        if ($user->company_id === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('vehicle', fn (Builder $vehicle) => $vehicle->where('company_id', $user->company_id));
     }
 
     public function user(): BelongsTo

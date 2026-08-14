@@ -9,6 +9,9 @@ import type {
   AssistantReply,
   CheapestStation,
   DashboardData,
+  DeviceHealth,
+  DeviceHealthFilter,
+  DeviceHealthSummary,
   ExecutiveDashboard,
   ExpenseSummary,
   FleetAlert,
@@ -60,6 +63,8 @@ export const queryKeys = {
   fuelReadings: (id: number, filters?: Record<string, unknown>) =>
     ['vehicles', id, 'fuel-readings', filters] as const,
   fleetAlerts: (filters?: Record<string, unknown>) => ['fleet', 'alerts', filters] as const,
+  fleetDevices: (filter?: string) => ['fleet', 'devices', filter ?? 'all'] as const,
+  fleetDevice: (id: number) => ['fleet', 'devices', id] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
   notifications: (unread: boolean) => ['notifications', unread] as const,
@@ -478,5 +483,43 @@ export function useRefuelRecommendation(vehicleId?: number, tankLevelPct?: numbe
         })
       ).data,
     staleTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Device health for the fleet, with the filter counts that go on the chips.
+ *
+ * The summary is returned alongside the page rather than derived from it: the
+ * counts describe the whole fleet, and a filtered page of 25 cannot say how
+ * many devices are offline.
+ *
+ * Refetched on an interval because this is a liveness view — a page that says
+ * "online" for ten minutes after a device went quiet is worse than no page.
+ */
+export function useFleetDevices(filter?: DeviceHealthFilter) {
+  return useQuery({
+    queryKey: queryKeys.fleetDevices(filter),
+    queryFn: async () => {
+      const response = await api.get<DeviceHealth[]>(
+        '/fleet/devices',
+        filter ? { filter } : undefined,
+      );
+
+      return {
+        devices: response.data,
+        summary: response.meta?.summary as DeviceHealthSummary | undefined,
+        pagination: response.meta?.pagination,
+      };
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export function useFleetDevice(id: number) {
+  return useQuery({
+    queryKey: queryKeys.fleetDevice(id),
+    queryFn: async () => (await api.get<DeviceHealth>(`/fleet/devices/${id}`)).data,
+    enabled: Number.isFinite(id) && id > 0,
+    refetchInterval: 60_000,
   });
 }

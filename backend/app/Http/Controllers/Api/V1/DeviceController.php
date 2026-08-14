@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Fleet\Services\DeviceHealthService;
 use App\Domain\Fleet\Services\DeviceRegistrationService;
 use App\Domain\Fleet\Services\LocationIngestService;
 use App\Domain\User\Models\UserDevice;
@@ -11,6 +12,7 @@ use App\Domain\User\Services\SubscriptionLimitService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Device\RegisterDeviceRequest;
+use App\Http\Requests\Device\ReportDeviceHealthRequest;
 use App\Http\Requests\Device\StoreLocationBatchRequest;
 use App\Http\Resources\DeviceResource;
 use App\Support\Exceptions\DomainException;
@@ -27,6 +29,7 @@ class DeviceController extends Controller
         private readonly DeviceRegistrationService $devices,
         private readonly LocationIngestService $locations,
         private readonly SubscriptionLimitService $limits,
+        private readonly DeviceHealthService $health,
     ) {}
 
     /**
@@ -187,5 +190,44 @@ class DeviceController extends Controller
             '%d position(s) recorded.',
             $result['accepted'],
         ));
+    }
+
+    /**
+     * @OA\Post(path="/devices/health", tags={"Devices"}, security={{"bearerAuth":{}}},
+     *   summary="Report this device's own battery health",
+     *
+     *   @OA\Response(response=200, description="Recorded"),
+     *   @OA\Response(response=403, description="Device unknown or revoked"),
+     *   @OA\Response(response=422, description="Implausible reading"))
+     */
+    public function reportHealth(ReportDeviceHealthRequest $request): JsonResponse
+    {
+        // Resolved from the session plus the header, exactly as location is:
+        // a device may report about itself and about nothing else. There is no
+        // device id in the body to substitute for somebody else's.
+        $device = $this->devices->resolve($request->user(), $request->header('X-Device-Id'));
+
+        if ($device === null) {
+            throw new DomainException(
+                'This device is not registered.',
+                'device_not_registered',
+                403,
+            );
+        }
+
+        // A revoked device is cut off from writing, and battery is a write. It
+        // also stops the health view from showing a revoked handset as freshly
+        // reporting, which would undercut the point of revoking it.
+        if ($device->isRevoked()) {
+            throw new DomainException(
+                'This device has been revoked.',
+                'device_revoked',
+                403,
+            );
+        }
+
+        $this->health->record($device, $request->validated());
+
+        return ApiResponse::success(null, 'Device health recorded.');
     }
 }

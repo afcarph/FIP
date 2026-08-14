@@ -155,6 +155,37 @@ return [
         'retention_max_days' => (int) env('FIP_LOCATION_RETENTION_MAX_DAYS', 365),
     ],
 
+    'device_health' => [
+        /*
+         * How long after its last contact a device is called offline.
+         *
+         * Derived from the sampling interval rather than picked freely: a
+         * device reports roughly every `location.sampling_interval_seconds`,
+         * so anything under a couple of intervals would flag a device that
+         * merely missed one fix in a car park. Three intervals is 6 minutes
+         * at the current cadence; 15 gives room for a tunnel, a lift, and a
+         * queue flushed late without crying wolf.
+         */
+        'offline_after_minutes' => (int) env('FIP_DEVICE_OFFLINE_MINUTES', 15),
+
+        /*
+         * Past this, a battery reading is history rather than status. A device
+         * that stopped reporting still holds the last percentage it sent, and
+         * showing that as current would send someone looking for a van whose
+         * phone is simply flat. Longer than the offline window on purpose: a
+         * recently-offline device's last reading is still the most useful
+         * thing anyone can say about it.
+         */
+        'battery_stale_after_minutes' => (int) env('FIP_DEVICE_BATTERY_STALE_MINUTES', 60),
+
+        /*
+         * The charge at which a tracking device is worth someone's attention.
+         * A phone below this will likely stop reporting before a shift ends,
+         * and a vehicle whose device dies is a vehicle nobody can see.
+         */
+        'low_battery_pct' => (int) env('FIP_DEVICE_LOW_BATTERY_PCT', 20),
+    ],
+
     /*
      * Subscription capacity.
      *

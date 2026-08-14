@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import 'device_health_reporter.dart';
 import 'location_queue.dart';
 
 /// Why tracking is not running, when it is not.
@@ -34,12 +35,17 @@ enum TrackingStatus {
 /// Positions go to a persistent queue first and are uploaded from there, so a
 /// tunnel costs latency rather than data.
 class TrackingService {
-  TrackingService({required ApiClient api, LocationQueue? queue})
-    : _api = api,
-      _queue = queue ?? LocationQueue();
+  TrackingService({
+    required ApiClient api,
+    LocationQueue? queue,
+    DeviceHealthReporter? health,
+  }) : _api = api,
+       _queue = queue ?? LocationQueue(),
+       _health = health ?? DeviceHealthReporter(api: api);
 
   final ApiClient _api;
   final LocationQueue _queue;
+  final DeviceHealthReporter _health;
 
   Timer? _timer;
   Position? _lastSampled;
@@ -93,10 +99,25 @@ class TrackingService {
     }
 
     _timer?.cancel();
+
+    // A device coming back should say where it stands rather than stay quiet
+    // because its charge happens to match what it last reported.
+    _health.reset();
+
     // Sample immediately so the first position does not wait a full interval —
     // a driver who has just opened the app should appear on the map now.
     unawaited(_sample(minimumDistanceMetres));
-    _timer = Timer.periodic(interval, (_) => unawaited(_sample(minimumDistanceMetres)));
+    unawaited(_health.report());
+
+    _timer = Timer.periodic(interval, (_) {
+      unawaited(_sample(minimumDistanceMetres));
+
+      // Reported on the same tick, but deliberately not from inside _sample:
+      // the movement filter returns early for a stationary device, and a
+      // parked van whose phone is dying is exactly the case this exists for.
+      // Health is also independent of whether a position was queued at all.
+      unawaited(_health.report());
+    });
 
     return _emit(TrackingStatus.running);
   }

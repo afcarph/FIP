@@ -59,6 +59,56 @@ class UserDevicePolicy
     }
 
     /**
+     * See the operational health of the fleet's devices.
+     *
+     * This is the one read that crosses from ownership into tenancy, and it is
+     * kept as narrow as the need. A vehicle is only visible on the map while
+     * the handset in it is awake and charged, so a silent or flat device is an
+     * operational fact about the vehicle, not gossip about its driver.
+     *
+     * What that buys is health, not history. It does not imply `view` on the
+     * device, `viewHistory` on its track, or any right to rename it, re-point
+     * it or read its push credentials. And the listing is scoped by
+     * UserDevice::scopeForFleetHealth to devices attached to one of the
+     * company's vehicles — a driver's personal handset is not in it.
+     */
+    public function viewFleetHealth(User $user): bool
+    {
+        if ($user->isPlatformAdministrator()) {
+            return true;
+        }
+
+        return $user->company_id !== null
+            && $user->hasAnyRole([
+                config('fip.roles.fleet_manager'),
+                config('fip.roles.company_manager'),
+            ]);
+    }
+
+    /**
+     * The health of one specific device.
+     *
+     * Re-checks the tenancy that the listing scope applies, because a detail
+     * route takes an id from the caller and a listing does not. Without this,
+     * knowing a device id would be enough to read any device's health.
+     */
+    public function viewHealth(User $user, UserDevice $device): bool
+    {
+        if ($this->view($user, $device)) {
+            return true;
+        }
+
+        if (! $this->viewFleetHealth($user)) {
+            return false;
+        }
+
+        $companyId = $device->vehicle?->company_id;
+
+        return $companyId !== null
+            && ($user->isPlatformAdministrator() || $companyId === $user->company_id);
+    }
+
+    /**
      * Reading where a device has been is a stricter question than seeing that
      * the device exists, so it carries its own permission rather than being
      * implied by `view`.

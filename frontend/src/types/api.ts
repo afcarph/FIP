@@ -670,3 +670,51 @@ export interface RefuelRecommendation {
   effective_on?: string;
   drivers?: ForecastDriver[];
 }
+
+/**
+ * A tracking device as a fleet operator sees it.
+ *
+ * `battery.is_fresh` is not decoration. A device that stopped reporting still
+ * holds the last percentage it sent, so rendering `percentage` without checking
+ * freshness shows yesterday's charge as today's — and sends somebody looking
+ * for a van whose phone is simply flat.
+ *
+ * `is_online` and `is_tracking` are different questions and both are needed:
+ * online means the server has heard from the device, tracking means it is
+ * entitled to report positions at all. A revoked handset can be the first
+ * without being the second.
+ */
+export interface DeviceHealth {
+  id: number;
+  device_name: string | null;
+  platform: string;
+  app_version: string | null;
+  os_version: string | null;
+  driver: { id: number; name: string; email: string } | null;
+  vehicle: { id: number; plate_number: string; display_name: string | null } | null;
+  battery: {
+    percentage: number | null;
+    state: string | null;
+    updated_at: string | null;
+    is_fresh: boolean;
+    is_charging: boolean;
+    is_low: boolean;
+  };
+  is_online: boolean;
+  is_tracking: boolean;
+  is_revoked: boolean;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  last_location: { latitude: number; longitude: number; recorded_at: string } | null;
+  registered_at: string | null;
+}
+
+export type DeviceHealthFilter = 'online' | 'offline' | 'low_battery' | 'charging';
+
+export interface DeviceHealthSummary {
+  total: number;
+  online: number;
+  offline: number;
+  low_battery: number;
+  charging: number;
+}

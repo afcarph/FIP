@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Auth\MfaController;
 use App\Http\Controllers\Api\V1\CrowdReportController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\DeviceHealthController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\FleetController;
 use App\Http\Controllers\Api\V1\ForecastController;
@@ -199,6 +200,11 @@ Route::prefix('v1')->group(function (): void {
         // and sharing a limiter would let one starve the other.
         Route::middleware('throttle:location')->group(function (): void {
             Route::post('devices/location', [DeviceController::class, 'storeLocation']);
+
+            // Health rides the same budget as location. It is sent from the
+            // same timer by the same devices, so a separate limiter would only
+            // let one starve the other.
+            Route::post('devices/health', [DeviceController::class, 'reportHealth']);
         });
 
         // Fleet
@@ -211,6 +217,12 @@ Route::prefix('v1')->group(function (): void {
             Route::get('vehicles/{vehicle}/locations', [FleetController::class, 'vehicleLocationHistory']);
             Route::get('fraud-alerts', [FleetController::class, 'fraudAlerts']);
             Route::patch('fraud-alerts/{alert}', [FleetController::class, 'resolveFraudAlert']);
+
+            // Device health. Read-only, and authorised in the controller by
+            // UserDevicePolicy rather than by this prefix — sitting under
+            // /fleet is routing, not permission.
+            Route::get('devices', [DeviceHealthController::class, 'index']);
+            Route::get('devices/{device}', [DeviceHealthController::class, 'show']);
         });
 
         // Notifications

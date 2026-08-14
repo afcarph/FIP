@@ -35,6 +35,10 @@ dependencies:
   geolocator: ^13.0.2
   geocoding: ^3.0.0
 
+  # Device health. Needs no permission on either platform and starts no
+  # background work — it reads a value the OS already publishes.
+  battery_plus: ^6.2.1
+
   # --- Camera & OCR upload ------------------------------------------------
   image_picker: ^1.1.2
   image_cropper: ^8.0.2

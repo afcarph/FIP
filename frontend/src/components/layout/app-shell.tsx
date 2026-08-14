@@ -15,6 +15,7 @@ import {
   Settings,
   Shield,
   ShieldCheck,
+  Smartphone,
   Sun,
   TrendingUp,
   Truck,
@@ -53,6 +54,12 @@ const FLEET_NAV: NavItem[] = [
     href: '/fleet',
     label: 'Fleet',
     icon: Truck,
+    roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
+  },
+  {
+    href: '/fleet/devices',
+    label: 'Device health',
+    icon: Smartphone,
     roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
   },
   // A Reports item pointed at /reports, which does not exist — a fleet
