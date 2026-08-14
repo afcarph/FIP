@@ -8,6 +8,7 @@ use App\Domain\Ai\Models\FraudAlert;
 use App\Domain\Fleet\Services\FuelLevelService;
 use App\Domain\Maintenance\Services\MaintenanceService;
 use App\Domain\User\Models\UserDevice;
+use App\Domain\User\Services\SubscriptionLimitService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Repositories\VehicleRepository;
 use App\Http\Controllers\Controller;
@@ -30,6 +31,7 @@ class VehicleController extends Controller
         private readonly VehicleRepository $vehicles,
         private readonly MaintenanceService $maintenance,
         private readonly FuelLevelService $fuelLevels,
+        private readonly SubscriptionLimitService $limits,
     ) {}
 
     /**
@@ -56,6 +58,10 @@ class VehicleController extends Controller
     public function store(StoreVehicleRequest $request): JsonResponse
     {
         $this->authorize('create', Vehicle::class);
+
+        // Capacity, after authorisation: a caller who may not create vehicles
+        // should be told that, not told their plan is full.
+        $this->limits->assertCanAdd($request->user(), SubscriptionLimitService::VEHICLES);
 
         $data = $request->validated();
 

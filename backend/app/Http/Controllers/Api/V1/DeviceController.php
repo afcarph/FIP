@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Fleet\Services\DeviceRegistrationService;
 use App\Domain\Fleet\Services\LocationIngestService;
 use App\Domain\User\Models\UserDevice;
+use App\Domain\User\Services\SubscriptionLimitService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Device\RegisterDeviceRequest;
@@ -25,6 +26,7 @@ class DeviceController extends Controller
     public function __construct(
         private readonly DeviceRegistrationService $devices,
         private readonly LocationIngestService $locations,
+        private readonly SubscriptionLimitService $limits,
     ) {}
 
     /**
@@ -53,6 +55,18 @@ class DeviceController extends Controller
      */
     public function store(RegisterDeviceRequest $request): JsonResponse
     {
+        // Registration is idempotent on (user, device_uuid), so a driver
+        // re-running setup on a phone they already registered must not be
+        // refused for capacity — only a genuinely new device counts.
+        $alreadyRegistered = UserDevice::query()
+            ->where('user_id', $request->user()->getKey())
+            ->where('device_uuid', $request->string('device_uuid')->toString())
+            ->exists();
+
+        if (! $alreadyRegistered) {
+            $this->limits->assertCanAdd($request->user(), SubscriptionLimitService::DEVICES);
+        }
+
         $device = $this->devices->register($request->user(), $request->validated());
 
         return ApiResponse::created(

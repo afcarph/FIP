@@ -155,6 +155,48 @@ return [
         'retention_max_days' => (int) env('FIP_LOCATION_RETENTION_MAX_DAYS', 365),
     ],
 
+    /*
+     * Subscription capacity.
+     *
+     * ⚠️ PROVISIONAL — REQUIRES BUSINESS APPROVAL.
+     *
+     * No approved plan exists in this repository: `companies.subscription_tier`
+     * has held free/business/enterprise since the first migration and nothing
+     * has ever read it. The numbers below are placeholders chosen so no
+     * existing company is already over a limit; they are not a price list, and
+     * they are deliberately configuration rather than code so the business can
+     * set them without a deploy.
+     *
+     * A null limit means unlimited. An unknown or missing tier falls back to
+     * `free`, which is the safest direction: a misconfigured tenant gets the
+     * smallest allowance rather than an unbounded one.
+     *
+     * Limits are checked only when something new is created. Nothing existing
+     * is ever removed, hidden or made read-only by a tier — a driver must not
+     * lose access to their vehicle mid-shift because of a billing state.
+     */
+    'subscription' => [
+        'default_tier' => env('FIP_DEFAULT_TIER', 'free'),
+
+        'tiers' => [
+            'free' => [
+                'vehicles' => (int) env('FIP_TIER_FREE_VEHICLES', 3),
+                'seats' => (int) env('FIP_TIER_FREE_SEATS', 2),
+                'devices' => (int) env('FIP_TIER_FREE_DEVICES', 3),
+            ],
+            'business' => [
+                'vehicles' => (int) env('FIP_TIER_BUSINESS_VEHICLES', 25),
+                'seats' => (int) env('FIP_TIER_BUSINESS_SEATS', 15),
+                'devices' => (int) env('FIP_TIER_BUSINESS_DEVICES', 30),
+            ],
+            'enterprise' => [
+                'vehicles' => null,
+                'seats' => null,
+                'devices' => null,
+            ],
+        ],
+    ],
+
     'maintenance' => [
         'due_soon_days' => (int) env('FIP_MAINTENANCE_DUE_SOON_DAYS', 14),
         'due_soon_km' => (int) env('FIP_MAINTENANCE_DUE_SOON_KM', 500),

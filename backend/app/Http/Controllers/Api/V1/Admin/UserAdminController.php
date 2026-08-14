@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Domain\User\Models\User;
 use App\Domain\User\Repositories\UserRepository;
+use App\Domain\User\Services\SubscriptionLimitService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Support\Http\ApiResponse;
@@ -21,7 +22,10 @@ use Spatie\Permission\Models\Role;
  */
 class UserAdminController extends Controller
 {
-    public function __construct(private readonly UserRepository $users) {}
+    public function __construct(
+        private readonly UserRepository $users,
+        private readonly SubscriptionLimitService $limits,
+    ) {}
 
     /**
      * @OA\Get(path="/admin/users", tags={"Admin — Users"}, security={{"bearerAuth":{}}},
@@ -63,6 +67,14 @@ class UserAdminController extends Controller
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['string', 'exists:roles,name'],
         ]);
+
+        // Seats are counted against the company the user is being added to,
+        // which is not necessarily the creator's own — a platform admin may be
+        // adding somebody to a tenant they do not belong to.
+        $this->limits->assertCompanyCanAdd(
+            $data['company_id'] ?? $request->user()?->company_id,
+            SubscriptionLimitService::SEATS,
+        );
 
         $user = $this->users->create(collect($data)->except('roles')->all() + ['status' => 'active']);
         $user->forceFill(['email_verified_at' => now()])->save();
