@@ -35,15 +35,14 @@ class UserAdminController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $query = $this->users->query()->with('company:id,name', 'roles:id,name,label');
-
-        if ($request->has('role')) {
-            $query->whereHas('roles', fn ($q) => $q->where('name', $request->string('role')->toString()));
-        }
-
-        $paginator = $this->users->paginate(
+        // Scoped to the caller's own tenant. The role filter is handed to the
+        // repository rather than applied here: it used to be applied to a query
+        // that was then discarded, so filtering by role returned everyone.
+        $paginator = $this->users->paginateForActor(
+            $request->user(),
             (int) $request->integer('per_page', 25),
             $request->only(['search', 'status', 'company_id', 'sort']),
+            $request->has('role') ? $request->string('role')->toString() : null,
         );
 
         return ApiResponse::paginated($paginator, UserResource::collection($paginator));

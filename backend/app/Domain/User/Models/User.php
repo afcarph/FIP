@@ -14,6 +14,7 @@ use App\Domain\Station\Models\City;
 use App\Domain\Station\Models\GasStation;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Concerns\Auditable;
+use App\Support\Concerns\HasCompanyScope;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -134,6 +135,7 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 class User extends Authenticatable implements JWTSubject
 {
     use Auditable;
+    use HasCompanyScope;
     use HasFactory;
     use HasRoles;
     use Notifiable;
@@ -202,6 +204,17 @@ class User extends Authenticatable implements JWTSubject
     }
 
     // ------------------------------------------------------------ Domain ---
+
+    /**
+     * A user belonging to no company is not a tenant, so the only user record a
+     * tenant-scoped listing may show them is their own. Without this override
+     * the trait falls through to "see nothing", which is safe but would hide a
+     * private motorist from themselves.
+     */
+    protected function ownerColumn(): ?string
+    {
+        return 'id';
+    }
 
     public function isPlatformAdministrator(): bool
     {
