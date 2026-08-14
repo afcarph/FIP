@@ -52,8 +52,8 @@ class MoreScreen extends ConsumerWidget {
                   _Tile(
                     icon: Icons.document_scanner_rounded,
                     title: 'Scan a receipt',
-                    subtitle: 'Record a fill-up from a photo',
-                    onTap: () => context.push('/scan'),
+                    subtitle: 'Read a fill-up from a photo',
+                    onTap: () => context.push('/scan-receipt'),
                   ),
                   _Tile(
                     icon: Icons.receipt_long_rounded,
@@ -73,6 +73,12 @@ class MoreScreen extends ConsumerWidget {
             ),
             _Group(
               children: [
+                _Tile(
+                  icon: Icons.qr_code_scanner_rounded,
+                  title: 'Scan a price board',
+                  subtitle: 'Report pump prices for other drivers',
+                  onTap: () => context.push('/scan'),
+                ),
                 _Tile(
                   icon: Icons.local_offer_rounded,
                   title: 'Latest DOE prices',

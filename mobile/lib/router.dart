@@ -20,6 +20,7 @@ import 'features/admin/presentation/system_screen.dart';
 import 'features/admin/presentation/users_admin_screen.dart';
 import 'features/driver/presentation/driver_home_screen.dart';
 import 'features/driver/presentation/my_vehicle_screen.dart';
+import 'features/expenses/presentation/receipt_scan_screen.dart';
 import 'features/reports/presentation/reports_screen.dart';
 import 'features/fleet/presentation/fip_home_screen.dart';
 import 'features/fleet/presentation/fleet_screen.dart';
@@ -102,6 +103,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/users', builder: (context, state) => const UsersAdminScreen()),
           GoRoute(path: '/admin/settings', builder: (context, state) => const PrivacySettingsScreen()),
           GoRoute(path: '/my-vehicle', builder: (context, state) => const MyVehicleScreen()),
+          // The receipt reader. Distinct from /scan, which reads a station's
+          // price board for other drivers rather than recording a fill-up.
+          GoRoute(path: '/scan-receipt', builder: (context, state) => const ReceiptScanScreen()),
           GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
           GoRoute(path: '/scan', builder: (context, state) => const ScannerScreen()),
           GoRoute(path: '/expenses', builder: (context, state) => const ExpensesScreen()),

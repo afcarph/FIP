@@ -138,7 +138,7 @@ class DriverHomeScreen extends ConsumerWidget {
                       child: _Action(
                         icon: Icons.document_scanner_rounded,
                         label: 'Scan receipt',
-                        onTap: () => context.push('/scan'),
+                        onTap: () => context.push('/scan-receipt'),
                       ),
                     ),
                     const SizedBox(width: FipSpace.gap),
