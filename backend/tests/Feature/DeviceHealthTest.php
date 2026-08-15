@@ -144,6 +144,54 @@ class DeviceHealthTest extends TestCase
         $this->assertFalse($device->refresh()->battery_updated_at->isFuture());
     }
 
+    public function test_a_utc_reading_is_stored_as_local_time_and_reads_fresh(): void
+    {
+        /*
+         * The bug this pins. The mobile reporter sends recorded_at in UTC while
+         * this schema stores Asia/Manila wall-clock times, so a bare parse
+         * buried every reading eight hours in the past — always outside the
+         * freshness window, so is_fresh was permanently false and neither the
+         * low-battery nor the charging filter could ever match.
+         *
+         * Every other test here passes a local timestamp, which is exactly why
+         * they all passed while the feature was broken in production.
+         */
+        $this->actingAs($this->driver, 'api');
+        $device = $this->device(['device_uuid' => 'install-health']);
+
+        $this->report(['recorded_at' => now()->utc()->toIso8601String()])->assertStatus(200);
+
+        $device->refresh();
+
+        // Within a minute of now in the application's own timezone, not eight
+        // hours adrift from it.
+        $this->assertLessThan(
+            60,
+            abs($device->battery_updated_at->diffInSeconds(now())),
+            'A UTC reading should land at the current local time, not offset by the timezone.',
+        );
+        $this->assertTrue($device->hasFreshBattery(), 'A reading taken now must read as fresh.');
+    }
+
+    public function test_a_utc_charging_reading_reaches_the_charging_filter(): void
+    {
+        // The consequence rather than the mechanism: a phone plugged in right
+        // now has to appear under "charging", which it never did.
+        $this->actingAs($this->driver, 'api');
+        $this->device(['device_uuid' => 'install-health']);
+
+        $this->report([
+            'battery_state' => 'charging',
+            'recorded_at' => now()->utc()->toIso8601String(),
+        ])->assertStatus(200);
+
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $this->getJson('/api/v1/fleet/devices?filter=charging')
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data');
+    }
+
     public function test_a_revoked_device_may_not_report(): void
     {
         $this->actingAs($this->driver, 'api');

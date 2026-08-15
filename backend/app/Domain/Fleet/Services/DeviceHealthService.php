@@ -50,6 +50,16 @@ class DeviceHealthService
     /**
      * When the device says it read the battery, bounded by when we heard it.
      *
+     * Converted into the application's timezone before anything else looks at
+     * it. Devices report in UTC and this schema stores Asia/Manila wall-clock
+     * times, so a bare parse buried every reading eight hours in the past —
+     * permanently outside the freshness window, which made `is_fresh` always
+     * false and stopped the low-battery and charging filters ever matching. The
+     * dashboard existed to say a phone is dying now, and could not.
+     *
+     * The same conversion is what LocationIngestService::normalise does for
+     * position timestamps; this simply failed to copy it.
+     *
      * A clock ahead of the server would otherwise park a reading in the future,
      * where every staleness check treats it as permanently fresh. Clamping
      * forward rather than rejecting: a wrong clock is a reason to distrust the
@@ -61,7 +71,7 @@ class DeviceHealthService
             return now();
         }
 
-        $reported = Carbon::parse($claimed);
+        $reported = Carbon::parse($claimed)->setTimezone(config('app.timezone'));
 
         return $reported->isFuture() ? now() : $reported;
     }
