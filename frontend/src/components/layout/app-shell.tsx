@@ -22,6 +22,7 @@ import {
   TriangleAlert,
   TrendingUp,
   Users,
+  Wrench,
   Truck,
   X,
 } from 'lucide-react';
@@ -64,6 +65,7 @@ const FLEET_NAV: NavItem[] = [
   { href: '/vehicles', label: 'Vehicles', icon: Car },
   { href: '/fleet/drivers', label: 'Drivers', icon: IdCard, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   { href: '/fleet/devices', label: 'Device health', icon: Smartphone, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/fleet/maintenance', label: 'Maintenance', icon: Wrench, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   { href: '/expenses', label: 'Fuel & expenses', icon: Receipt },
   { href: '/fleet/alerts', label: 'Fuel alerts', icon: TriangleAlert, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   // Assignments, trips and fleet reports have no pages yet. Listing them would

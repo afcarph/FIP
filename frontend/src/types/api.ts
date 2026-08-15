@@ -853,3 +853,28 @@ export interface SubscriptionTiers {
     limits: { vehicles: number | null; seats: number | null; devices: number | null };
   }>;
 }
+
+/**
+ * A service falling due, as MaintenanceController::due serialises one.
+ *
+ * `due_at` is a date string, `km_remaining` is null whenever either the
+ * schedule has no odometer target or the vehicle has no reading — null means
+ * unknown, and rendering it as 0 would read as "due now".
+ */
+export interface MaintenanceDue {
+  id: number;
+  vehicle_id: number;
+  /** Nickname if the vehicle has one, otherwise the plate. */
+  vehicle: string | null;
+  service: string | null;
+  icon: string | null;
+  status: string;
+  due_at: string | null;
+  km_remaining: number | null;
+}
+
+export interface MaintenanceType {
+  id: number;
+  name: string;
+  category: string | null;
+}

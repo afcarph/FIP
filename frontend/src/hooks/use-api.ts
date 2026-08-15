@@ -27,6 +27,8 @@ import type {
   FuelReadingResult,
   FuelType,
   HeatMapCell,
+  MaintenanceDue,
+  MaintenanceType,
   MonthlyPoint,
   PriceComparison,
   ReceiptScanResult,
@@ -74,6 +76,8 @@ export const queryKeys = {
   fleetDrivers: (filters?: Record<string, unknown>) => ['fleet', 'drivers', filters] as const,
   adminUsers: (filters?: Record<string, unknown>) => ['admin', 'users', filters] as const,
   subscriptionTiers: () => ['admin', 'subscription-tiers'] as const,
+  maintenanceDue: (days: number) => ['maintenance', 'due', days] as const,
+  maintenanceTypes: () => ['maintenance', 'types'] as const,
   fleetDevice: (id: number) => ['fleet', 'devices', id] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
@@ -642,5 +646,44 @@ export function useSubscriptionTiers() {
     queryKey: queryKeys.subscriptionTiers(),
     queryFn: async () => (await api.get<SubscriptionTiers>('/admin/subscription-tiers')).data,
     staleTime: Infinity,
+  });
+}
+
+// -------------------------------------------------------------- maintenance ---
+
+/**
+ * Services falling due, tenant-scoped by the API.
+ *
+ * The window includes anything already overdue: the scope is due_at on or
+ * before now+days and not completed, so an item three weeks late still appears
+ * under a 30-day view rather than dropping out of sight.
+ */
+export function useMaintenanceDue(days = 30) {
+  return useQuery({
+    queryKey: queryKeys.maintenanceDue(days),
+    queryFn: async () => (await api.get<MaintenanceDue[]>('/maintenance/due', { days })).data,
+  });
+}
+
+export function useMaintenanceTypes() {
+  return useQuery({
+    queryKey: queryKeys.maintenanceTypes(),
+    queryFn: async () => (await api.get<MaintenanceType[]>('/maintenance/types')).data,
+    staleTime: Infinity,
+  });
+}
+
+export function useRecordMaintenance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ vehicleId, ...payload }: { vehicleId: number } & Record<string, unknown>) =>
+      (await api.post(`/vehicles/${vehicleId}/maintenance`, payload)).data,
+    onSuccess: () => {
+      // Recording a service reschedules the next one, and the fleet dashboard
+      // counts overdue and due-soon, so both caches are stale afterwards.
+      queryClient.invalidateQueries({ queryKey: ['maintenance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'fleet'] });
+    },
   });
 }
