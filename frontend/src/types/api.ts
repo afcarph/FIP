@@ -219,6 +219,8 @@ export type FuelStatus = 'NORMAL' | 'LOW' | 'CRITICAL';
 
 export interface Vehicle {
   id: number;
+  /** See FleetDriver.company_id. */
+  company_id: number | null;
   nickname: string | null;
   display_name: string;
   plate_number: string;
@@ -765,6 +767,9 @@ export interface SubscriptionReport {
  */
 export interface FleetDriver {
   id: number;
+  /** Which tenant owns this driver. The assignment screen pairs it against a
+   *  vehicle's own company, because the API refuses a cross-company pairing. */
+  company_id: number | null;
   employee_no: string | null;
   full_name: string;
   phone: string | null;

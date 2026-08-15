@@ -13,6 +13,11 @@ class DriverResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // Exposed so a client pairing drivers with vehicles can tell which
+            // pairings the API will accept. A platform administrator belongs to
+            // no company, so their driver and vehicle lists are unscoped and can
+            // otherwise offer a combination that is refused on submit.
+            'company_id' => $this->company_id,
             'employee_no' => $this->employee_no,
             'full_name' => $this->full_name,
             'phone' => $this->phone,

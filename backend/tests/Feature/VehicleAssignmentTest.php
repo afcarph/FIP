@@ -184,6 +184,48 @@ class VehicleAssignmentTest extends TestCase
             ->assertJsonPath('data.0.assigned_driver.name', 'Marisol Reyes');
     }
 
+    public function test_both_payloads_carry_the_company_so_the_screen_can_match_them(): void
+    {
+        /*
+         * Found on production. A platform administrator belongs to no company,
+         * so their driver and vehicle lists come back unscoped — and the
+         * assignment screen offered a driver from one tenant for a vehicle in
+         * another. The API refused it with a 422, correctly, but the screen had
+         * offered an action that could never succeed.
+         *
+         * Filtering needs both companies in the payload; neither was there.
+         */
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->acme->id]);
+
+        $this->getJson('/api/v1/vehicles')
+            ->assertStatus(200)
+            ->assertJsonPath('data.0.company_id', $this->acme->id);
+
+        $this->getJson('/api/v1/fleet/drivers')
+            ->assertStatus(200)
+            ->assertJsonPath('data.0.company_id', $this->acme->id);
+    }
+
+    public function test_a_cross_company_pairing_is_refused(): void
+    {
+        // The rule the picker now mirrors. Pinned here so the two cannot drift:
+        // if this ever starts succeeding, the screen is wrong to hide the option.
+        $stray = Driver::create([
+            'company_id' => $this->rival->id,
+            'first_name' => 'Wrong',
+            'last_name' => 'Tenant',
+        ]);
+
+        $this->actingAsRole('super_admin');
+
+        $this->postJson('/api/v1/fleet/assignments', [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'driver_id' => $stray->getKey(),
+        ])->assertStatus(422);
+
+        $this->assertNull($this->vehicle->fresh()->currentAssignment);
+    }
+
     public function test_a_free_vehicle_reports_a_null_driver_rather_than_omitting_it(): void
     {
         // Explicitly null, not absent: the screen distinguishes "nobody is

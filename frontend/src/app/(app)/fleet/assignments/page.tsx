@@ -17,23 +17,32 @@ import type { FleetDriver, Vehicle } from '@/types/api';
 /**
  * One vehicle and whoever is driving it.
  *
- * The select offers only drivers who are free. A driver already in another
- * vehicle can be reassigned by the API — it releases both sides in one
- * transaction — but offering that here would let someone quietly empty another
- * vehicle from a screen that shows no sign of it.
+ * The select offers only drivers who are free *and* in this vehicle's company.
+ * Both halves matter. A driver already in another vehicle can be reassigned by
+ * the API — it releases both sides in one transaction — but offering that here
+ * would let someone quietly empty another vehicle from a screen that shows no
+ * sign of it. And a driver from a different company is refused outright by the
+ * API, so offering one is offering an action that cannot succeed.
+ *
+ * The company check only bites for a platform administrator, who belongs to no
+ * company and therefore gets unscoped driver and vehicle lists. A fleet manager
+ * sees one tenant's records and never had the chance to mismatch them.
  */
 function VehicleRow({
   vehicle,
-  available,
+  free,
   onError,
 }: {
   vehicle: Vehicle;
-  available: FleetDriver[];
+  free: FleetDriver[];
   onError: (message: string | null) => void;
 }) {
   const assign = useAssignDriver();
   const release = useReleaseDriver();
   const [chosen, setChosen] = React.useState('');
+
+  // Same tenant as the vehicle, which is the rule the API enforces on submit.
+  const available = free.filter((driver) => driver.company_id === vehicle.company_id);
 
   const busy = assign.isPending || release.isPending;
 
@@ -87,7 +96,7 @@ function VehicleRow({
             className="h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-3 text-sm"
           >
             <option value="">
-              {available.length === 0 ? 'No unassigned drivers' : 'Choose a driver…'}
+              {available.length === 0 ? 'No unassigned drivers in this company' : 'Choose a driver…'}
             </option>
             {available.map((driver) => (
               <option key={driver.id} value={driver.id}>
@@ -126,8 +135,8 @@ function AssignmentsPage() {
 
   // Only drivers holding no live assignment. `assigned_vehicle` is the roster's
   // own view of the same relationship the vehicle list reads from the other
-  // side, so the two agree.
-  const available = (drivers ?? []).filter((driver) => !driver.assigned_vehicle);
+  // side, so the two agree. Each row narrows this further to its own company.
+  const free = (drivers ?? []).filter((driver) => !driver.assigned_vehicle);
 
   const assigned = list.filter((vehicle) => vehicle.assigned_driver).length;
 
@@ -144,7 +153,7 @@ function AssignmentsPage() {
         <h1 className="text-2xl font-semibold">Driver assignments</h1>
         <p className="text-sm text-muted-foreground">
           Who is driving what. {assigned} of {list.length} vehicles assigned
-          {available.length > 0 ? `, ${available.length} drivers free` : ''}.
+          {free.length > 0 ? `, ${free.length} ${free.length === 1 ? 'driver' : 'drivers'} free` : ''}.
         </p>
       </div>
 
@@ -175,7 +184,7 @@ function AssignmentsPage() {
               <VehicleRow
                 key={vehicle.id}
                 vehicle={vehicle}
-                available={available}
+                free={free}
                 onError={setError}
               />
             ))}

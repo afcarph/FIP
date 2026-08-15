@@ -14,6 +14,8 @@ class VehicleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // See DriverResource: the assignment screen matches the two.
+            'company_id' => $this->company_id,
             'nickname' => $this->nickname,
             'display_name' => $this->display_name,
             'plate_number' => $this->plate_number,
