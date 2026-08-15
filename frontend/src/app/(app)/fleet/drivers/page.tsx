@@ -21,9 +21,16 @@ import { ApiError } from '@/lib/api-client';
 import type { FleetDriver } from '@/types/api';
 
 /**
- * Mirrors StoreDriverRequest. Deliberately not offering company_id: the API
- * infers the tenant from the caller and refuses another company's, so a field
- * for it would only invite a 403.
+ * Mirrors StoreDriverRequest, minus company_id.
+ *
+ * That omission used to be justified as "the API infers the tenant from the
+ * caller". True of a tenant user, and false of a platform administrator, who
+ * has no company to infer — the API used to write a driver belonging to nobody
+ * and return 201. It now refuses with `company_required` instead, so this form
+ * is correct for a fleet manager and a dead end for a platform administrator,
+ * who has no field here to satisfy it with.
+ *
+ * Adding a company picker for that one role is the remaining piece.
  */
 const schema = z.object({
   first_name: z.string().min(1, 'Enter a first name.').max(80),

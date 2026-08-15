@@ -237,7 +237,23 @@ class FleetController extends Controller
     private function companyForDriver(User $actor, ?int $requested): ?int
     {
         if ($actor->isPlatformAdministrator()) {
-            return $requested ?? $actor->company_id;
+            /*
+             * Named, never inferred. A platform administrator has no company —
+             * that is what makes them one — so the old fallback to their own
+             * `company_id` could only ever yield null, and wrote a driver no
+             * tenant could see: absent from every roster and every assignment
+             * picker, while still counting as a driver row. It failed silently
+             * with a 201, and produced exactly one such record in production.
+             */
+            if ($requested === null) {
+                throw new DomainException(
+                    'Name the company this driver belongs to. A platform administrator has no company to infer one from.',
+                    'company_required',
+                    422,
+                );
+            }
+
+            return $requested;
         }
 
         if ($requested !== null && $requested !== $actor->company_id) {

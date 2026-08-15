@@ -53,6 +53,59 @@ class DriverAdminTest extends TestCase
         ]);
     }
 
+    // ---------------------------------------------- platform administrator ---
+
+    public function test_a_platform_administrator_must_name_the_company(): void
+    {
+        /*
+         * The path nothing covered, and the one that bit. Every other test here
+         * acts as a tenant user, whose company can be inferred from the caller.
+         * A platform administrator has no company — that is what makes them one
+         * — so inferring produced null and wrote a driver belonging to nobody:
+         * absent from every roster and every assignment picker, while still
+         * counting as a driver row. It returned 201 and said nothing.
+         *
+         * One such record reached production before this was found.
+         */
+        $this->actingAsRole('super_admin');
+
+        $this->postJson('/api/v1/fleet/drivers', $this->payload())
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'company_required');
+
+        $this->assertDatabaseCount('drivers', 0);
+    }
+
+    public function test_a_platform_administrator_may_name_any_company(): void
+    {
+        // The capability itself is intact — this is a refusal to guess, not a
+        // restriction. Naming a tenant is exactly what they are entitled to do.
+        $this->actingAsRole('super_admin');
+
+        $this->postJson('/api/v1/fleet/drivers', $this->payload(['company_id' => $this->rival->id]))
+            ->assertStatus(201);
+
+        $this->assertSame($this->rival->id, Driver::where('first_name', 'Marisol')->value('company_id'));
+    }
+
+    public function test_no_route_can_leave_a_driver_without_a_company(): void
+    {
+        // The invariant behind both tests above, stated once. A tenantless
+        // driver is unreachable by design, so it should be unreachable in fact.
+        $this->actingAsRole('super_admin');
+        $this->postJson('/api/v1/fleet/drivers', $this->payload(['company_id' => $this->acme->id]))
+            ->assertStatus(201);
+
+        $driver = Driver::where('first_name', 'Marisol')->first();
+
+        // The update path carries no company_id rule, so it cannot clear one.
+        $this->patchJson("/api/v1/fleet/drivers/{$driver->getKey()}", ['company_id' => null])
+            ->assertStatus(200);
+
+        $this->assertSame($this->acme->id, $driver->fresh()->company_id);
+        $this->assertSame(0, Driver::whereNull('company_id')->count());
+    }
+
     // -------------------------------------------------------------- create ---
 
     public function test_a_fleet_manager_adds_a_driver_to_their_own_company(): void
