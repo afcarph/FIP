@@ -818,3 +818,25 @@ export interface FleetOverview {
     at: string;
   }>;
 }
+
+/**
+ * A user as UserResource serialises one — written from the response, not the
+ * request payload. `roles` is a flat list of names and `company` is an object
+ * or null; the create form's field names are deliberately different and are not
+ * interchangeable with these.
+ */
+export interface AdminUser {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  initials: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  email_verified: boolean;
+  last_login_at: string | null;
+  company: { id: number; name: string; subscription_tier?: string } | null;
+  roles: string[];
+  created_at: string | null;
+}

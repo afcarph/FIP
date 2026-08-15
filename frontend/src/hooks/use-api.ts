@@ -12,6 +12,7 @@ import type {
   DeviceHealth,
   DeviceHealthFilter,
   DeviceHealthSummary,
+  AdminUser,
   Company,
   FleetDriver,
   ExecutiveDashboard,
@@ -70,6 +71,7 @@ export const queryKeys = {
   companies: (filters?: Record<string, unknown>) => ['companies', filters] as const,
   company: (id: number) => ['companies', id] as const,
   fleetDrivers: (filters?: Record<string, unknown>) => ['fleet', 'drivers', filters] as const,
+  adminUsers: (filters?: Record<string, unknown>) => ['admin', 'users', filters] as const,
   fleetDevice: (id: number) => ['fleet', 'devices', id] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
@@ -595,5 +597,33 @@ export function useUpdateDriver() {
     mutationFn: async ({ id, ...payload }: { id: number } & Record<string, unknown>) =>
       (await api.patch<FleetDriver>(`/fleet/drivers/${id}`, payload)).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fleet', 'drivers'] }),
+  });
+}
+
+// -------------------------------------------------------------------- users ---
+
+/**
+ * The user listing, tenant-scoped by the API rather than here. A company
+ * manager receives only their own company's people; a platform administrator
+ * receives everyone. The client does no filtering of its own.
+ */
+export function useAdminUsers(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.adminUsers(filters),
+    queryFn: async () => (await api.get<AdminUser[]>('/admin/users', filters as never)).data,
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.post<AdminUser>('/admin/users', payload)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      // A new user consumes a seat, so the company's usage figures move.
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+    },
   });
 }

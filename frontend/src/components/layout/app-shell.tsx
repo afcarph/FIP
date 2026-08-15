@@ -21,6 +21,7 @@ import {
   Sun,
   TriangleAlert,
   TrendingUp,
+  Users,
   Truck,
   X,
 } from 'lucide-react';
@@ -89,8 +90,14 @@ const ADMIN_NAV: NavItem[] = [
     icon: Building2,
     roles: ['super_admin', 'system_admin'],
   },
-  // Users is deliberately absent: the API exists but no page does, and a
-  // sidebar entry that 404s is worse than an absence.
+  {
+    href: '/admin/users',
+    label: 'Users',
+    icon: Users,
+    // Wider than the rest of this group: a company manager administers their
+    // own people, and the listing is tenant-scoped by the API.
+    roles: ['company_manager', 'super_admin', 'system_admin'],
+  },
   {
     href: '/admin/settings',
     label: 'Privacy & retention',
