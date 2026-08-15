@@ -275,6 +275,14 @@ export interface VehicleEfficiency {
   avg_km_per_litre: number | null;
   deviation_pct: number | null;
   estimated_range_km: number | null;
+  /**
+   * Distance recorded by completed trips over 90 days. Distance only — the API
+   * deliberately derives no economy figure from it, because trip coverage is
+   * partial and dividing by litres bought gave numbers that read as a failing
+   * engine. Fuel economy stays with `avg_km_per_litre`. Null when nothing has
+   * been driven.
+   */
+  from_trips: { distance_km: number; trips: number } | null;
   series: Array<{
     date: string;
     km_per_litre: number | null;

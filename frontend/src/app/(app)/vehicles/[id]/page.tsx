@@ -42,7 +42,7 @@ import {
   formatNumber,
   formatPercent,
 } from '@/lib/utils';
-import type { FuelPurchase, Vehicle } from '@/types/api';
+import type { FuelPurchase, Vehicle, VehicleEfficiency } from '@/types/api';
 
 export default function VehicleDetailPage() {
   const params = useParams<{ id: string }>();
@@ -114,7 +114,7 @@ export default function VehicleDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <FuelCard vehicle={vehicle} />
-        <EfficiencyCard vehicle={vehicle} />
+        <EfficiencyCard vehicle={vehicle} efficiency={efficiency} />
         <AssignmentCard vehicle={vehicle} />
       </div>
 
@@ -175,8 +175,9 @@ function FuelCard({ vehicle }: { vehicle: Vehicle }) {
   );
 }
 
-function EfficiencyCard({ vehicle }: { vehicle: Vehicle }) {
+function EfficiencyCard({ vehicle, efficiency }: { vehicle: Vehicle; efficiency?: VehicleEfficiency }) {
   const deviation = vehicle.efficiency.deviation_pct;
+  const trips = efficiency?.from_trips ?? null;
 
   return (
     <Card>
@@ -192,6 +193,24 @@ function EfficiencyCard({ vehicle }: { vehicle: Vehicle }) {
         <p className="tabular text-3xl font-semibold">
           {formatEfficiency(vehicle.efficiency.avg_km_per_litre)}
         </p>
+
+        {/*
+          Distance, not economy. Trips know how far they went; they do not know
+          what share of this vehicle's driving they represent, so turning that
+          into km/L produced a figure that read as a failing engine on the first
+          real vehicle it met.
+        */}
+        {trips ? (
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Recorded on trips
+            </p>
+            <p className="tabular text-lg font-semibold">{formatDistance(trips.distance_km)}</p>
+            <p className="text-xs text-muted-foreground">
+              over {trips.trips} completed trip{trips.trips === 1 ? '' : 's'} in 90 days
+            </p>
+          </div>
+        ) : null}
 
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>

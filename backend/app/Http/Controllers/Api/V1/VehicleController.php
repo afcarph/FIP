@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Ai\Models\FraudAlert;
+use App\Domain\Expense\Models\Trip;
 use App\Domain\Fleet\Services\FuelLevelService;
 use App\Domain\Maintenance\Services\MaintenanceService;
 use App\Domain\User\Models\UserDevice;
@@ -324,6 +325,49 @@ class VehicleController extends Controller
             'deviation_pct' => $vehicle->efficiencyDeviationPct(),
             'estimated_range_km' => $vehicle->estimatedRangeKm(),
             'series' => $series,
+            'from_trips' => $this->tripDistance($vehicle),
         ]);
+    }
+
+    /**
+     * Distance recorded by completed trips over the last 90 days.
+     *
+     * Distance only — deliberately not a fuel economy figure.
+     *
+     * Dividing this by litres bought in the same window looked reasonable and
+     * produced 0.33 km/L on the first real vehicle it met: 368 litres against
+     * 120 km, because trips are new and almost none of that vehicle's driving
+     * had been recorded as one. The arithmetic was right and the number was a
+     * lie — it reads as an engine about to seize. An approximation like that
+     * only holds when trips capture nearly all the driving, which is false for
+     * any fleet still adopting them, and nothing here can tell the difference
+     * between a thirsty vehicle and an unrecorded journey.
+     *
+     * So trips report what they actually know. Fuel economy stays with
+     * tank-to-tank km/L, which trips now support properly by keeping the
+     * odometer moving between fills — see TripDispatchService::recordOdometer.
+     *
+     * @return array{distance_km: float, trips: int}|null
+     */
+    private function tripDistance(Vehicle $vehicle): ?array
+    {
+        $from = now()->subDays(90);
+
+        $completed = Trip::query()
+            ->where('vehicle_id', $vehicle->getKey())
+            ->where('status', Trip::STATUS_COMPLETED)
+            ->where('ended_at', '>=', $from);
+
+        $distance = (float) (clone $completed)->sum('distance_km');
+
+        // Nothing driven is not "zero economy", it is no answer.
+        if ($distance <= 0.0) {
+            return null;
+        }
+
+        return [
+            'distance_km' => round($distance, 2),
+            'trips' => (clone $completed)->count(),
+        ];
     }
 }

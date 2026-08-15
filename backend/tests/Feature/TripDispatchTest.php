@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Domain\Expense\Models\Trip;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\User\Models\Company;
+use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -80,6 +81,11 @@ class TripDispatchTest extends TestCase
             'destination_label' => 'Batangas',
             'purpose' => 'Delivery',
         ], $overrides);
+    }
+
+    private function acmeUserId(): int
+    {
+        return User::where('company_id', $this->acme->id)->value('id');
     }
 
     private function tripIn(Company $company, array $state = []): Trip
@@ -545,6 +551,143 @@ class TripDispatchTest extends TestCase
         $overview = $this->getJson('/api/v1/fleet/dashboard')->assertStatus(200)->json('data.overview');
 
         $this->assertSame(0, $overview['summary']['on_trip']);
+    }
+
+    // ----------------------------------------------------------- odometer ---
+
+    public function test_starting_and_completing_record_odometer_readings(): void
+    {
+        /*
+         * The gap this closes. Trips used to keep their readings to themselves,
+         * so a fleet that logged fuel without an odometer had no odometer
+         * history at all — and the vehicle's current reading, which maintenance
+         * schedules distance-based services against, never moved.
+         */
+        $id = $this->postJson('/api/v1/fleet/trips', $this->payload())->json('data.id');
+        $this->postJson("/api/v1/fleet/trips/{$id}/dispatch")->assertStatus(200);
+        $this->postJson("/api/v1/fleet/trips/{$id}/start", ['odometer_start' => 20_000])->assertStatus(200);
+        $this->postJson("/api/v1/fleet/trips/{$id}/complete", ['odometer_end' => 20_150])->assertStatus(200);
+
+        $this->assertDatabaseHas('odometer_readings', [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'reading' => 20_000,
+            'source' => 'trip_start',
+        ]);
+        $this->assertDatabaseHas('odometer_readings', [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'reading' => 20_150,
+            'source' => 'trip_end',
+        ]);
+    }
+
+    public function test_the_vehicles_odometer_advances_with_the_trip(): void
+    {
+        // Pinned below the trip's readings: the factory seeds a random one, and
+        // a reading under it would be correctly refused by the monotonic guard.
+        $this->vehicle->forceFill(['current_odometer' => 1_000])->save();
+
+        $id = $this->postJson('/api/v1/fleet/trips', $this->payload())->json('data.id');
+        $this->postJson("/api/v1/fleet/trips/{$id}/dispatch")->assertStatus(200);
+        $this->postJson("/api/v1/fleet/trips/{$id}/start", ['odometer_start' => 30_000])->assertStatus(200);
+        $this->postJson("/api/v1/fleet/trips/{$id}/complete", ['odometer_end' => 30_400])->assertStatus(200);
+
+        $this->assertSame(30_400.0, (float) $this->vehicle->fresh()->current_odometer);
+    }
+
+    public function test_the_odometer_only_ever_advances(): void
+    {
+        /*
+         * The reason two writers on this column are safe. Fuel logging advances
+         * it monotonically and so does this; a lower reading from either is
+         * kept as history but never moves the vehicle backwards.
+         */
+        $this->vehicle->forceFill(['current_odometer' => 90_000])->save();
+
+        $id = $this->postJson('/api/v1/fleet/trips', $this->payload())->json('data.id');
+        $this->postJson("/api/v1/fleet/trips/{$id}/dispatch")->assertStatus(200);
+        $this->postJson("/api/v1/fleet/trips/{$id}/start", ['odometer_start' => 10_000])->assertStatus(200);
+
+        $this->assertSame(90_000.0, (float) $this->vehicle->fresh()->current_odometer);
+        $this->assertDatabaseHas('odometer_readings', ['reading' => 10_000, 'source' => 'trip_start']);
+    }
+
+    public function test_a_trip_without_readings_writes_no_odometer_rows(): void
+    {
+        // Optional means optional: skipping the readings must not invent them.
+        $id = $this->postJson('/api/v1/fleet/trips', $this->payload())->json('data.id');
+        $this->postJson("/api/v1/fleet/trips/{$id}/dispatch")->assertStatus(200);
+        $this->postJson("/api/v1/fleet/trips/{$id}/start")->assertStatus(200);
+        $this->postJson("/api/v1/fleet/trips/{$id}/complete")->assertStatus(200);
+
+        $this->assertDatabaseCount('odometer_readings', 0);
+    }
+
+    // ------------------------------------------------ distance from trips ---
+
+    public function test_completed_trips_report_the_distance_they_recorded(): void
+    {
+        $this->tripIn($this->acme, [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'status' => Trip::STATUS_COMPLETED,
+            'ended_at' => now()->subDay(),
+            'distance_km' => 400,
+        ]);
+
+        $this->getJson("/api/v1/vehicles/{$this->vehicle->getKey()}/efficiency")
+            ->assertStatus(200)
+            ->assertJsonPath('data.from_trips.distance_km', 400.0)
+            ->assertJsonPath('data.from_trips.trips', 1);
+    }
+
+    public function test_trips_do_not_report_a_fuel_economy_figure(): void
+    {
+        /*
+         * Distance over litres-bought looked reasonable and gave 0.33 km/L on
+         * the first real vehicle it met — 368 litres against 120 km, because
+         * almost none of that vehicle's driving had been recorded as a trip.
+         * The arithmetic was right and the number was a lie. Pinned here so
+         * nobody reintroduces it without confronting the coverage problem.
+         */
+        $this->tripIn($this->acme, [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'status' => Trip::STATUS_COMPLETED,
+            'ended_at' => now()->subDay(),
+            'distance_km' => 120,
+        ]);
+
+        $payload = $this->getJson("/api/v1/vehicles/{$this->vehicle->getKey()}/efficiency")
+            ->assertStatus(200)
+            ->json('data.from_trips');
+
+        $this->assertArrayNotHasKey('km_per_litre', $payload);
+        $this->assertArrayNotHasKey('litres', $payload);
+    }
+
+    public function test_the_distance_is_absent_when_nothing_has_been_driven(): void
+    {
+        // Null rather than zero: no completed trips is no answer.
+        $this->getJson("/api/v1/vehicles/{$this->vehicle->getKey()}/efficiency")
+            ->assertStatus(200)
+            ->assertJsonPath('data.from_trips', null);
+    }
+
+    public function test_the_tank_to_tank_average_is_left_alone(): void
+    {
+        // The measurement stays the measurement. Folding trip distance into
+        // avg_km_per_litre would silently redefine a number the dashboard,
+        // reports and route estimates all already read.
+        $this->vehicle->forceFill(['avg_km_per_litre' => 12.5])->save();
+
+        $this->tripIn($this->acme, [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'status' => Trip::STATUS_COMPLETED,
+            'ended_at' => now()->subDay(),
+            'distance_km' => 400,
+        ]);
+
+        $this->getJson("/api/v1/vehicles/{$this->vehicle->getKey()}/efficiency")
+            ->assertStatus(200)
+            ->assertJsonPath('data.avg_km_per_litre', 12.5);
     }
 
     // ------------------------------------------------------------ payload ---

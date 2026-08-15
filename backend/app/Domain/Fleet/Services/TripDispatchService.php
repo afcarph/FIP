@@ -7,6 +7,7 @@ namespace App\Domain\Fleet\Services;
 use App\Domain\Expense\Models\Trip;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\User\Models\User;
+use App\Domain\Vehicle\Models\OdometerReading;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Support\Exceptions\DomainException;
 use Illuminate\Support\Facades\DB;
@@ -121,6 +122,8 @@ final readonly class TripDispatchService
             'odometer_start' => $odometerStart ?? $trip->odometer_start,
         ])->save();
 
+        $this->recordOdometer($trip, $trip->odometer_start, 'trip_start');
+
         return $trip;
     }
 
@@ -151,6 +154,8 @@ final readonly class TripDispatchService
                 ? $odometerEnd - $start
                 : $trip->distance_km,
         ])->save();
+
+        $this->recordOdometer($trip, $trip->odometer_end, 'trip_end');
 
         return $trip;
     }
@@ -269,6 +274,41 @@ final readonly class TripDispatchService
                 'driver_on_trip',
                 422,
             );
+        }
+    }
+
+    /**
+     * A reading taken during a trip is a reading like any other.
+     *
+     * `odometer_readings` already exists with a `source` column, and fuel
+     * logging already writes to it — trips were the odd one out, keeping their
+     * readings to themselves. That mattered more than it looks: the vehicle's
+     * current_odometer is what maintenance schedules distance-based services
+     * against, and tank-to-tank fuel economy needs the odometer to keep moving
+     * between fills.
+     *
+     * The write is monotonic, matching the fuel logger. An earlier version of
+     * this service argued trips should not touch the vehicle because two
+     * writers on one column would disagree; two writers that only ever advance
+     * a value converge on the highest reading instead, which is what an
+     * odometer does anyway.
+     */
+    private function recordOdometer(Trip $trip, ?int $reading, string $source): void
+    {
+        if ($reading === null || $trip->vehicle === null) {
+            return;
+        }
+
+        OdometerReading::create([
+            'vehicle_id' => $trip->vehicle_id,
+            'reading' => $reading,
+            'source' => $source,
+            'recorded_at' => now(),
+            'recorded_by' => $trip->created_by,
+        ]);
+
+        if ($reading > (float) $trip->vehicle->current_odometer) {
+            $trip->vehicle->forceFill(['current_odometer' => $reading])->saveQuietly();
         }
     }
 
