@@ -44,8 +44,16 @@ dependencies:
   image_cropper: ^8.0.2
 
   # --- Notifications ------------------------------------------------------
-  firebase_core: ^3.9.0
-  firebase_messaging: ^15.1.6
+  # firebase_core and firebase_messaging were removed. Nothing in lib/ ever
+  # imported them, but Flutter registers every plugin before the first frame,
+  # so FLTFirebaseMessagingPlugin reached FirebaseCore at launch, found no
+  # GoogleService-Info.plist, and raised — killing the app on iOS the moment
+  # its icon was tapped. Android carried the same missing config and only
+  # degraded quietly, which is why the crash looked iOS-specific.
+  #
+  # The backend still has fcm_token and a device-registration endpoint waiting.
+  # Restoring push means adding both packages back *with* the platform config
+  # files and an explicit Firebase.initializeApp(), not just the dependency.
   flutter_local_notifications: ^18.0.1
 
   # --- UI -----------------------------------------------------------------
