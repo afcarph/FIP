@@ -231,6 +231,36 @@ class FleetOverviewTest extends TestCase
         $this->getJson('/api/v1/fleet/dashboard')->assertStatus(403);
     }
 
+    public function test_the_no_company_refusal_names_itself(): void
+    {
+        /*
+         * Two different 403s reach this endpoint — not entitled, and not in a
+         * tenant — and a client cannot tell them apart from the status alone.
+         * A platform administrator has no company by design, so without a
+         * distinct code the fleet page rendered a grid of dashes that looked
+         * like an outage rather than an explanation.
+         */
+        $this->actingAsRole('super_admin', ['company_id' => null]);
+
+        $response = $this->getJson('/api/v1/fleet/dashboard');
+
+        $response->assertStatus(403);
+        $this->assertSame('company_required', $response->json('error.code'));
+        $this->assertStringContainsString('not linked to a company', $response->json('error.message'));
+    }
+
+    public function test_lacking_the_permission_is_a_different_refusal(): void
+    {
+        // A driver is in a company but not entitled, so it must not surface as
+        // company_required — that would send them looking for a missing tenant.
+        $this->actingAsRole('driver', ['company_id' => $this->acme->id]);
+
+        $response = $this->getJson('/api/v1/fleet/dashboard');
+
+        $response->assertStatus(403);
+        $this->assertNotSame('company_required', $response->json('error.code'));
+    }
+
     // -------------------------------------------------- no fabricated data ---
 
     public function test_an_empty_fleet_reports_zeroes_rather_than_inventing_rows(): void

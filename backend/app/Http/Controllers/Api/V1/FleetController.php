@@ -92,7 +92,20 @@ class FleetController extends Controller
 
         $user = $request->user();
 
-        abort_if($user->company_id === null, 403, 'Your account is not linked to a company.');
+        /*
+         * A platform administrator has no company by design — that is what
+         * makes tenant scoping work — so there is no fleet to show them here.
+         * Carries its own code rather than a bare 403 so the client can say
+         * which of the two 403s this is: not entitled, or not in a tenant.
+         * Without it the page rendered a grid of dashes and looked broken.
+         */
+        if ($user->company_id === null) {
+            throw new DomainException(
+                'Your account is not linked to a company, so there is no fleet to show.',
+                'company_required',
+                403,
+            );
+        }
 
         $fleetId = $request->has('fleet_id') ? (int) $request->integer('fleet_id') : null;
 
