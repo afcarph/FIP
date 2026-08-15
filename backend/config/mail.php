@@ -22,7 +22,14 @@ return [
     ],
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'no-reply@fip.ph'),
+        /*
+         * On the organisation's own domain, which is what makes delivery
+         * possible at all: a relay will only send as a domain you control and
+         * have verified with it, and SPF and DKIM are published against that
+         * domain rather than against the mailbox. A consumer address such as
+         * gmail.com fails both, whoever owns it.
+         */
+        'address' => env('MAIL_FROM_ADDRESS', 'no-reply@nelleeph.com'),
         'name' => env('MAIL_FROM_NAME', 'Fuel Intelligence Platform'),
     ],
 ];

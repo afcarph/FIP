@@ -45,6 +45,7 @@ class CheckProductionConfig extends Command
         $this->checkDatabase();
         $this->checkCors($production);
         $this->checkSessionAndCookies($production);
+        $this->checkMail($production);
         $this->checkDoeIngest();
 
         return $this->report();
@@ -176,6 +177,57 @@ class CheckProductionConfig extends Command
         if (config('session.http_only') !== true) {
             $this->caution('session.http_only', 'Off. Session cookies are readable from JavaScript.');
         }
+    }
+
+    /**
+     * Whether mail will actually leave the building.
+     *
+     * config/mail.php defaults the host to `mailhog`, which is right for local
+     * development and silently wrong everywhere else: a deployment that never
+     * sets MAIL_HOST keeps sending to a container nobody reads, and password
+     * resets, alerts and notifications all vanish without an error anywhere.
+     * Production ran that way, and nothing complained — which is exactly the
+     * kind of fault this command exists to catch.
+     */
+    private function checkMail(bool $production): void
+    {
+        $mailer = (string) config('mail.default');
+        $host = (string) config('mail.mailers.smtp.host');
+
+        // Catchers, not transports. Anything here accepts mail and keeps it.
+        $catchers = ['mailhog', 'mailpit', 'maildev', 'localhost', '127.0.0.1'];
+
+        if ($mailer === 'log' || $mailer === 'array') {
+            $production
+                ? $this->bad('mail', "MAIL_MAILER is `{$mailer}`, so nothing is ever sent.")
+                : $this->ok('mail', "{$mailer} (nothing is sent, which is fine locally)");
+
+            return;
+        }
+
+        if ($mailer === 'smtp' && in_array(mb_strtolower($host), $catchers, true)) {
+            $production
+                ? $this->bad('mail', "MAIL_HOST is `{$host}`, a development mail catcher. Password resets and notifications are captured and never delivered.")
+                : $this->ok('mail', "{$host} (development catcher)");
+
+            return;
+        }
+
+        if ($mailer === 'smtp' && $host === '') {
+            $this->bad('mail', 'MAIL_HOST is empty, so mail has nowhere to go.');
+
+            return;
+        }
+
+        // A real host with no credentials usually means a half-finished
+        // configuration rather than a deliberately open relay.
+        if ($production && $mailer === 'smtp' && ! config('mail.mailers.smtp.username')) {
+            $this->caution('mail', "{$host} is set but MAIL_USERNAME is empty; most providers will refuse to relay.");
+
+            return;
+        }
+
+        $this->ok('mail', $mailer === 'smtp' ? $host : $mailer);
     }
 
     private function checkDoeIngest(): void
