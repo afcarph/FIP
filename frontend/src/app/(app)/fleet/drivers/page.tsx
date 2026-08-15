@@ -16,32 +16,35 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCreateDriver, useFleetDrivers, useUpdateDriver } from '@/hooks/use-api';
+import { useCompanies, useCreateDriver, useFleetDrivers, useUpdateDriver } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api-client';
 import type { FleetDriver } from '@/types/api';
 
 /**
- * Mirrors StoreDriverRequest, minus company_id.
+ * Mirrors StoreDriverRequest.
  *
- * That omission used to be justified as "the API infers the tenant from the
- * caller". True of a tenant user, and false of a platform administrator, who
- * has no company to infer — the API used to write a driver belonging to nobody
- * and return 201. It now refuses with `company_required` instead, so this form
- * is correct for a fleet manager and a dead end for a platform administrator,
- * who has no field here to satisfy it with.
- *
- * Adding a company picker for that one role is the remaining piece.
+ * company_id is required of a platform administrator and absent for everyone
+ * else, because that is exactly what the API asks for. A tenant user's company
+ * is inferred from the caller and naming another one is refused, so a field
+ * would only invite a 403. A platform administrator has no company to infer,
+ * so without the field the form could not be satisfied at all — it used to
+ * write a driver belonging to nobody, and now gets a `company_required` 422.
  */
-const schema = z.object({
-  first_name: z.string().min(1, 'Enter a first name.').max(80),
-  last_name: z.string().min(1, 'Enter a last name.').max(80),
-  employee_no: z.string().max(40).optional(),
-  phone: z.string().max(32).optional(),
-  licence_number: z.string().max(40).optional(),
-  licence_expiry: z.string().optional(),
-});
+const makeSchema = (requiresCompany: boolean) =>
+  z.object({
+    first_name: z.string().min(1, 'Enter a first name.').max(80),
+    last_name: z.string().min(1, 'Enter a last name.').max(80),
+    employee_no: z.string().max(40).optional(),
+    phone: z.string().max(32).optional(),
+    licence_number: z.string().max(40).optional(),
+    licence_expiry: z.string().optional(),
+    company_id: requiresCompany
+      ? z.string().min(1, 'Choose the company this driver belongs to.')
+      : z.string().optional(),
+  });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof makeSchema>>;
 
 const STATUS_TONE: Record<string, 'secondary' | 'destructive'> = {
   inactive: 'secondary',
@@ -50,12 +53,20 @@ const STATUS_TONE: Record<string, 'secondary' | 'destructive'> = {
 
 function DriverForm({ onDone }: { onDone: () => void }) {
   const creation = useCreateDriver();
+
+  // Matches the server's own test: isPlatformAdministrator() is super_admin or
+  // system_admin by role, whatever company the row happens to carry.
+  const { isAdmin } = useAuth();
+  const { data: companies } = useCompanies({}, isAdmin);
+
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({
+    resolver: zodResolver(React.useMemo(() => makeSchema(isAdmin), [isAdmin])),
+  });
 
   const error = creation.error instanceof ApiError ? creation.error : null;
 
@@ -78,6 +89,9 @@ function DriverForm({ onDone }: { onDone: () => void }) {
               phone: values.phone || undefined,
               licence_number: values.licence_number || undefined,
               licence_expiry: values.licence_expiry || undefined,
+              // Sent only when it was asked for; a tenant user naming a company
+              // is refused even when the company is their own.
+              company_id: values.company_id ? Number(values.company_id) : undefined,
             });
 
             reset();
@@ -87,6 +101,32 @@ function DriverForm({ onDone }: { onDone: () => void }) {
           {error ? <FormError>{error.message}</FormError> : null}
 
           <div className="grid gap-5 sm:grid-cols-2">
+            {isAdmin ? (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="company_id">Company</Label>
+                <select
+                  id="company_id"
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  {...register('company_id')}
+                >
+                  <option value="">Choose a company…</option>
+                  {(companies ?? []).map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.company_id ? (
+                  <p className="text-sm text-destructive">{errors.company_id.message}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    You administer every tenant, so there is no company to assume. A driver without
+                    one would be visible to nobody.
+                  </p>
+                )}
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <Label htmlFor="first_name">First name</Label>
               <Input id="first_name" {...register('first_name')} />

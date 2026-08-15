@@ -546,10 +546,16 @@ export function useFleetDevice(id: number) {
 
 // ---------------------------------------------------------------- companies ---
 
-export function useCompanies(filters: Record<string, unknown> = {}) {
+/**
+ * `enabled` because this endpoint is platform-only. A tenant user calling it
+ * gets a 403, so a screen that needs the list for one role must not fetch it
+ * for the others.
+ */
+export function useCompanies(filters: Record<string, unknown> = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.companies(filters),
     queryFn: async () => (await api.get<Company[]>('/admin/companies', filters as never)).data,
+    enabled,
   });
 }
 
