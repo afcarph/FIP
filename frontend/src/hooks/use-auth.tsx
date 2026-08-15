@@ -89,6 +89,23 @@ export function useAuth(): AuthContextValue {
 }
 
 /** Sign-in mutation, handling both the direct and the MFA-challenge paths. */
+/**
+ * Where a signed-in user belongs.
+ *
+ * Ordered by how specific the role is: an administrator who also manages a
+ * fleet signed in to administer, and a fleet role outranks the personal
+ * dashboard. Anyone else falls through to the personal view, which is the only
+ * one that works without a company.
+ */
+export function landingFor(roles: string[]): string {
+  if (roles.includes('super_admin') || roles.includes('system_admin')) return '/admin';
+  if (roles.some((role) => ['fleet_manager', 'company_manager', 'viewer'].includes(role))) {
+    return '/fleet';
+  }
+
+  return '/dashboard';
+}
+
 export function useLogin() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -124,7 +141,10 @@ export function useLogin() {
         roles: (data as Session).roles,
         permissions: (data as Session).permissions,
       });
-      router.push('/dashboard');
+
+      // Fleet roles open onto the fleet, not a personal summary. Registration
+      // deliberately keeps /dashboard: a new account has no fleet yet.
+      router.push(landingFor((data as Session).roles ?? []));
     },
   });
 }

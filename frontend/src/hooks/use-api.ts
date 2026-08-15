@@ -18,6 +18,7 @@ import type {
   ExpenseSummary,
   FleetAlert,
   FleetDashboard,
+  FleetOverview,
   Forecast,
   FuelPurchase,
   FuelReading,
@@ -91,7 +92,8 @@ export function useFleetDashboard(fleetId?: number) {
   return useQuery({
     queryKey: queryKeys.fleetDashboard(fleetId),
     queryFn: async () =>
-      (await api.get<FleetDashboard>('/fleet/dashboard', { fleet_id: fleetId })).data,
+      (await api.get<FleetDashboard & { overview?: FleetOverview }>('/fleet/dashboard', { fleet_id: fleetId }))
+        .data,
     staleTime: 60_000,
   });
 }

@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sun,
+  TriangleAlert,
   TrendingUp,
   Truck,
   X,
@@ -41,37 +42,43 @@ interface NavItem {
   roles?: Role[];
 }
 
+/**
+ * The dashboard, whichever one the signed-in user's role opens onto. Fleet
+ * roles land on /fleet; a private motorist keeps the personal summary.
+ */
 const PRIMARY_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/map', label: 'Map', icon: Map },
-  { href: '/stations', label: 'Stations', icon: Fuel },
-  { href: '/forecasts', label: 'Forecasts', icon: TrendingUp },
-  { href: '/vehicles', label: 'Vehicles', icon: Car },
-  { href: '/expenses', label: 'Expenses', icon: Receipt },
-  { href: '/assistant', label: 'AI Advisor', icon: Bot },
 ];
 
+/**
+ * Fleet Management: the operational work the product exists for, grouped so it
+ * reads as one module rather than scattered top-level links.
+ *
+ * Vehicles and Expenses moved here from the flat primary list. They were always
+ * fleet work; sitting beside Stations and Forecasts made the product read as a
+ * fuel-price browser with fleet features bolted on.
+ */
 const FLEET_NAV: NavItem[] = [
-  {
-    href: '/fleet',
-    label: 'Fleet',
-    icon: Truck,
-    roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
-  },
-  {
-    href: '/fleet/drivers',
-    label: 'Drivers',
-    icon: IdCard,
-    roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
-  },
-  {
-    href: '/fleet/devices',
-    label: 'Device health',
-    icon: Smartphone,
-    roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
-  },
-  // A Reports item pointed at /reports, which does not exist — a fleet
-  // manager would have had a sidebar entry that 404s.
+  { href: '/fleet', label: 'Fleet overview', icon: Truck, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/vehicles', label: 'Vehicles', icon: Car },
+  { href: '/fleet/drivers', label: 'Drivers', icon: IdCard, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/fleet/devices', label: 'Device health', icon: Smartphone, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/expenses', label: 'Fuel & expenses', icon: Receipt },
+  { href: '/fleet/alerts', label: 'Fuel alerts', icon: TriangleAlert, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  // Assignments, trips and fleet reports have no pages yet. Listing them would
+  // give a manager sidebar entries that 404, which is worse than an absence.
+];
+
+/**
+ * Fuel intelligence: the market-facing side. Kept, because it is working
+ * functionality people use, but no longer competing with fleet operations for
+ * the top of the sidebar.
+ */
+const INSIGHT_NAV: NavItem[] = [
+  { href: '/map', label: 'Station map', icon: Map },
+  { href: '/stations', label: 'Stations', icon: Fuel },
+  { href: '/forecasts', label: 'Price forecasts', icon: TrendingUp },
+  { href: '/assistant', label: 'AI Advisor', icon: Bot },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -82,6 +89,8 @@ const ADMIN_NAV: NavItem[] = [
     icon: Building2,
     roles: ['super_admin', 'system_admin'],
   },
+  // Users is deliberately absent: the API exists but no page does, and a
+  // sidebar entry that 404s is worse than an absence.
   {
     href: '/admin/settings',
     label: 'Privacy & retention',
@@ -112,7 +121,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const sections = [
     { items: visible(PRIMARY_NAV), label: null },
-    { items: visible(FLEET_NAV), label: 'Organisation' },
+    { items: visible(FLEET_NAV), label: 'Fleet Management' },
+    { items: visible(INSIGHT_NAV), label: 'Fuel Intelligence' },
     { items: visible(ADMIN_NAV), label: 'Administration' },
   ].filter((section) => section.items.length > 0);
 

@@ -8,6 +8,7 @@ use App\Domain\Ai\Models\FraudAlert;
 use App\Domain\Fleet\Models\DeviceLocation;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
+use App\Domain\Fleet\Services\FleetOverviewService;
 use App\Domain\Reporting\Services\DashboardService;
 use App\Domain\User\Models\User;
 use App\Domain\User\Models\UserDevice;
@@ -30,7 +31,10 @@ use Illuminate\Support\Facades\DB;
  */
 class FleetController extends Controller
 {
-    public function __construct(private readonly DashboardService $dashboards) {}
+    public function __construct(
+        private readonly DashboardService $dashboards,
+        private readonly FleetOverviewService $overview,
+    ) {}
 
     /**
      * @OA\Get(path="/fleet", tags={"Fleet"}, security={{"bearerAuth":{}}},
@@ -90,10 +94,20 @@ class FleetController extends Controller
 
         abort_if($user->company_id === null, 403, 'Your account is not linked to a company.');
 
-        return ApiResponse::success($this->dashboards->forFleet(
-            $user->company_id,
-            $request->has('fleet_id') ? (int) $request->integer('fleet_id') : null,
-        ));
+        $fleetId = $request->has('fleet_id') ? (int) $request->integer('fleet_id') : null;
+
+        /*
+         * Nested under `overview` rather than spread across the top level.
+         * forFleet already publishes `summary`, `vehicles` and `maintenance`
+         * with different meanings — an expense total, a statistics object and a
+         * pair of counts — and merging would have silently dropped one side of
+         * every collision. PHP's array union keeps the left operand, so the
+         * fleet page would have kept working while the new dashboard read nulls.
+         */
+        return ApiResponse::success(
+            $this->dashboards->forFleet($user->company_id, $fleetId)
+            + ['overview' => $this->overview->forCompany($user->company_id, $fleetId)],
+        );
     }
 
     /**

@@ -13,11 +13,15 @@ export function AuthShell({
   description,
   children,
   footer,
+  tagline,
 }: {
   title: string;
   description?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Product line under the mark. Optional, so registration and the password
+   *  reset steps keep the plain lockup they have today. */
+  tagline?: string;
 }) {
   return (
     <main
@@ -41,6 +45,11 @@ export function AuthShell({
             className="mb-2 h-32 w-auto"
           />
           <h1 className="sr-only">Fuel Intelligence Platform</h1>
+          {tagline ? (
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {tagline}
+            </p>
+          ) : null}
         </div>
 
         <Card glass>

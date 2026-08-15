@@ -4,6 +4,7 @@ import { AlertTriangle, Car, Gauge, ShieldAlert, TrendingDown, Users, Wrench } f
 import Link from 'next/link';
 
 import { ExpenseChart } from '@/components/charts/expense-chart';
+import { FleetOverview } from '@/components/fleet/fleet-overview';
 import { RequireRole } from '@/components/auth/require-role';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
 import { useFleetDashboard } from '@/hooks/use-api';
 import {
   formatCompactCurrency,
@@ -20,8 +22,18 @@ import {
   formatRelative,
 } from '@/lib/utils';
 
+/** Time-of-day greeting, from the reader's own clock rather than the server's. */
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+
+  return 'Good evening';
+}
+
 function FleetPageBody() {
   const { data, isLoading } = useFleetDashboard();
+  const { user } = useAuth();
 
   const severityVariant = (severity: string) =>
     severity === 'critical' || severity === 'high' ? 'destructive' : 'warning';
@@ -30,9 +42,12 @@ function FleetPageBody() {
     <div className="space-y-6">
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Fleet operations</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {greeting()}
+            {user?.first_name ? `, ${user.first_name}` : ''}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Utilisation, spend, maintenance and fuel-anomaly detection
+            Here&rsquo;s the current state of your fleet.
           </p>
         </div>
 
@@ -43,6 +58,8 @@ function FleetPageBody() {
           </Link>
         </Button>
       </header>
+
+      {data?.overview ? <FleetOverview data={data.overview} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

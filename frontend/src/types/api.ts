@@ -781,3 +781,40 @@ export interface FleetDriver {
   assigned_vehicle?: { id: number; plate_number: string } | null;
   hired_at: string | null;
 }
+
+/**
+ * The operational block on the fleet dashboard, served under `overview`.
+ *
+ * Nested rather than spread across the payload's top level because
+ * DashboardService::forFleet already publishes `summary`, `vehicles` and
+ * `maintenance` meaning entirely different things.
+ */
+export interface FleetOverview {
+  summary: {
+    total_vehicles: number;
+    available: number;
+    on_trip: number;
+    maintenance: number;
+  };
+  vehicles: Array<{
+    id: number;
+    plate_number: string;
+    display_name: string | null;
+    driver: { id: number; name: string } | null;
+    /** Operational state, not the stored column: available | on_trip | maintenance | inactive. */
+    state: 'available' | 'on_trip' | 'maintenance' | 'inactive';
+    status: string;
+  }>;
+  maintenance: Array<{
+    id: number;
+    vehicle: string | null;
+    service: string | null;
+    due_at: string | null;
+    status: string;
+  }>;
+  recent_activity: Array<{
+    type: string;
+    summary: string;
+    at: string;
+  }>;
+}
