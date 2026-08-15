@@ -67,15 +67,16 @@ class UserAdminController extends Controller
             'roles.*' => ['string', 'exists:roles,name'],
         ]);
 
+        $companyId = $this->companyForCreation($request->user(), $data['company_id'] ?? null);
+
         // Seats are counted against the company the user is being added to,
         // which is not necessarily the creator's own — a platform admin may be
         // adding somebody to a tenant they do not belong to.
-        $this->limits->assertCompanyCanAdd(
-            $data['company_id'] ?? $request->user()?->company_id,
-            SubscriptionLimitService::SEATS,
-        );
+        $this->limits->assertCompanyCanAdd($companyId, SubscriptionLimitService::SEATS);
 
-        $user = $this->users->create(collect($data)->except('roles')->all() + ['status' => 'active']);
+        $user = $this->users->create(
+            collect($data)->except('roles')->all() + ['company_id' => $companyId, 'status' => 'active'],
+        );
         $user->forceFill(['email_verified_at' => now()])->save();
         $user->syncRoles($this->assignableRoles($request->user(), $data['roles']));
         $user->preferences()->create(['theme' => 'system']);
@@ -101,6 +102,15 @@ class UserAdminController extends Controller
             'roles' => ['sometimes', 'array'],
             'roles.*' => ['string', 'exists:roles,name'],
         ]);
+
+        // Moving a person between tenants is a platform action. Without this a
+        // tenant admin could hand their own staff to another company, or annex
+        // somebody else's by editing one field.
+        if (array_key_exists('company_id', $data)
+            && ! $request->user()->isPlatformAdministrator()
+            && $data['company_id'] !== $user->company_id) {
+            abort(403, 'Only a platform administrator may move a user between companies.');
+        }
 
         $this->users->update($user, collect($data)->except('roles')->all());
 
@@ -175,6 +185,30 @@ class UserAdminController extends Controller
      * Guard against privilege escalation: only a super administrator may
      * grant the two platform-wide roles.
      */
+    /**
+     * The company a newly created user belongs to.
+     *
+     * A platform administrator may name any tenant, or none — operating across
+     * tenants is their job. Anyone else creates inside their own company and
+     * nowhere else: naming another is refused rather than quietly redirected,
+     * because a silent redirect would hide an attempt worth seeing in the audit
+     * trail. Omitting the field defaults to their own company rather than to
+     * null, which used to create a companyless user while still charging their
+     * company a seat.
+     */
+    private function companyForCreation(User $actor, ?int $requested): ?int
+    {
+        if ($actor->isPlatformAdministrator()) {
+            return $requested;
+        }
+
+        if ($requested !== null && $requested !== $actor->company_id) {
+            abort(403, 'You may only create users inside your own company.');
+        }
+
+        return $actor->company_id;
+    }
+
     private function assignableRoles(User $actor, array $requested): array
     {
         if ($actor->hasRole(config('fip.roles.super_admin'))) {

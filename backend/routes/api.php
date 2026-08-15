@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Admin\AiModelController;
 use App\Http\Controllers\Api\V1\Admin\AuditController;
+use App\Http\Controllers\Api\V1\Admin\CompanyAdminController;
 use App\Http\Controllers\Api\V1\Admin\ModerationController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
@@ -212,6 +213,10 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/', [FleetController::class, 'index']);
             Route::get('dashboard', [FleetController::class, 'dashboard']);
             Route::get('drivers', [FleetController::class, 'drivers']);
+            // Adding a driver used to require a direct database insert; the
+            // drivers.manage permission existed but no route consumed it.
+            Route::post('drivers', [FleetController::class, 'storeDriver']);
+            Route::patch('drivers/{driver}', [FleetController::class, 'updateDriver']);
             Route::post('assignments', [FleetController::class, 'assign']);
             Route::get('locations', [FleetController::class, 'vehicleLocations']);
             Route::get('vehicles/{vehicle}/locations', [FleetController::class, 'vehicleLocationHistory']);
@@ -257,6 +262,14 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::middleware('role_or_permission:super_admin|system_admin|users.view')->group(function (): void {
+            // Tenants. No destroy: deleting a company would orphan its
+            // users, vehicles and devices, and is_active already expresses
+            // "stop using this one" without destroying what it owns.
+            Route::get('companies', [CompanyAdminController::class, 'index']);
+            Route::post('companies', [CompanyAdminController::class, 'store']);
+            Route::get('companies/{company}', [CompanyAdminController::class, 'show']);
+            Route::patch('companies/{company}', [CompanyAdminController::class, 'update']);
+
             Route::apiResource('users', UserAdminController::class)->except(['show']);
             Route::get('roles', [UserAdminController::class, 'roles']);
             Route::put('roles/{role}/permissions', [UserAdminController::class, 'syncRolePermissions']);

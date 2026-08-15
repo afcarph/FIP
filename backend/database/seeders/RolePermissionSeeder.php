@@ -22,6 +22,11 @@ class RolePermissionSeeder extends Seeder
     /** @var array<string, list<string>> */
     private const PERMISSIONS = [
         'users' => ['users.view', 'users.create', 'users.update', 'users.delete', 'users.impersonate'],
+        // Tenants themselves. Creating a company and setting what it is
+        // entitled to are platform decisions, not tenant ones, so these are
+        // reached only by super_admin ('*') and system_admin ('all_except:…')
+        // and are deliberately absent from every company-level role below.
+        'companies' => ['companies.view', 'companies.create', 'companies.update'],
         'roles' => ['roles.manage'],
         'stations' => ['stations.view', 'stations.create', 'stations.update', 'stations.delete', 'stations.verify'],
         'prices' => ['prices.view', 'prices.update', 'prices.moderate', 'prices.import'],

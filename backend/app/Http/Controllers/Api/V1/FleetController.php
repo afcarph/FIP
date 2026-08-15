@@ -9,10 +9,13 @@ use App\Domain\Fleet\Models\DeviceLocation;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
 use App\Domain\Reporting\Services\DashboardService;
+use App\Domain\User\Models\User;
 use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Models\VehicleAssignment;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Fleet\StoreDriverRequest;
+use App\Http\Requests\Fleet\UpdateDriverRequest;
 use App\Http\Resources\DeviceLocationResource;
 use App\Http\Resources\DriverResource;
 use App\Support\Exceptions\DomainException;
@@ -20,6 +23,7 @@ use App\Support\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Tag(name="Fleet", description="Fleets, drivers, assignments and fraud alerts")
@@ -109,6 +113,92 @@ class FleetController extends Controller
             ->paginate(min((int) $request->integer('per_page', 20), 100));
 
         return ApiResponse::paginated($paginator, DriverResource::collection($paginator));
+    }
+
+    /**
+     * @OA\Post(path="/fleet/drivers", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="Add a driver to the fleet",
+     *
+     *   @OA\Response(response=201, description="Created"),
+     *   @OA\Response(response=403, description="Not entitled, or the record named is another tenant's"))
+     */
+    public function storeDriver(StoreDriverRequest $request): JsonResponse
+    {
+        $this->authorize('create', Driver::class);
+
+        $actor = $request->user();
+        $data = $request->validated();
+
+        $companyId = $this->companyForDriver($actor, $data['company_id'] ?? null);
+
+        // Every foreign key is re-checked against that company. `exists` proved
+        // the row is there; it never proved it was the caller's to point at.
+        $this->assertBelongsToCompany('users', $data['user_id'] ?? null, $companyId, 'user');
+        $this->assertBelongsToCompany('fleets', $data['fleet_id'] ?? null, $companyId, 'fleet');
+
+        $driver = Driver::create($data + ['company_id' => $companyId]);
+
+        return ApiResponse::created(new DriverResource($driver->load('fleet:id,name')));
+    }
+
+    /**
+     * @OA\Patch(path="/fleet/drivers/{driver}", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="Update a driver",
+     *
+     *   @OA\Response(response=200, description="Updated"),
+     *   @OA\Response(response=403, description="Not entitled to this driver"))
+     */
+    public function updateDriver(UpdateDriverRequest $request, Driver $driver): JsonResponse
+    {
+        // Route model binding resolves by id without the tenancy scope, so the
+        // policy is what stops an id from being an entitlement.
+        $this->authorize('update', $driver);
+
+        $data = $request->validated();
+
+        $this->assertBelongsToCompany('users', $data['user_id'] ?? null, $driver->company_id, 'user');
+        $this->assertBelongsToCompany('fleets', $data['fleet_id'] ?? null, $driver->company_id, 'fleet');
+
+        $driver->update($data);
+
+        return ApiResponse::success(new DriverResource($driver->refresh()->load('fleet:id,name')));
+    }
+
+    /**
+     * The company a new driver belongs to.
+     *
+     * A platform administrator may name any tenant. Anyone else creates inside
+     * their own and nowhere else, and naming another is refused rather than
+     * quietly redirected — a silent redirect hides an attempt worth seeing.
+     */
+    private function companyForDriver(User $actor, ?int $requested): ?int
+    {
+        if ($actor->isPlatformAdministrator()) {
+            return $requested ?? $actor->company_id;
+        }
+
+        if ($requested !== null && $requested !== $actor->company_id) {
+            abort(403, 'You may only add drivers to your own company.');
+        }
+
+        return $actor->company_id;
+    }
+
+    /**
+     * Refuse a foreign key that points outside the driver's own company.
+     *
+     * Without this, `exists:users,id` would happily accept another tenant's
+     * user and quietly attach them to this fleet.
+     */
+    private function assertBelongsToCompany(string $table, ?int $id, ?int $companyId, string $label): void
+    {
+        if ($id === null) {
+            return;
+        }
+
+        $owner = DB::table($table)->where('id', $id)->value('company_id');
+
+        abort_unless($owner !== null && $owner === $companyId, 403, "That {$label} belongs to another company.");
     }
 
     /**
