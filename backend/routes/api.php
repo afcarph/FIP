@@ -265,6 +265,10 @@ Route::prefix('v1')->group(function (): void {
             // Tenants. No destroy: deleting a company would orphan its
             // users, vehicles and devices, and is_active already expresses
             // "stop using this one" without destroying what it owns.
+            // Served rather than duplicated in the client: the console used to
+            // hardcode the tier list, so adding one in config would not appear
+            // and renaming one would offer a value the API refuses.
+            Route::get('subscription-tiers', [CompanyAdminController::class, 'tiers']);
             Route::get('companies', [CompanyAdminController::class, 'index']);
             Route::post('companies', [CompanyAdminController::class, 'store']);
             Route::get('companies/{company}', [CompanyAdminController::class, 'show']);

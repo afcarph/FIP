@@ -12,12 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCompany, useUpdateCompany } from '@/hooks/use-api';
+import { useCompany, useSubscriptionTiers, useUpdateCompany } from '@/hooks/use-api';
 import { ApiError } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/utils';
 import type { Company } from '@/types/api';
-
-const TIERS = ['free', 'business', 'enterprise'] as const;
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -30,6 +28,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function CompanyDetail({ company }: { company: Company }) {
   const update = useUpdateCompany();
+  // Served rather than hardcoded, so this select cannot drift from what the
+  // API will accept.
+  const { data: tierData } = useSubscriptionTiers();
+  const tiers = tierData?.tiers ?? [];
   const [tier, setTier] = React.useState(company.subscription_tier);
 
   // The server is the authority: if it rejects a change, the select must fall
@@ -80,9 +82,9 @@ function CompanyDetail({ company }: { company: Company }) {
                   onChange={(event) => setTier(event.target.value)}
                   className="h-9 flex-1 rounded-md border border-input bg-transparent px-3 text-sm capitalize"
                 >
-                  {TIERS.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
+                  {tiers.map((option) => (
+                    <option key={option.name} value={option.name}>
+                      {option.label}
                     </option>
                   ))}
                 </select>

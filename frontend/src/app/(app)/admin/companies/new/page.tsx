@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -13,23 +14,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCreateCompany } from '@/hooks/use-api';
+import { useCreateCompany, useSubscriptionTiers } from '@/hooks/use-api';
 import { ApiError } from '@/lib/api-client';
 
 /**
  * Mirrors StoreCompanyRequest, so the form rejects what the API would.
  *
- * The tier list is hardcoded to match config/fip.php. If a tier is added
- * there, the API's Rule::in will accept it before this select offers it — the
- * server stays the authority, and the worst case is a missing option rather
- * than a 422.
+ * The tier list is fetched rather than hardcoded. It used to be a literal here
+ * and in the detail page, so a tier added in config never appeared and a
+ * renamed one was offered until the server refused it with a 422.
  */
-const TIERS = [
-  { value: 'free', label: 'Free' },
-  { value: 'business', label: 'Business' },
-  { value: 'enterprise', label: 'Enterprise' },
-] as const;
-
 const schema = z.object({
   name: z.string().min(1, 'Enter the company name.').max(180, 'That name is too long.'),
   legal_name: z.string().max(180).optional(),
@@ -37,7 +31,8 @@ const schema = z.object({
   industry: z.string().max(80).optional(),
   contact_email: z.string().email('Enter a valid email address.').optional().or(z.literal('')),
   contact_phone: z.string().max(32).optional(),
-  subscription_tier: z.enum(TIERS.map((t) => t.value) as [string, ...string[]]),
+  // Validated against the served list at submit time rather than a literal.
+  subscription_tier: z.string().min(1, 'Choose a plan.'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -45,15 +40,25 @@ type FormValues = z.infer<typeof schema>;
 function NewCompanyPage() {
   const router = useRouter();
   const creation = useCreateCompany();
+  const { data: tierData, isLoading: tiersLoading } = useSubscriptionTiers();
+  const tiers = tierData?.tiers ?? [];
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { subscription_tier: 'free' },
+    defaultValues: { subscription_tier: '' },
   });
+
+  // Selected once the served list arrives. Deliberately not react-hook-form's
+  // `values` prop, which resets the entire form whenever it changes — that
+  // would wipe anything already typed the moment this query resolved.
+  React.useEffect(() => {
+    if (tierData?.default) setValue('subscription_tier', tierData.default);
+  }, [tierData?.default, setValue]);
 
   const error = creation.error instanceof ApiError ? creation.error : null;
 
@@ -136,17 +141,19 @@ function NewCompanyPage() {
                 <Label htmlFor="subscription_tier">Plan</Label>
                 <select
                   id="subscription_tier"
+                  disabled={tiersLoading}
                   className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                   {...register('subscription_tier')}
                 >
-                  {TIERS.map((tier) => (
-                    <option key={tier.value} value={tier.value}>
+                  {tiers.map((tier) => (
+                    <option key={tier.name} value={tier.name}>
                       {tier.label}
                     </option>
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
                   Decides how many vehicles, seats and devices the tenant may create.
+                  {tierData?.is_provisional ? ' These limits are provisional.' : ''}
                 </p>
               </div>
             </div>

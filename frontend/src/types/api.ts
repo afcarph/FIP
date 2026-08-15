@@ -840,3 +840,16 @@ export interface AdminUser {
   roles: string[];
   created_at: string | null;
 }
+
+/** The tiers a company may be put on, as served by the API. */
+export interface SubscriptionTiers {
+  default: string;
+  /** True while the numbers await a business decision. */
+  is_provisional: boolean;
+  tiers: Array<{
+    name: string;
+    label: string;
+    /** null means unlimited, which is not the same as zero. */
+    limits: { vehicles: number | null; seats: number | null; devices: number | null };
+  }>;
+}

@@ -208,6 +208,59 @@ class CompanyAdminTest extends TestCase
         $this->assertSame('keep@me.test', $company->contact_email);
     }
 
+    // --------------------------------------------------------------- tiers ---
+
+    public function test_the_tier_list_comes_from_configuration(): void
+    {
+        // The console used to hardcode free/business/enterprise, so a tier
+        // added in config never appeared and a renamed one was offered until
+        // the API refused it with a 422.
+        config(['fip.subscription.tiers' => [
+            'free' => ['vehicles' => 3, 'seats' => 2, 'devices' => 3],
+            'fleet_plus' => ['vehicles' => 50, 'seats' => 20, 'devices' => 60],
+        ]]);
+
+        $this->actingAsRole('super_admin');
+
+        $names = array_column($this->getJson('/api/v1/admin/subscription-tiers')
+            ->assertStatus(200)
+            ->json('data.tiers'), 'name');
+
+        $this->assertSame(['free', 'fleet_plus'], $names);
+    }
+
+    public function test_an_unlimited_tier_reports_null_rather_than_a_number(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $tiers = collect($this->getJson('/api/v1/admin/subscription-tiers')->json('data.tiers'))
+            ->keyBy('name');
+
+        $this->assertNull($tiers['enterprise']['limits']['vehicles']);
+        $this->assertSame(3, $tiers['free']['limits']['vehicles']);
+    }
+
+    public function test_the_tiers_are_declared_provisional(): void
+    {
+        // The numbers are placeholders awaiting a business decision, and the
+        // console should say so rather than presenting them as settled.
+        $this->actingAsRole('super_admin');
+
+        $this->getJson('/api/v1/admin/subscription-tiers')
+            ->assertStatus(200)
+            ->assertJsonPath('data.is_provisional', true)
+            ->assertJsonPath('data.default', config('fip.subscription.default_tier'));
+    }
+
+    public function test_a_company_manager_may_not_read_the_tier_list(): void
+    {
+        // Choosing a tier is a platform decision, so the menu of them is too.
+        $company = Company::factory()->create();
+        $this->actingAsRole('company_manager', ['company_id' => $company->id]);
+
+        $this->getJson('/api/v1/admin/subscription-tiers')->assertStatus(403);
+    }
+
     // ------------------------------------------------------------- absence ---
 
     public function test_there_is_no_delete_endpoint(): void

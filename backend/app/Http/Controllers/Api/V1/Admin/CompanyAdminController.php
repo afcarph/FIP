@@ -66,6 +66,44 @@ class CompanyAdminController extends Controller
     }
 
     /**
+     * @OA\Get(path="/admin/subscription-tiers", tags={"Admin — Companies"}, security={{"bearerAuth":{}}},
+     *   summary="The tiers a company may be put on",
+     *
+     *   @OA\Response(response=200, description="Tiers with their limits"))
+     */
+    public function tiers(): JsonResponse
+    {
+        // Whoever may create a company is who needs to choose a tier for one.
+        $this->authorize('create', Company::class);
+
+        $configured = (array) config('fip.subscription.tiers', []);
+
+        return ApiResponse::success([
+            'default' => (string) config('fip.subscription.default_tier'),
+
+            /*
+             * Carried in the payload rather than left as a code comment. The
+             * numbers are placeholders awaiting a business decision, and a
+             * console that presents them as settled invites someone to sell
+             * against them.
+             */
+            'is_provisional' => true,
+
+            'tiers' => collect($configured)->map(fn (array $limits, string $name) => [
+                'name' => $name,
+                'label' => ucfirst($name),
+                // null means unlimited, and stays null rather than becoming a
+                // number the client would render as a cap.
+                'limits' => [
+                    'vehicles' => $limits['vehicles'] ?? null,
+                    'seats' => $limits['seats'] ?? null,
+                    'devices' => $limits['devices'] ?? null,
+                ],
+            ])->values()->all(),
+        ]);
+    }
+
+    /**
      * @OA\Post(path="/admin/companies", tags={"Admin — Companies"}, security={{"bearerAuth":{}}},
      *   summary="Create a tenant",
      *

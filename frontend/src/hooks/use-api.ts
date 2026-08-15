@@ -34,6 +34,7 @@ import type {
   RegionalMovement,
   SavingsAnalysis,
   Station,
+  SubscriptionTiers,
   TrendPoint,
   User,
   Vehicle,
@@ -72,6 +73,7 @@ export const queryKeys = {
   company: (id: number) => ['companies', id] as const,
   fleetDrivers: (filters?: Record<string, unknown>) => ['fleet', 'drivers', filters] as const,
   adminUsers: (filters?: Record<string, unknown>) => ['admin', 'users', filters] as const,
+  subscriptionTiers: () => ['admin', 'subscription-tiers'] as const,
   fleetDevice: (id: number) => ['fleet', 'devices', id] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
@@ -625,5 +627,20 @@ export function useCreateUser() {
       // A new user consumes a seat, so the company's usage figures move.
       queryClient.invalidateQueries({ queryKey: ['companies'] });
     },
+  });
+}
+
+/**
+ * The tier list, from the server rather than the client.
+ *
+ * Both company screens used to hardcode free/business/enterprise, so a tier
+ * added in config never appeared and a renamed one was offered until the API
+ * refused it. Rarely changes, so it is cached for the session.
+ */
+export function useSubscriptionTiers() {
+  return useQuery({
+    queryKey: queryKeys.subscriptionTiers(),
+    queryFn: async () => (await api.get<SubscriptionTiers>('/admin/subscription-tiers')).data,
+    staleTime: Infinity,
   });
 }
