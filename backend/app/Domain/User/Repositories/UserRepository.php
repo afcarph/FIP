@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Repositories;
 
 use App\Domain\User\Models\User;
+use App\Support\Database\SqlDate;
 use App\Support\Repositories\BaseRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
@@ -96,7 +97,7 @@ class UserRepository extends BaseRepository
     public function growthByMonth(int $months = 12): array
     {
         return $this->query()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') AS period, COUNT(*) AS total")
+            ->selectRaw(SqlDate::yearMonth('created_at').' AS period, COUNT(*) AS total')
             ->where('created_at', '>=', now()->subMonths($months)->startOfMonth())
             ->groupBy('period')
             ->orderBy('period')

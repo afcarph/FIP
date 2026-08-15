@@ -40,19 +40,19 @@ class FleetOverviewTest extends TestCase
         $this->rival = Company::factory()->create(['name' => 'Rival Freight']);
     }
 
-    /**
-     * The overview for a company, read through the service.
-     *
-     * Deliberately not through GET /fleet/dashboard. That endpoint also calls
-     * DashboardService::monthlySeries, which builds MySQL-only DATE_FORMAT SQL
-     * and therefore 500s under the suite's SQLite connection — a pre-existing
-     * limitation, unrelated to this overview, and the reason the endpoint has
-     * never had test cover. Authorization is still asserted over HTTP below,
-     * because those checks abort before that query runs.
-     */
+    /** The overview for a company, read through the service. */
     private function overview(int $companyId): array
     {
         return app(FleetOverviewService::class)->forCompany($companyId);
+    }
+
+    /** The whole endpoint, over HTTP, as a client actually receives it. */
+    private function dashboard(): array
+    {
+        $response = $this->getJson('/api/v1/fleet/dashboard');
+        $response->assertStatus(200);
+
+        return $response->json('data');
     }
 
     // ------------------------------------------------------------ summary ---
@@ -292,5 +292,56 @@ class FleetOverviewTest extends TestCase
         foreach (['subscription', 'company_count', 'total_users', 'api_health', 'database'] as $forbidden) {
             $this->assertStringNotContainsString($forbidden, $body);
         }
+    }
+
+    // ------------------------------------------------------- over the wire ---
+
+    public function test_the_endpoint_serves_the_overview_alongside_the_existing_payload(): void
+    {
+        /*
+         * The test that could not exist. DashboardService::monthlySeries built
+         * MySQL-only DATE_FORMAT SQL, so this endpoint 500'd under SQLite and
+         * had no HTTP cover at all — which is how a key collision shipped that
+         * every service-level test passed straight through.
+         */
+        Vehicle::factory()->forCompany($this->acme->id)->create(['plate_number' => 'ACM 1001']);
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->acme->id]);
+
+        $data = $this->dashboard();
+
+        // The overview survives the merge with its own shape intact.
+        $this->assertSame(1, $data['overview']['summary']['total_vehicles']);
+        $this->assertSame('ACM 1001', $data['overview']['vehicles'][0]['plate_number']);
+
+        // And the keys the fleet page already consumed are still themselves.
+        foreach (['vehicles', 'drivers', 'summary', 'fraud_alerts', 'maintenance', 'utilisation'] as $key) {
+            $this->assertArrayHasKey($key, $data);
+        }
+
+        // `summary` at the top level is the expense summary, not the overview's.
+        $this->assertArrayNotHasKey('total_vehicles', $data['summary']);
+        $this->assertIsArray($data['monthly_series']);
+    }
+
+    public function test_the_endpoint_is_tenant_scoped_over_the_wire(): void
+    {
+        Vehicle::factory()->forCompany($this->acme->id)->create(['plate_number' => 'ACM 1001']);
+        Vehicle::factory()->forCompany($this->rival->id)->create(['plate_number' => 'RIV 9999']);
+
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->acme->id]);
+        $body = (string) json_encode($this->dashboard());
+
+        $this->assertStringContainsString('ACM 1001', $body);
+        $this->assertStringNotContainsString('RIV 9999', $body);
+    }
+
+    public function test_the_monthly_series_runs_on_this_connection(): void
+    {
+        // Directly pins the portability fix: the grouped date expression has to
+        // execute on whatever driver the suite is using, not only on MySQL.
+        Vehicle::factory()->forCompany($this->acme->id)->create();
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->acme->id]);
+
+        $this->assertIsArray($this->dashboard()['monthly_series']);
     }
 }
