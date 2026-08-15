@@ -3,9 +3,11 @@
 import {
   Bell,
   Bot,
+  Building2,
   Car,
   ChevronLeft,
   Fuel,
+  IdCard,
   LayoutDashboard,
   LogOut,
   Map,
@@ -57,6 +59,12 @@ const FLEET_NAV: NavItem[] = [
     roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
   },
   {
+    href: '/fleet/drivers',
+    label: 'Drivers',
+    icon: IdCard,
+    roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
+  },
+  {
     href: '/fleet/devices',
     label: 'Device health',
     icon: Smartphone,
@@ -68,6 +76,12 @@ const FLEET_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Admin console', icon: Shield, roles: ['super_admin', 'system_admin'] },
+  {
+    href: '/admin/companies',
+    label: 'Companies',
+    icon: Building2,
+    roles: ['super_admin', 'system_admin'],
+  },
   {
     href: '/admin/settings',
     label: 'Privacy & retention',

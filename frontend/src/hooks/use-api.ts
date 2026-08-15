@@ -12,6 +12,8 @@ import type {
   DeviceHealth,
   DeviceHealthFilter,
   DeviceHealthSummary,
+  Company,
+  FleetDriver,
   ExecutiveDashboard,
   ExpenseSummary,
   FleetAlert,
@@ -64,6 +66,9 @@ export const queryKeys = {
     ['vehicles', id, 'fuel-readings', filters] as const,
   fleetAlerts: (filters?: Record<string, unknown>) => ['fleet', 'alerts', filters] as const,
   fleetDevices: (filter?: string) => ['fleet', 'devices', filter ?? 'all'] as const,
+  companies: (filters?: Record<string, unknown>) => ['companies', filters] as const,
+  company: (id: number) => ['companies', id] as const,
+  fleetDrivers: (filters?: Record<string, unknown>) => ['fleet', 'drivers', filters] as const,
   fleetDevice: (id: number) => ['fleet', 'devices', id] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
@@ -521,5 +526,72 @@ export function useFleetDevice(id: number) {
     queryFn: async () => (await api.get<DeviceHealth>(`/fleet/devices/${id}`)).data,
     enabled: Number.isFinite(id) && id > 0,
     refetchInterval: 60_000,
+  });
+}
+
+// ---------------------------------------------------------------- companies ---
+
+export function useCompanies(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.companies(filters),
+    queryFn: async () => (await api.get<Company[]>('/admin/companies', filters as never)).data,
+  });
+}
+
+export function useCompany(id: number) {
+  return useQuery({
+    queryKey: queryKeys.company(id),
+    queryFn: async () => (await api.get<Company>(`/admin/companies/${id}`)).data,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+export function useCreateCompany() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.post<Company>('/admin/companies', payload)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companies'] }),
+  });
+}
+
+export function useUpdateCompany() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: { id: number } & Record<string, unknown>) =>
+      (await api.patch<Company>(`/admin/companies/${id}`, payload)).data,
+    // Both caches: the tier shown on the detail page also appears in the list.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companies'] }),
+  });
+}
+
+// ------------------------------------------------------------------ drivers ---
+
+export function useFleetDrivers(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.fleetDrivers(filters),
+    queryFn: async () => (await api.get<FleetDriver[]>('/fleet/drivers', filters as never)).data,
+  });
+}
+
+export function useCreateDriver() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.post<FleetDriver>('/fleet/drivers', payload)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fleet', 'drivers'] }),
+  });
+}
+
+export function useUpdateDriver() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: { id: number } & Record<string, unknown>) =>
+      (await api.patch<FleetDriver>(`/fleet/drivers/${id}`, payload)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fleet', 'drivers'] }),
   });
 }

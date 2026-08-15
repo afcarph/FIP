@@ -718,3 +718,66 @@ export interface DeviceHealthSummary {
   low_battery: number;
   charging: number;
 }
+
+/** A tenant, as the admin console sees it. */
+export interface Company {
+  id: number;
+  name: string;
+  legal_name: string | null;
+  tin: string | null;
+  industry: string | null;
+  type: string | null;
+  address_line: string | null;
+  city_id: number | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  subscription_tier: string;
+  is_active: boolean;
+  counts?: { users?: number; vehicles?: number; drivers?: number };
+  /** Present on the detail view only — it costs three counting queries. */
+  subscription?: SubscriptionReport;
+  created_at: string | null;
+}
+
+/**
+ * Usage against a plan.
+ *
+ * `limit` and `remaining` are null when the tier is unlimited, which is not
+ * the same as zero — rendering null as 0 would show an enterprise tenant as
+ * permanently full.
+ */
+export interface SubscriptionReport {
+  tier: string;
+  is_provisional: boolean;
+  resources: Record<
+    'vehicles' | 'seats' | 'devices',
+    { used: number; limit: number | null; remaining: number | null; over_limit: boolean }
+  >;
+}
+
+/**
+ * A driver as DriverResource actually serialises one.
+ *
+ * Note the shape: the API sends `full_name`, and groups the licence and the
+ * scores rather than flattening them. Writing this type from the request
+ * payload instead of the response is how a page ends up rendering blank names
+ * that still typecheck.
+ */
+export interface FleetDriver {
+  id: number;
+  employee_no: string | null;
+  full_name: string;
+  phone: string | null;
+  status: string;
+  licence: {
+    number: string | null;
+    type: string | null;
+    expiry: string | null;
+    /** Negative once expired; null when no expiry is on file. */
+    expires_in_days: number | null;
+  };
+  scores: { safety: number | null; efficiency: number | null };
+  fleet?: { id: number; name: string } | null;
+  assigned_vehicle?: { id: number; plate_number: string } | null;
+  hired_at: string | null;
+}
