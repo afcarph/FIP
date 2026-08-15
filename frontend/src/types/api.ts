@@ -6,6 +6,9 @@ export type Role =
   | 'station_admin'
   | 'fleet_manager'
   | 'company_manager'
+  // Seeded by the backend since the role matrix was written; it was simply
+  // never named here, so no screen could gate on it.
+  | 'viewer'
   | 'driver'
   | 'user'
   | 'guest';
@@ -923,3 +926,43 @@ export interface ReportRun {
   error_message: string | null;
   completed_at: string | null;
 }
+
+export type TripStatus = 'draft' | 'dispatched' | 'in_progress' | 'completed' | 'cancelled';
+
+/**
+ * A planned or completed job.
+ *
+ * `can` carries the transitions the server will accept from the trip's current
+ * state, computed from the same table the API enforces. The screen renders its
+ * buttons from it rather than reimplementing the state machine, so it cannot
+ * offer a move that would be refused.
+ *
+ * Assignment and trip are different things: a vehicle can have a driver
+ * assigned without being on a trip. Nothing here writes an assignment.
+ */
+export interface Trip {
+  id: number;
+  reference_no: string | null;
+  status: TripStatus;
+  can: TripStatus[];
+  vehicle?: { id: number; plate_number: string } | null;
+  driver?: { id: number; name: string } | null;
+  origin: string | null;
+  destination: string | null;
+  purpose: string | null;
+  notes: string | null;
+  odometer: { start: number | null; end: number | null };
+  distance_km: number | null;
+  timeline: {
+    scheduled_for: string | null;
+    created_at: string | null;
+    dispatched_at: string | null;
+    started_at: string | null;
+    ended_at: string | null;
+    cancelled_at: string | null;
+  };
+  cancellation_reason: string | null;
+  created_by?: string | null;
+}
+
+export type TripSummary = Record<TripStatus, number> & { total: number };

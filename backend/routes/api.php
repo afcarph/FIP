@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RouteController;
 use App\Http\Controllers\Api\V1\StationController;
+use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleController;
 use Illuminate\Support\Facades\Route;
 
@@ -222,6 +223,18 @@ Route::prefix('v1')->group(function (): void {
             // row is kept and dated, because fuel and fraud reporting read who
             // drove what between which dates.
             Route::delete('vehicles/{vehicle}/assignment', [FleetController::class, 'releaseAssignment']);
+
+            // Trips. The lifecycle verbs are POSTs on the trip rather than a
+            // PATCH of `status`, so an invalid move is a route that refuses
+            // rather than a field that silently accepts anything.
+            Route::get('trips', [TripController::class, 'index']);
+            Route::get('trips/summary', [TripController::class, 'summary']);
+            Route::post('trips', [TripController::class, 'store']);
+            Route::get('trips/{trip}', [TripController::class, 'show']);
+            Route::post('trips/{trip}/dispatch', [TripController::class, 'dispatchTrip']);
+            Route::post('trips/{trip}/start', [TripController::class, 'start']);
+            Route::post('trips/{trip}/complete', [TripController::class, 'complete']);
+            Route::post('trips/{trip}/cancel', [TripController::class, 'cancel']);
             Route::get('locations', [FleetController::class, 'vehicleLocations']);
             Route::get('vehicles/{vehicle}/locations', [FleetController::class, 'vehicleLocationHistory']);
             Route::get('fraud-alerts', [FleetController::class, 'fraudAlerts']);

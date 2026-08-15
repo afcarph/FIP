@@ -63,7 +63,7 @@ class FleetOverviewService
             ->withCount(['trips as open_trips_count' => fn ($q) => $q
                 ->whereNotNull('started_at')
                 ->whereNull('ended_at')
-                ->where('status', '!=', 'completed')])
+                ->whereNotIn('status', [Trip::STATUS_COMPLETED, Trip::STATUS_CANCELLED])])
             ->orderBy('plate_number')
             ->get();
     }
@@ -97,10 +97,11 @@ class FleetOverviewService
     /**
      * A trip that has started and not finished.
      *
-     * The trips table defines only `completed` as a status anywhere in the
-     * codebase, so the timestamps carry the meaning: started, not ended. The
-     * status check is belt-and-braces for a row completed without its
-     * ended_at being written.
+     * The timestamps carry the meaning — started, not ended — and the status
+     * check is belt-and-braces for a row closed without its ended_at being
+     * written. Cancelled is excluded for the same reason, though the lifecycle
+     * makes it unreachable: cancellation is not a transition out of
+     * IN_PROGRESS, so a cancelled trip can never hold a started_at.
      */
     private function isOnTrip(Vehicle $vehicle): bool
     {

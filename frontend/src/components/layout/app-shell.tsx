@@ -16,6 +16,7 @@ import {
   Menu,
   Moon,
   Receipt,
+  Route,
   Settings,
   Shield,
   ShieldCheck,
@@ -71,9 +72,10 @@ const FLEET_NAV: NavItem[] = [
   { href: '/expenses', label: 'Fuel & expenses', icon: Receipt },
   { href: '/fleet/alerts', label: 'Fuel alerts', icon: TriangleAlert, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   { href: '/fleet/assignments', label: 'Assignments', icon: ClipboardList, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  // Viewer included: read-only oversight extends to what the fleet is
+  // committed to, the same way it already covers vehicles and alerts.
+  { href: '/fleet/trips', label: 'Trips & dispatch', icon: Route, roles: ['fleet_manager', 'company_manager', 'viewer', 'super_admin', 'system_admin'] },
   { href: '/fleet/reports', label: 'Reports', icon: FileText, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
-  // Trips still has no page. Listing it would give a manager a sidebar entry
-  // that 404s, which is worse than an absence.
 ];
 
 /**

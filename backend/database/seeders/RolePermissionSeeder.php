@@ -33,6 +33,10 @@ class RolePermissionSeeder extends Seeder
         'vehicles' => ['vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete'],
         'fleet' => ['fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers'],
         'drivers' => ['drivers.view', 'drivers.manage'],
+        // Planning work and sending it out are separate grants. A dispatcher
+        // role can later be given the operational half without also being able
+        // to invent trips.
+        'trips' => ['trips.view', 'trips.manage', 'trips.dispatch'],
         'expenses' => ['expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete'],
         'maintenance' => ['maintenance.view', 'maintenance.manage'],
         'fraud' => ['fraud.view', 'fraud.resolve'],
@@ -75,6 +79,7 @@ class RolePermissionSeeder extends Seeder
                 'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
                 'fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers',
                 'drivers.view', 'drivers.manage',
+                'trips.view', 'trips.manage', 'trips.dispatch',
                 'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
                 'maintenance.view', 'maintenance.manage',
                 'fraud.view', 'fraud.resolve',
@@ -93,6 +98,7 @@ class RolePermissionSeeder extends Seeder
                 'vehicles.view', 'vehicles.create', 'vehicles.update',
                 'fleet.view', 'fleet.manage', 'fleet.reports',
                 'drivers.view', 'drivers.manage',
+                'trips.view', 'trips.manage', 'trips.dispatch',
                 'expenses.view', 'expenses.create', 'expenses.update',
                 'maintenance.view', 'maintenance.manage',
                 'fraud.view', 'reports.view', 'analytics.view',
@@ -139,7 +145,7 @@ class RolePermissionSeeder extends Seeder
             'label' => 'Fleet Viewer',
             'level' => 8,
             'permissions' => [
-                'fleet.view', 'vehicles.view', 'fraud.view',
+                'fleet.view', 'vehicles.view', 'fraud.view', 'trips.view',
                 'reports.view', 'analytics.view',
                 'prices.view', 'stations.view',
             ],

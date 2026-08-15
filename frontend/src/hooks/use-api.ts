@@ -40,6 +40,8 @@ import type {
   Station,
   SubscriptionTiers,
   TrendPoint,
+  Trip,
+  TripSummary,
   User,
   Vehicle,
   VehicleEfficiency,
@@ -80,6 +82,9 @@ export const queryKeys = {
   subscriptionTiers: () => ['admin', 'subscription-tiers'] as const,
   maintenanceDue: (days: number) => ['maintenance', 'due', days] as const,
   maintenanceTypes: () => ['maintenance', 'types'] as const,
+  trips: (filters?: Record<string, unknown>) => ['trips', filters] as const,
+  trip: (id: number) => ['trips', id] as const,
+  tripSummary: () => ['trips', 'summary'] as const,
   reportDefinitions: () => ['reports', 'definitions'] as const,
   reportRuns: () => ['reports', 'runs'] as const,
   reportRun: (id: number) => ['reports', 'runs', id] as const,
@@ -683,6 +688,74 @@ export function useMaintenanceTypes() {
     staleTime: Infinity,
   });
 }
+
+/**
+ * Trips, newest first.
+ *
+ * Tenant scoping is the API's job — `forUser` on the query — so the filters
+ * here are only ever about what the operator wants to look at.
+ */
+export function useTrips(filters: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: queryKeys.trips(filters),
+    queryFn: async () => (await api.get<Trip[]>('/fleet/trips', filters as never)).data,
+  });
+}
+
+export function useTripSummary() {
+  return useQuery({
+    queryKey: queryKeys.tripSummary(),
+    queryFn: async () => (await api.get<TripSummary>('/fleet/trips/summary')).data,
+  });
+}
+
+export function useTrip(id: number) {
+  return useQuery({
+    queryKey: queryKeys.trip(id),
+    queryFn: async () => (await api.get<Trip>(`/fleet/trips/${id}`)).data,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/**
+ * Every lifecycle action invalidates the same three things.
+ *
+ * A transition changes the trip, the status counts, and how many vehicles the
+ * fleet dashboard considers available — starting one takes a vehicle off the
+ * road. Patching any of those by hand would eventually disagree with the
+ * server about a state machine the server owns.
+ */
+function useTripAction<TBody>(path: (id: number) => string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: number } & TBody) =>
+      (await api.post<Trip>(path(id), body)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'fleet'] });
+    },
+  });
+}
+
+export function useCreateTrip() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.post<Trip>('/fleet/trips', payload)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'fleet'] });
+    },
+  });
+}
+
+export const useDispatchTrip = () => useTripAction<object>((id) => `/fleet/trips/${id}/dispatch`);
+export const useStartTrip = () => useTripAction<{ odometer_start?: number }>((id) => `/fleet/trips/${id}/start`);
+export const useCompleteTrip = () =>
+  useTripAction<{ odometer_end?: number; notes?: string }>((id) => `/fleet/trips/${id}/complete`);
+export const useCancelTrip = () => useTripAction<{ reason: string }>((id) => `/fleet/trips/${id}/cancel`);
 
 /**
  * Put a driver in a vehicle.

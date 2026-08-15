@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Domain\Expense\Models\FuelPurchase;
+use App\Domain\Expense\Models\Trip;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Pricing\Models\PriceReport;
 use App\Domain\Station\Models\GasStation;
@@ -17,6 +18,7 @@ use App\Policies\DriverPolicy;
 use App\Policies\FuelPurchasePolicy;
 use App\Policies\GasStationPolicy;
 use App\Policies\PriceReportPolicy;
+use App\Policies\TripPolicy;
 use App\Policies\UserDevicePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VehiclePolicy;
@@ -29,6 +31,7 @@ class AuthServiceProvider extends ServiceProvider
         Company::class => CompanyPolicy::class,
         Driver::class => DriverPolicy::class,
         User::class => UserPolicy::class,
+        Trip::class => TripPolicy::class,
         Vehicle::class => VehiclePolicy::class,
         GasStation::class => GasStationPolicy::class,
         FuelPurchase::class => FuelPurchasePolicy::class,

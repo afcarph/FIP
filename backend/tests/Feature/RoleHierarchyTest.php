@@ -67,6 +67,10 @@ class RoleHierarchyTest extends TestCase
             'analytics.view',
             'prices.view',
             'stations.view',
+            // Read-only oversight extends to trips: seeing what the fleet is
+            // committed to is the same kind of question as seeing its vehicles.
+            // Still no mutation — trips.manage and trips.dispatch are withheld.
+            'trips.view',
         ], $viewer->permissions->pluck('name')->all());
     }
 
@@ -189,8 +193,11 @@ class RoleHierarchyTest extends TestCase
         $fleet = Role::where('name', 'fleet_manager')->first();
         $names = $fleet->permissions->pluck('name');
 
-        $this->assertCount(27, $names);
-        foreach (['fleet.manage', 'fleet.assign_drivers', 'fraud.resolve', 'devices.location.history'] as $p) {
+        // 27 before trips, plus trips.view, trips.manage and trips.dispatch.
+        // The number is the point: it fails when a role quietly gains anything.
+        $this->assertCount(30, $names);
+        foreach (['fleet.manage', 'fleet.assign_drivers', 'fraud.resolve', 'devices.location.history',
+            'trips.view', 'trips.manage', 'trips.dispatch'] as $p) {
             $this->assertContains($p, $names->all(), "fleet_manager must retain $p");
         }
         $this->assertNotContains('users.create', $names->all());
