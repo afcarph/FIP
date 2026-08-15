@@ -878,3 +878,43 @@ export interface MaintenanceType {
   name: string;
   category: string | null;
 }
+
+/**
+ * A report the caller is entitled to run.
+ *
+ * The list is filtered server-side by permission, so anything returned here is
+ * runnable — the UI never has to decide who may see what.
+ */
+export interface ReportDefinition {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  scope: string;
+  required_permission: string | null;
+}
+
+/**
+ * One generation of a report.
+ *
+ * `status` is why this is a record rather than a plain download: anything over
+ * the sync row ceiling is queued, so the client gets a `queued` run back and
+ * polls until it completes.
+ *
+ * `download_url` points at the API, not at object storage — the file is
+ * streamed behind the bearer token, so fetching it needs `api.download`
+ * rather than a plain link.
+ */
+export interface ReportRun {
+  id: number;
+  report: string | null;
+  code: string | null;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  format: string;
+  period: { from: string | null; to: string | null };
+  row_count: number | null;
+  file_size: number | null;
+  download_url: string | null;
+  error_message: string | null;
+  completed_at: string | null;
+}

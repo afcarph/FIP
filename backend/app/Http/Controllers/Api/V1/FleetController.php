@@ -124,6 +124,42 @@ class FleetController extends Controller
     }
 
     /**
+     * @OA\Delete(path="/fleet/vehicles/{vehicle}/assignment", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="Release whoever is currently driving this vehicle",
+     *
+     *   @OA\Response(response=200, description="Released, or already free"),
+     *   @OA\Response(response=403, description="Not entitled to manage this vehicle"))
+     */
+    public function releaseAssignment(Request $request, Vehicle $vehicle): JsonResponse
+    {
+        // The same two questions as assigning. `update` says the vehicle is
+        // yours to touch — which an assigned driver passes, since they record
+        // odometer readings — and the management capability says deciding who
+        // drives it is your call rather than theirs.
+        $this->authorize('update', $vehicle);
+        abort_unless(
+            $request->user()->canAny(['fleet.assign_drivers', 'fleet.manage']),
+            403,
+            'Releasing a driver from a vehicle requires fleet management permission.',
+        );
+
+        // Released rather than deleted: the row is the record that somebody
+        // drove this vehicle between two dates, and fuel and fraud reporting
+        // read it. Removing it would rewrite history to tidy a screen.
+        $released = VehicleAssignment::query()
+            ->where('vehicle_id', $vehicle->getKey())
+            ->whereNull('released_at')
+            ->update(['released_at' => now()]);
+
+        return ApiResponse::success(
+            ['released' => $released],
+            $released > 0
+                ? 'Driver released from '.$vehicle->plate_number.'.'
+                : 'That vehicle already had no driver assigned.',
+        );
+    }
+
+    /**
      * @OA\Get(path="/fleet/drivers", tags={"Fleet"}, security={{"bearerAuth":{}}},
      *   summary="Drivers in the caller's company", @OA\Response(response=200, description="Drivers"))
      */

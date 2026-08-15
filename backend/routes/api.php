@@ -218,6 +218,10 @@ Route::prefix('v1')->group(function (): void {
             Route::post('drivers', [FleetController::class, 'storeDriver']);
             Route::patch('drivers/{driver}', [FleetController::class, 'updateDriver']);
             Route::post('assignments', [FleetController::class, 'assign']);
+            // Releasing is its own verb rather than assigning to nobody: the
+            // row is kept and dated, because fuel and fraud reporting read who
+            // drove what between which dates.
+            Route::delete('vehicles/{vehicle}/assignment', [FleetController::class, 'releaseAssignment']);
             Route::get('locations', [FleetController::class, 'vehicleLocations']);
             Route::get('vehicles/{vehicle}/locations', [FleetController::class, 'vehicleLocationHistory']);
             Route::get('fraud-alerts', [FleetController::class, 'fraudAlerts']);
@@ -243,6 +247,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('reports/definitions', [ReportController::class, 'definitions']);
         Route::get('reports/runs', [ReportController::class, 'runs']);
         Route::get('reports/runs/{run}', [ReportController::class, 'show']);
+        // Streamed through the app so the file is reachable from a browser and
+        // stays behind authorization. See ReportController::download().
+        Route::get('reports/runs/{run}/download', [ReportController::class, 'download']);
         Route::middleware('throttle:reports')->group(function (): void {
             Route::post('reports/generate', [ReportController::class, 'generate']);
         });

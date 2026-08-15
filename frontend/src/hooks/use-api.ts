@@ -34,6 +34,8 @@ import type {
   ReceiptScanResult,
   RefuelRecommendation,
   RegionalMovement,
+  ReportDefinition,
+  ReportRun,
   SavingsAnalysis,
   Station,
   SubscriptionTiers,
@@ -78,6 +80,9 @@ export const queryKeys = {
   subscriptionTiers: () => ['admin', 'subscription-tiers'] as const,
   maintenanceDue: (days: number) => ['maintenance', 'due', days] as const,
   maintenanceTypes: () => ['maintenance', 'types'] as const,
+  reportDefinitions: () => ['reports', 'definitions'] as const,
+  reportRuns: () => ['reports', 'runs'] as const,
+  reportRun: (id: number) => ['reports', 'runs', id] as const,
   fleetDevice: (id: number) => ['fleet', 'devices', id] as const,
   expenses: (filters: Record<string, unknown>) => ['expenses', filters] as const,
   expenseSummary: (filters: Record<string, unknown>) => ['expenses', 'summary', filters] as const,
@@ -671,6 +676,122 @@ export function useMaintenanceTypes() {
     queryFn: async () => (await api.get<MaintenanceType[]>('/maintenance/types')).data,
     staleTime: Infinity,
   });
+}
+
+/**
+ * Put a driver in a vehicle.
+ *
+ * The API releases whatever either of them was previously bound to, in one
+ * transaction — a vehicle and a driver each hold at most one live assignment.
+ * That means a single assign can change up to three rows the UI is showing,
+ * so both rosters are invalidated rather than patched.
+ */
+export function useAssignDriver() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { vehicle_id: number; driver_id: number; notes?: string }) =>
+      (await api.post('/fleet/assignments', payload)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet'] });
+    },
+  });
+}
+
+/**
+ * Take the current driver out of a vehicle.
+ *
+ * Keyed by vehicle rather than by assignment because that is the question the
+ * screen is asking — and because the assignment id is not in the vehicle
+ * payload. The record is dated, not deleted: fuel and fraud reporting read who
+ * drove what between which dates.
+ */
+export function useReleaseDriver() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (vehicleId: number) =>
+      (await api.delete(`/fleet/vehicles/${vehicleId}/assignment`)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet'] });
+    },
+  });
+}
+
+/**
+ * Reports the signed-in user may run.
+ *
+ * Permission-filtered by the API, and it changes only when roles do, so it is
+ * cached for the session.
+ */
+export function useReportDefinitions() {
+  return useQuery({
+    queryKey: queryKeys.reportDefinitions(),
+    queryFn: async () => (await api.get<ReportDefinition[]>('/reports/definitions')).data,
+    staleTime: Infinity,
+  });
+}
+
+export function useReportRuns() {
+  return useQuery({
+    queryKey: queryKeys.reportRuns(),
+    queryFn: async () => (await api.get<ReportRun[]>('/reports/runs')).data,
+  });
+}
+
+/**
+ * Poll a run until it settles.
+ *
+ * Only enabled for a run that is actually pending: a report under the sync row
+ * ceiling is rendered inline and comes back complete, so most generations never
+ * poll at all. Stopping on `completed` and `failed` matters — a failed run
+ * would otherwise be refetched every few seconds forever.
+ */
+export function useReportRun(id: number | null) {
+  return useQuery({
+    queryKey: queryKeys.reportRun(id ?? 0),
+    queryFn: async () => (await api.get<ReportRun>(`/reports/runs/${id}`)).data,
+    enabled: id !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+
+      return status === 'completed' || status === 'failed' ? false : 3000;
+    },
+  });
+}
+
+export function useGenerateReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) =>
+      (await api.post<ReportRun>('/reports/generate', payload)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.reportRuns() }),
+  });
+}
+
+/**
+ * Save a generated report to disk.
+ *
+ * The file is streamed by the API behind the bearer token, so it is fetched
+ * as a blob and handed to a synthetic link. The object URL is revoked straight
+ * after; without that, every download would pin its own bytes in memory for
+ * the life of the tab.
+ */
+export async function downloadReportRun(run: ReportRun): Promise<void> {
+  const { blob, filename } = await api.download(`/reports/runs/${run.id}/download`);
+  const href = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = filename ?? `${run.code ?? 'report'}.${run.format}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(href);
 }
 
 export function useRecordMaintenance() {
