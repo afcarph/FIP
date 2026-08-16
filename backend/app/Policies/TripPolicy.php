@@ -29,7 +29,14 @@ class TripPolicy
 
     public function view(User $user, Trip $trip): bool
     {
-        return $this->sharesTenant($user, $trip) && $user->can('trips.view');
+        if (! $this->sharesTenant($user, $trip) || ! $user->can('trips.view')) {
+            return false;
+        }
+
+        // A driver's list is narrowed to their own trips, so reading a
+        // colleague's by id would hand back through one endpoint exactly what
+        // the other withholds. Whoever plans the work can read all of it.
+        return ! $this->isOperatorOnly($user) || $this->isTheirs($user, $trip);
     }
 
     public function create(User $user): bool
@@ -54,6 +61,51 @@ class TripPolicy
     public function dispatch(User $user, Trip $trip): bool
     {
         return $this->sharesTenant($user, $trip) && $user->can('trips.dispatch');
+    }
+
+    /**
+     * Starting and closing a trip, which is not the same as sending it out.
+     *
+     * Dispatch decides that a job happens; operating it reports what actually
+     * did. The driver holding the trip may do the second without being able to
+     * do the first — they cannot invent work for themselves, reassign it, or
+     * call it off, but the person in the vehicle is the one who knows when it
+     * left and when it got back.
+     */
+    public function operate(User $user, Trip $trip): bool
+    {
+        if (! $this->sharesTenant($user, $trip)) {
+            return false;
+        }
+
+        if ($user->can('trips.dispatch')) {
+            return true;
+        }
+
+        return $this->isTheirs($user, $trip);
+    }
+
+    /**
+     * Matched on the driver record rather than the name: two people can share
+     * a name, and only the id is theirs. A user with no driver record behind
+     * the account matches nothing, which fails closed.
+     */
+    private function isTheirs(User $user, Trip $trip): bool
+    {
+        return $trip->driver_id !== null
+            && $trip->driver_id === $user->driverProfile?->getKey();
+    }
+
+    /**
+     * A driver sees the trips given to them, and only those.
+     *
+     * `forUser` scopes to the tenant, which for a driver would be every trip
+     * their company runs — a roster of everyone else's work. Anyone without a
+     * planning or dispatching grant is narrowed to their own.
+     */
+    public function isOperatorOnly(User $user): bool
+    {
+        return ! $user->can('trips.manage') && ! $user->can('trips.dispatch');
     }
 
     /**

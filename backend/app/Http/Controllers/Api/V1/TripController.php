@@ -8,6 +8,7 @@ use App\Domain\Expense\Models\Trip;
 use App\Domain\Fleet\Services\TripDispatchService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TripResource;
+use App\Policies\TripPolicy;
 use App\Support\Http\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,9 +30,17 @@ class TripController extends Controller
     {
         $this->authorize('viewAny', Trip::class);
 
+        $actor = $request->user();
+
         $paginator = Trip::query()
             // The tenancy filter is the scope, not the status filter below it.
-            ->forUser($request->user())
+            ->forUser($actor)
+            // A driver holds no planning grant, so the tenant scope alone would
+            // hand them every trip their company runs. Narrowed to their own.
+            ->when(
+                app(TripPolicy::class)->isOperatorOnly($actor),
+                fn ($q) => $q->where('driver_id', $actor->driverProfile?->getKey() ?? 0),
+            )
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')->toString()))
             ->when($request->filled('vehicle_id'), fn ($q) => $q->where('vehicle_id', $request->integer('vehicle_id')))
             ->with(self::WITH)
@@ -49,8 +58,17 @@ class TripController extends Controller
     {
         $this->authorize('viewAny', Trip::class);
 
+        $actor = $request->user();
+
         $counts = Trip::query()
-            ->forUser($request->user())
+            ->forUser($actor)
+            // Narrowed the same way the listing is: counting a company's whole
+            // workload for a driver would leak through the tiles what the list
+            // itself refuses to show.
+            ->when(
+                app(TripPolicy::class)->isOperatorOnly($actor),
+                fn ($q) => $q->where('driver_id', $actor->driverProfile?->getKey() ?? 0),
+            )
             ->selectRaw('status, COUNT(*) AS total')
             ->groupBy('status')
             ->pluck('total', 'status');
@@ -120,7 +138,7 @@ class TripController extends Controller
      */
     public function start(Request $request, Trip $trip): JsonResponse
     {
-        $this->authorize('dispatch', $trip);
+        $this->authorize('operate', $trip);
 
         $data = $request->validate(['odometer_start' => ['nullable', 'integer', 'min:0']]);
 
@@ -139,7 +157,7 @@ class TripController extends Controller
      */
     public function complete(Request $request, Trip $trip): JsonResponse
     {
-        $this->authorize('dispatch', $trip);
+        $this->authorize('operate', $trip);
 
         $data = $request->validate([
             'odometer_end' => ['nullable', 'integer', 'min:0'],

@@ -114,6 +114,10 @@ class RolePermissionSeeder extends Seeder
             'level' => 6,
             'permissions' => [
                 'vehicles.view', 'expenses.view', 'expenses.create',
+                // Their own trips, and only those: the controller narrows reads
+                // to the driver's own record. Starting and closing them is
+                // granted by holding the trip, not by this permission.
+                'trips.view',
                 // A driver registers and revokes their own handset. They get no
                 // location permission: reporting is authorised by the device
                 // registration, not by a permission to read other people.

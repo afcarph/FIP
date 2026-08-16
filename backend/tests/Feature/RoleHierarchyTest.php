@@ -185,6 +185,11 @@ class RoleHierarchyTest extends TestCase
             'vehicles.view', 'expenses.view', 'expenses.create',
             'devices.view', 'devices.manage',
             'maintenance.view', 'prices.view', 'stations.view', 'ai.use',
+            // Reads only, and the controller narrows those to the driver's own
+            // trips. Starting and closing one is granted by holding the trip,
+            // not by a permission — so trips.manage and trips.dispatch, which
+            // would let a driver invent or call off work, stay absent.
+            'trips.view',
         ], $driver->permissions->pluck('name')->all());
     }
 

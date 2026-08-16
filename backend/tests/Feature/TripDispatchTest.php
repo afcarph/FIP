@@ -9,6 +9,7 @@ use App\Domain\Fleet\Models\Driver;
 use App\Domain\User\Models\Company;
 use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tymon\JWTAuth\JWT;
@@ -488,13 +489,141 @@ class TripDispatchTest extends TestCase
         $this->postJson("/api/v1/fleet/trips/{$trip->getKey()}/dispatch")->assertStatus(403);
     }
 
-    public function test_a_driver_has_no_trip_access_yet(): void
+    // -------------------------------------------------------- driver access ---
+
+    /** Signs in as a driver linked to a Driver record, the way the app does. */
+    private function actingAsTripDriver(Driver $driver): void
     {
-        // Deliberate for this phase: driver-facing trip actions belong with the
-        // mobile flow, and half a permission is worse than none.
+        $user = $this->actingAsRole('driver', ['company_id' => $this->acme->id]);
+        $driver->forceFill(['user_id' => $user->getKey()])->save();
+    }
+
+    public function test_a_driver_sees_only_their_own_trips(): void
+    {
+        /*
+         * The tenant scope alone is not enough here. A driver belongs to a
+         * company, so forUser would hand them every trip that company runs —
+         * a roster of everybody else's work. They get theirs.
+         */
+        $mine = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+        $this->tripIn($this->acme);   // a colleague's
+
+        $this->actingAsTripDriver($this->driver);
+
+        $listed = $this->getJson('/api/v1/fleet/trips')->assertStatus(200)->json('data');
+
+        $this->assertCount(1, $listed);
+        $this->assertSame($mine->getKey(), $listed[0]['id']);
+    }
+
+    public function test_the_summary_does_not_leak_a_colleagues_work(): void
+    {
+        // The tiles must agree with the list, or the count becomes the leak.
+        $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+        $this->tripIn($this->acme);
+
+        $this->actingAsTripDriver($this->driver);
+
+        $this->getJson('/api/v1/fleet/trips/summary')
+            ->assertStatus(200)
+            ->assertJsonPath('data.total', 1);
+    }
+
+    public function test_a_driver_starts_and_completes_their_own_trip(): void
+    {
+        $trip = $this->tripIn($this->acme, [
+            'driver_id' => $this->driver->getKey(),
+            'status' => Trip::STATUS_DISPATCHED,
+            'dispatched_at' => now(),
+        ]);
+
+        $this->actingAsTripDriver($this->driver);
+
+        $this->postJson("/api/v1/fleet/trips/{$trip->getKey()}/start", ['odometer_start' => 500])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', Trip::STATUS_IN_PROGRESS);
+
+        $this->postJson("/api/v1/fleet/trips/{$trip->getKey()}/complete", ['odometer_end' => 560])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', Trip::STATUS_COMPLETED);
+    }
+
+    public function test_a_driver_may_not_operate_someone_elses_trip(): void
+    {
+        $theirs = $this->tripIn($this->acme, [
+            'status' => Trip::STATUS_DISPATCHED,
+            'dispatched_at' => now(),
+        ]);
+
+        $this->actingAsTripDriver($this->driver);
+
+        // Refused to read it as well as to act on it. Narrowing the list while
+        // leaving show() open would hand back through one endpoint exactly what
+        // the other withholds.
+        $this->postJson("/api/v1/fleet/trips/{$theirs->getKey()}/start")->assertStatus(403);
+        $this->getJson("/api/v1/fleet/trips/{$theirs->getKey()}")->assertStatus(403);
+    }
+
+    public function test_one_user_cannot_hold_two_driver_records(): void
+    {
+        /*
+         * Trip scoping resolves a driver through User::driverProfile(), a
+         * hasOne. With two records pointing at one account it returned
+         * whichever the database offered first — and a driver's own trip
+         * vanished from their list while a colleague's could appear. Found
+         * during verification, not by a test.
+         */
+        $user = $this->actingAsRole('driver', ['company_id' => $this->acme->id]);
+        $this->driver->forceFill(['user_id' => $user->getKey()])->save();
+
+        $second = Driver::create([
+            'company_id' => $this->acme->id,
+            'first_name' => 'Second',
+            'last_name' => 'Record',
+        ]);
+
+        $this->expectException(QueryException::class);
+        $second->forceFill(['user_id' => $user->getKey()])->save();
+    }
+
+    public function test_a_driver_may_not_plan_dispatch_or_cancel(): void
+    {
+        /*
+         * The split that makes driver access safe. Reporting what happened is
+         * theirs; deciding what happens is not. A driver who could dispatch
+         * could invent their own work.
+         */
+        $trip = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+
+        $this->actingAsTripDriver($this->driver);
+
+        $this->postJson('/api/v1/fleet/trips', $this->payload())->assertStatus(403);
+        $this->postJson("/api/v1/fleet/trips/{$trip->getKey()}/dispatch")->assertStatus(403);
+        $this->postJson("/api/v1/fleet/trips/{$trip->getKey()}/cancel", ['reason' => 'no'])
+            ->assertStatus(403);
+    }
+
+    public function test_a_driver_in_another_company_is_refused_outright(): void
+    {
+        $theirs = $this->tripIn($this->rival, [
+            'status' => Trip::STATUS_DISPATCHED,
+            'dispatched_at' => now(),
+        ]);
+
+        $this->actingAsTripDriver($this->driver);
+
+        $this->getJson("/api/v1/fleet/trips/{$theirs->getKey()}")->assertStatus(403);
+        $this->postJson("/api/v1/fleet/trips/{$theirs->getKey()}/start")->assertStatus(403);
+    }
+
+    public function test_a_driver_with_no_driver_record_sees_nothing(): void
+    {
+        // Fails closed. A user holding the role without a Driver row behind it
+        // matches no trip rather than falling back to the company's.
+        $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
         $this->actingAsRole('driver', ['company_id' => $this->acme->id]);
 
-        $this->getJson('/api/v1/fleet/trips')->assertStatus(403);
+        $this->getJson('/api/v1/fleet/trips')->assertStatus(200)->assertJsonCount(0, 'data');
     }
 
     public function test_an_unauthenticated_request_is_refused(): void

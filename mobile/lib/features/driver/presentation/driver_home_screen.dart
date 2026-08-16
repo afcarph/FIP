@@ -14,6 +14,8 @@ import '../../fleet/data/fleet_models.dart';
 import '../../tracking/presentation/tracking_indicator.dart';
 import '../data/device_setup.dart';
 import '../data/driver_providers.dart';
+import '../data/trip_providers.dart';
+import 'trip_card.dart';
 
 /// Home, for a driver.
 ///
@@ -22,15 +24,20 @@ import '../data/driver_providers.dart';
 /// phone is reporting, the tank, and anything flagged against that vehicle —
 /// and nothing about the rest of the fleet, other drivers, or administration.
 ///
-/// Deliberately absent: distance today, trip counts, litres per 100 km. The
-/// API measures none of them, and inventing them on a screen a driver is
-/// judged by would be worse than leaving the space empty.
+/// Trips appear here once a dispatcher has sent one out, with the single
+/// action the server says is available. A driver reports what happened; they
+/// do not plan, dispatch or cancel, so none of those appear.
+///
+/// Deliberately absent: distance today, litres per 100 km, trip counts as a
+/// score. The API measures none of them, and inventing them on a screen a
+/// driver is judged by would be worse than leaving the space empty.
 class DriverHomeScreen extends ConsumerWidget {
   const DriverHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehicle = ref.watch(assignedVehicleProvider);
+    final trips = ref.watch(driverTripsProvider);
     final alerts = ref.watch(driverAlertsProvider);
     final setup = ref.watch(deviceSetupProvider);
     final firstName = ref.watch(authProvider).user?['first_name'] as String?;
@@ -41,6 +48,7 @@ class DriverHomeScreen extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(assignedVehicleProvider);
+            ref.invalidate(driverTripsProvider);
             ref.invalidate(deviceRegistrationProvider);
             await ref.read(deviceSetupProvider.notifier).refresh();
           },
@@ -96,6 +104,33 @@ class DriverHomeScreen extends ConsumerWidget {
                         )
                       : _VehicleCard(vehicle: v),
                 ),
+              ),
+
+              // ------------------------------------------------------ trips ---
+              // Above fuel deliberately: a job waiting to be started is the
+              // most actionable thing on this screen. Absent entirely when
+              // there is nothing live, rather than an empty state a driver
+              // scrolls past every day.
+              ...trips.maybeWhen(
+                data: (list) => list.isEmpty
+                    ? const <Widget>[]
+                    : [
+                        SectionHeader(
+                          title: list.length == 1 ? 'Your trip' : 'Your trips',
+                          icon: Icons.route_rounded,
+                        ),
+                        for (final trip in list)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              FipSpace.page,
+                              0,
+                              FipSpace.page,
+                              FipSpace.gap,
+                            ),
+                            child: TripCard(trip: trip),
+                          ),
+                      ],
+                orElse: () => const <Widget>[],
               ),
 
               // ------------------------------------------------------- fuel ---
