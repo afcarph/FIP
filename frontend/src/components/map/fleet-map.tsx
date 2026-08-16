@@ -71,28 +71,44 @@ function Unavailable({ detail }: { detail: string }) {
  * without clicking. A stale position is drawn in a muted amber and says so on
  * hover: it is still the last thing we know, but an operator dispatching
  * against it needs to see that it is old before they act on it.
+ *
+ * The wrapper exists to keep two sets of classes apart. MapLibre puts its own
+ * classes on whatever element it is handed — and
+ * `maplibregl-marker` is what positions the thing absolutely. Repainting the
+ * badge by assigning `className` on that same element therefore wiped
+ * MapLibre's classes, the marker fell back to static flow, and its transform
+ * carried it off-screen: clicking a vehicle made its marker vanish. So
+ * MapLibre gets the outer node and owns its classes; the button inside is ours
+ * to restyle as often as we like.
  */
-function createMarkerElement(): { element: HTMLButtonElement; dot: HTMLSpanElement; label: HTMLSpanElement } {
-  const element = document.createElement('button');
+function createMarkerElement(): {
+  element: HTMLDivElement;
+  button: HTMLButtonElement;
+  dot: HTMLSpanElement;
+  label: HTMLSpanElement;
+} {
+  const element = document.createElement('div');
+  const button = document.createElement('button');
   const dot = document.createElement('span');
   const label = document.createElement('span');
 
-  element.type = 'button';
+  button.type = 'button';
   dot.setAttribute('aria-hidden', 'true');
-  element.append(dot, label);
+  button.append(dot, label);
+  element.append(button);
 
-  return { element, dot, label };
+  return { element, button, dot, label };
 }
 
 /** Applied on creation and again on every refresh, to the same nodes. */
 function paintMarker(
-  parts: { element: HTMLButtonElement; dot: HTMLSpanElement; label: HTMLSpanElement },
+  parts: ReturnType<typeof createMarkerElement>,
   vehicle: VehicleLocation,
   selected: boolean,
 ): void {
   const name = vehicle.plate_number ?? `Vehicle ${vehicle.vehicle_id}`;
 
-  parts.element.className = cn(
+  parts.button.className = cn(
     'flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium shadow-sm transition',
     vehicle.is_fresh
       ? 'border-emerald-600/30 bg-emerald-600 text-white'
@@ -102,11 +118,11 @@ function paintMarker(
   parts.dot.className = cn('size-1.5 rounded-full', vehicle.is_fresh ? 'bg-white' : 'bg-amber-600');
   parts.label.textContent = name;
 
-  parts.element.setAttribute(
+  parts.button.setAttribute(
     'aria-label',
     `${name}${vehicle.is_fresh ? '' : ' — position is stale'}`,
   );
-  parts.element.title = vehicle.is_fresh
+  parts.button.title = vehicle.is_fresh
     ? 'Reporting now'
     : 'This is the last known position, and it is no longer current';
 }
@@ -223,7 +239,7 @@ export function FleetMap({ vehicles, focus, onSelect, className }: FleetMapProps
       // Reads the id, not the object: this listener outlives the refresh that
       // created it, and closing over a position would hand the page a fix
       // that has since been replaced.
-      parts.element.addEventListener('click', (event) => {
+      parts.button.addEventListener('click', (event) => {
         event.stopPropagation();
 
         const current = latest.current.get(vehicle.vehicle_id);

@@ -42,6 +42,9 @@ vi.mock('maplibre-gl', () => {
     }
 
     addTo() {
+      // The real library stamps these on. Without them here the mock cannot
+      // notice a repaint wiping them, which is exactly what shipped once.
+      this.record.element.classList.add('maplibregl-marker', 'maplibregl-marker-anchor-center');
       markerInstances.push(this.record);
 
       return this;
@@ -156,7 +159,9 @@ describe('FleetMap', () => {
     // somebody to the wrong place.
     render(<FleetMap vehicles={[vehicle({ is_fresh: false })]} />);
 
-    expect(markerInstances[0]?.element.getAttribute('aria-label')).toContain('stale');
+    expect(markerInstances[0]?.element.querySelector('button')?.getAttribute('aria-label')).toContain(
+      'stale',
+    );
   });
 
   it('skips a vehicle whose coordinates cannot be believed', () => {
@@ -188,9 +193,24 @@ describe('FleetMap', () => {
     const onSelect = vi.fn();
 
     render(<FleetMap vehicles={[vehicle()]} onSelect={onSelect} />);
-    fireEvent.click(markerInstances[0]!.element);
+    fireEvent.click(markerInstances[0]!.element.querySelector('button')!);
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ vehicle_id: 7 }));
+  });
+
+  it('keeps MapLibre\'s own classes when the badge is repainted', () => {
+    // Found on production: repainting wrote over the element's className,
+    // taking `maplibregl-marker` with it. That class is what positions the
+    // marker absolutely, so the marker fell into normal flow and its
+    // transform carried it off-screen — clicking a vehicle made its marker
+    // disappear. MapLibre owns the outer element; the badge is a child.
+    const { rerender } = render(<FleetMap vehicles={[vehicle()]} />);
+
+    rerender(<FleetMap vehicles={[vehicle({ is_fresh: false })]} focus={{ vehicleId: 7, at: 1 }} />);
+
+    expect(markerInstances[0]?.element.classList.contains('maplibregl-marker')).toBe(true);
+    // and the repaint still did its job
+    expect(markerInstances[0]?.element.querySelector('button')?.className).toContain('ring-2');
   });
 
   it('drops the marker of a vehicle that stops reporting', () => {
