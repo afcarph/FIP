@@ -5,7 +5,7 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import { RequireRole } from '@/components/auth/require-role';
-import { FleetMap } from '@/components/map/fleet-map';
+import { FleetMap, type FocusRequest } from '@/components/map/fleet-map';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -104,7 +104,17 @@ function VehicleRow({
 
 function FleetMapPage() {
   const { data, isLoading, isError } = useFleetLocations();
-  const [selectedId, setSelectedId] = React.useState<number | null>(null);
+
+  // A focus request rather than a selected id: clicking a vehicle already
+  // highlighted is how an operator gets back to it after panning, and an id
+  // compared against itself would move nothing.
+  const [focus, setFocus] = React.useState<FocusRequest | null>(null);
+  const selectedId = focus?.vehicleId ?? null;
+
+  const show = React.useCallback(
+    (vehicleId: number) => setFocus({ vehicleId, at: Date.now() }),
+    [],
+  );
 
   const vehicles = React.useMemo(() => data ?? [], [data]);
 
@@ -175,8 +185,8 @@ function FleetMapPage() {
             <div className="lg:col-span-3">
               <FleetMap
                 vehicles={vehicles}
-                selectedId={selectedId}
-                onSelect={(vehicle) => setSelectedId(vehicle.vehicle_id)}
+                focus={focus}
+                onSelect={(vehicle) => show(vehicle.vehicle_id)}
                 className="h-[520px]"
               />
             </div>
@@ -189,7 +199,7 @@ function FleetMapPage() {
                       key={vehicle.vehicle_id}
                       vehicle={vehicle}
                       selected={vehicle.vehicle_id === selectedId}
-                      onSelect={() => setSelectedId(vehicle.vehicle_id)}
+                      onSelect={() => show(vehicle.vehicle_id)}
                     />
                   ))}
                 </CardContent>

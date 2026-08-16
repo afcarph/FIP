@@ -210,12 +210,38 @@ describe('FleetMap', () => {
   });
 
   it('centres on a vehicle chosen from the list', () => {
-    const { rerender } = render(<FleetMap vehicles={[vehicle()]} selectedId={null} />);
+    const { rerender } = render(<FleetMap vehicles={[vehicle()]} focus={null} />);
 
     easedTo = [];
-    rerender(<FleetMap vehicles={[vehicle()]} selectedId={7} />);
+    rerender(<FleetMap vehicles={[vehicle()]} focus={{ vehicleId: 7, at: 1 }} />);
 
     expect(easedTo).toContainEqual([121.0244, 14.5547]);
+  });
+
+  it('centres again when the same vehicle is asked for a second time', () => {
+    // Found on production: after panning across the city, clicking the vehicle
+    // already highlighted did nothing, because only a change of id moved the
+    // camera — and re-clicking is exactly how an operator gets back to it.
+    const { rerender } = render(
+      <FleetMap vehicles={[vehicle()]} focus={{ vehicleId: 7, at: 1 }} />,
+    );
+
+    easedTo = [];
+    rerender(<FleetMap vehicles={[vehicle()]} focus={{ vehicleId: 7, at: 2 }} />);
+
+    expect(easedTo).toContainEqual([121.0244, 14.5547]);
+  });
+
+  it('does not drag the camera back on a routine refresh', () => {
+    // The counterpart to the test above: positions arrive every minute, and a
+    // refresh must not yank the view to whatever was last clicked.
+    const focus = { vehicleId: 7, at: 1 };
+    const { rerender } = render(<FleetMap vehicles={[vehicle()]} focus={focus} />);
+
+    easedTo = [];
+    rerender(<FleetMap vehicles={[vehicle({ latitude: 14.61 })]} focus={focus} />);
+
+    expect(easedTo).toEqual([]);
   });
 
   it('degrades to a notice when the basemap cannot load', () => {

@@ -33,9 +33,21 @@ import 'maplibre-gl/dist/maplibre-gl.css';
  * (`devices.location.history`) which this page never asks for.
  */
 
+/**
+ * "Show me this vehicle" — an event, not a selection.
+ *
+ * `at` is what makes asking twice work. An operator who has panned across the
+ * city clicks the same vehicle in the list again to get back to it, and a
+ * plain id would compare equal to the one already held and move nothing.
+ */
+export interface FocusRequest {
+  vehicleId: number;
+  at: number;
+}
+
 interface FleetMapProps {
   vehicles: VehicleLocation[];
-  selectedId?: number | null;
+  focus?: FocusRequest | null;
   onSelect?: (vehicle: VehicleLocation) => void;
   className?: string;
 }
@@ -104,7 +116,9 @@ interface TrackedMarker {
   parts: ReturnType<typeof createMarkerElement>;
 }
 
-export function FleetMap({ vehicles, selectedId, onSelect, className }: FleetMapProps) {
+export function FleetMap({ vehicles, focus, onSelect, className }: FleetMapProps) {
+  const selectedId = focus?.vehicleId ?? null;
+
   const container = React.useRef<HTMLDivElement | null>(null);
   const map = React.useRef<MapLibreMap | null>(null);
   const markers = React.useRef<Map<number, TrackedMarker>>(new Map());
@@ -264,13 +278,15 @@ export function FleetMap({ vehicles, selectedId, onSelect, className }: FleetMap
     instance.fitBounds(bounds, { padding: 64, maxZoom: 15, duration: 0 });
   }, [plottable, failed, ready]);
 
-  // Bring a vehicle chosen in the list into view, without wrenching the zoom.
+  // Bring the vehicle just asked for into view, without wrenching the zoom.
+  // Keyed on the request rather than on which vehicle is selected: asking for
+  // the same one again is the normal way back after panning the map around.
   React.useEffect(() => {
     const instance = map.current;
 
-    if (!instance || failed || selectedId == null) return;
+    if (!instance || failed || !focus) return;
 
-    const vehicle = plottable.find((candidate) => candidate.vehicle_id === selectedId);
+    const vehicle = latest.current.get(focus.vehicleId);
 
     if (!vehicle) return;
 
@@ -278,7 +294,10 @@ export function FleetMap({ vehicles, selectedId, onSelect, className }: FleetMap
       center: [vehicle.longitude as number, vehicle.latitude as number],
       duration: 500,
     });
-  }, [selectedId, plottable, failed]);
+    // `plottable` is deliberately absent: a refresh that leaves the fleet in
+    // place must not drag the camera back to the last vehicle clicked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.vehicleId, focus?.at, failed]);
 
   if (failed) {
     return (
