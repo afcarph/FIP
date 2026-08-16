@@ -336,7 +336,14 @@ export function HistoryMap({ points, cursor, className }: HistoryMapProps) {
       dot.className = 'block size-4 rounded-full border-2 border-white bg-sky-500 shadow-lg';
       element.append(dot);
 
-      cursorMarker.current = new maplibregl.Marker({ element }).addTo(instance);
+      // Positioned before it is added. `addTo` projects the marker
+      // immediately, so a marker with no position throws reading `lng` and
+      // takes the whole page down with it.
+      cursorMarker.current = new maplibregl.Marker({ element })
+        .setLngLat([cursor.longitude, cursor.latitude])
+        .addTo(instance);
+
+      return;
     }
 
     cursorMarker.current.setLngLat([cursor.longitude, cursor.latitude]);
