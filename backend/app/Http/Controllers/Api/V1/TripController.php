@@ -119,6 +119,35 @@ class TripController extends Controller
     }
 
     /**
+     * @OA\Patch(path="/fleet/trips/{trip}", tags={"Trips"}, security={{"bearerAuth":{}}},
+     *   summary="Amend a trip that has not been sent out",
+     *
+     *   @OA\Response(response=200, description="Updated"),
+     *   @OA\Response(response=403, description="Already dispatched, or not yours"))
+     */
+    public function update(Request $request, Trip $trip): JsonResponse
+    {
+        // The policy allows this only for a draft: once dispatched, a driver
+        // has been told where they are going.
+        $this->authorize('update', $trip);
+
+        $data = $request->validate([
+            'vehicle_id' => ['sometimes', 'integer', 'exists:vehicles,id'],
+            'driver_id' => ['sometimes', 'integer', 'exists:drivers,id'],
+            'origin_label' => ['sometimes', 'string', 'max:180'],
+            'destination_label' => ['sometimes', 'string', 'max:180'],
+            'purpose' => ['sometimes', 'nullable', 'string', 'max:180'],
+            'scheduled_for' => ['sometimes', 'nullable', 'date'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
+        ]);
+
+        return ApiResponse::success(
+            new TripResource($this->trips->update($request->user(), $trip, $data)->load(self::WITH)),
+            'Trip '.$trip->reference_no.' updated.',
+        );
+    }
+
+    /**
      * @OA\Post(path="/fleet/trips/{trip}/dispatch", tags={"Trips"}, security={{"bearerAuth":{}}},
      *   summary="Send the trip out", @OA\Response(response=200, description="Dispatched"))
      */

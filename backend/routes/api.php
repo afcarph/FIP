@@ -231,6 +231,10 @@ Route::prefix('v1')->group(function (): void {
             Route::get('trips/summary', [TripController::class, 'summary']);
             Route::post('trips', [TripController::class, 'store']);
             Route::get('trips/{trip}', [TripController::class, 'show']);
+            // Amending is a PATCH; the lifecycle verbs stay POSTs on their own
+            // paths so an invalid move is a route that refuses rather than a
+            // status field that accepts anything.
+            Route::patch('trips/{trip}', [TripController::class, 'update']);
             Route::post('trips/{trip}/dispatch', [TripController::class, 'dispatchTrip']);
             Route::post('trips/{trip}/start', [TripController::class, 'start']);
             Route::post('trips/{trip}/complete', [TripController::class, 'complete']);

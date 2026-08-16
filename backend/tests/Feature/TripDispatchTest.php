@@ -216,6 +216,121 @@ class TripDispatchTest extends TestCase
         $this->postJson('/api/v1/fleet/trips', $this->payload())->assertStatus(201);
     }
 
+    // ---------------------------------------------------------------- edit ---
+
+    public function test_a_draft_can_be_amended(): void
+    {
+        $trip = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+
+        $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", [
+            'destination_label' => 'Lipa',
+            'purpose' => 'Parts pickup',
+        ])->assertStatus(200)
+            ->assertJsonPath('data.destination', 'Lipa')
+            ->assertJsonPath('data.purpose', 'Parts pickup');
+    }
+
+    public function test_amending_leaves_untouched_fields_alone(): void
+    {
+        // A form that sends two of seven fields must not blank the other five.
+        $trip = $this->tripIn($this->acme, [
+            'driver_id' => $this->driver->getKey(),
+            'origin_label' => 'Manila',
+            'purpose' => 'Delivery',
+        ]);
+
+        $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", ['destination_label' => 'Lipa'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.origin', 'Manila')
+            ->assertJsonPath('data.purpose', 'Delivery');
+    }
+
+    public function test_the_vehicle_and_driver_can_be_swapped_on_a_draft(): void
+    {
+        $trip = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+        $other = Vehicle::factory()->forCompany($this->acme->id)->create(['status' => 'active']);
+
+        $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", ['vehicle_id' => $other->getKey()])
+            ->assertStatus(200)
+            ->assertJsonPath('data.vehicle.id', $other->getKey());
+    }
+
+    public function test_swapping_in_a_vehicle_already_on_a_trip_is_refused(): void
+    {
+        // The clash rule applies to an amendment as much as to a new trip —
+        // heard now rather than at dispatch.
+        $busy = $this->tripIn($this->acme, ['status' => Trip::STATUS_IN_PROGRESS, 'started_at' => now()]);
+        $draft = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+
+        $this->patchJson("/api/v1/fleet/trips/{$draft->getKey()}", ['vehicle_id' => $busy->vehicle_id])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'vehicle_on_trip');
+    }
+
+    public function test_a_draft_is_not_a_clash_with_itself(): void
+    {
+        $trip = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+
+        $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", [
+            'vehicle_id' => $trip->vehicle_id,
+            'driver_id' => $trip->driver_id,
+        ])->assertStatus(200);
+    }
+
+    public function test_another_companys_vehicle_cannot_be_swapped_in(): void
+    {
+        $trip = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+        $theirs = Vehicle::factory()->forCompany($this->rival->id)->create(['status' => 'active']);
+
+        $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", ['vehicle_id' => $theirs->getKey()])
+            ->assertStatus(404);
+    }
+
+    public function test_a_dispatched_trip_cannot_be_edited(): void
+    {
+        /*
+         * Stricter than "not finished" on purpose: a driver has been told
+         * where they are going, and changing it underneath them is how
+         * somebody ends up at the wrong place. Cancel and re-plan instead,
+         * which leaves two honest records rather than one silently altered.
+         */
+        $trip = $this->tripIn($this->acme, [
+            'status' => Trip::STATUS_DISPATCHED,
+            'dispatched_at' => now(),
+        ]);
+
+        $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", ['destination_label' => 'Elsewhere'])
+            ->assertStatus(403);
+    }
+
+    public function test_an_in_progress_or_finished_trip_cannot_be_edited(): void
+    {
+        foreach ([Trip::STATUS_IN_PROGRESS, Trip::STATUS_COMPLETED, Trip::STATUS_CANCELLED] as $status) {
+            $trip = $this->tripIn($this->acme, ['status' => $status]);
+
+            $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", ['purpose' => 'Rewritten'])
+                ->assertStatus(403);
+        }
+    }
+
+    public function test_another_tenants_draft_cannot_be_edited(): void
+    {
+        $theirs = $this->tripIn($this->rival);
+
+        $this->patchJson("/api/v1/fleet/trips/{$theirs->getKey()}", ['purpose' => 'Not mine'])
+            ->assertStatus(403);
+    }
+
+    public function test_a_driver_may_not_edit_even_their_own_trip(): void
+    {
+        // Reporting what happened is theirs; deciding what happens is not.
+        $trip = $this->tripIn($this->acme, ['driver_id' => $this->driver->getKey()]);
+        $this->actingAsTripDriver($this->driver);
+
+        $this->patchJson("/api/v1/fleet/trips/{$trip->getKey()}", ['purpose' => 'Mine now'])
+            ->assertStatus(403);
+    }
+
     // ------------------------------------------------------------ dispatch ---
 
     public function test_a_draft_can_be_dispatched(): void

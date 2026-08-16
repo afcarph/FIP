@@ -22,6 +22,7 @@ import {
   useCreateTrip,
   useDispatchTrip,
   useFleetDrivers,
+  useUpdateTrip,
   useStartTrip,
   useTripSummary,
   useTrips,
@@ -59,42 +60,106 @@ type FormValues = z.infer<typeof schema>;
  * unfinished trip. The API refuses those pairings anyway — this is not the
  * guard — but offering one would be offering an action that cannot succeed.
  */
-function TripForm({ busy, onDone }: { busy: { vehicles: Set<number>; drivers: Set<number> }; onDone: () => void }) {
+function TripForm({
+  busy,
+  trip,
+  onDone,
+}: {
+  busy: { vehicles: Set<number>; drivers: Set<number> };
+  trip?: Trip | null;
+  onDone: () => void;
+}) {
   const creation = useCreateTrip();
+  const amendment = useUpdateTrip();
   const { data: vehicles } = useVehicles();
   const { data: drivers } = useFleetDrivers();
+
+  const editing = trip != null;
+  const pending = editing ? amendment : creation;
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: editing
+      ? {
+          origin_label: trip.origin ?? '',
+          destination_label: trip.destination ?? '',
+          purpose: trip.purpose ?? '',
+          notes: trip.notes ?? '',
+        }
+      : undefined,
+  });
 
-  const freeVehicles = (vehicles ?? []).filter((v) => v.status === 'active' && !busy.vehicles.has(v.id));
-  const freeDrivers = (drivers ?? []).filter((d) => d.status === 'active' && !busy.drivers.has(d.id));
-  const error = creation.error instanceof ApiError ? creation.error : null;
+  /*
+   * A trip's own vehicle and driver are "busy" — with this very trip — so
+   * editing it would otherwise offer neither, and the form could not be saved
+   * without also reassigning it.
+   */
+  const keepsVehicle = (id: number) => !busy.vehicles.has(id) || id === trip?.vehicle?.id;
+  const keepsDriver = (id: number) => !busy.drivers.has(id) || id === trip?.driver?.id;
+
+  const freeVehicles = (vehicles ?? []).filter((v) => v.status === 'active' && keepsVehicle(v.id));
+  const freeDrivers = (drivers ?? []).filter((d) => d.status === 'active' && keepsDriver(d.id));
+
+  /*
+   * Selected once the options exist, not at mount.
+   *
+   * The vehicle and driver lists are fetched, so at first render the selects
+   * hold nothing but their placeholder — and setting a select to a value with
+   * no matching option is a no-op the browser silently ignores. Applied as
+   * defaultValues, the trip's own vehicle came out blank and saving an
+   * otherwise untouched form asked the planner to "choose a vehicle" for a
+   * trip that already had one.
+   */
+  React.useEffect(() => {
+    if (!editing) return;
+
+    if (trip.vehicle?.id && freeVehicles.some((v) => v.id === trip.vehicle?.id)) {
+      setValue('vehicle_id', String(trip.vehicle.id));
+    }
+
+    if (trip.driver?.id && freeDrivers.some((d) => d.id === trip.driver?.id)) {
+      setValue('driver_id', String(trip.driver.id));
+    }
+  }, [editing, trip, freeVehicles, freeDrivers, setValue]);
+
+  const error = pending.error instanceof ApiError ? pending.error : null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Plan a trip</CardTitle>
+        <CardTitle className="text-base">
+          {editing ? `Amend ${trip.reference_no ?? 'trip'}` : 'Plan a trip'}
+        </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Creating a trip does not send it out. It is saved as a draft until you dispatch it.
+          {editing
+            ? 'Only a trip that has not been sent out can be changed. Once dispatched, cancel and plan again so the record stays honest.'
+            : 'Creating a trip does not send it out. It is saved as a draft until you dispatch it.'}
         </p>
       </CardHeader>
       <CardContent>
         <form
           className="space-y-5"
           onSubmit={handleSubmit(async (values) => {
-            await creation.mutateAsync({
+            const payload = {
               ...values,
               vehicle_id: Number(values.vehicle_id),
               driver_id: Number(values.driver_id),
               purpose: values.purpose || undefined,
               scheduled_for: values.scheduled_for || undefined,
               notes: values.notes || undefined,
-            });
+            };
+
+            if (editing) {
+              await amendment.mutateAsync({ id: trip.id, ...payload });
+            } else {
+              await creation.mutateAsync(payload);
+            }
 
             reset();
             onDone();
@@ -181,8 +246,8 @@ function TripForm({ busy, onDone }: { busy: { vehicles: Set<number>; drivers: Se
             <Button variant="ghost" type="button" onClick={onDone}>
               Cancel
             </Button>
-            <Button type="submit" disabled={creation.isPending}>
-              {creation.isPending ? 'Saving…' : 'Save as draft'}
+            <Button type="submit" disabled={pending.isPending}>
+              {pending.isPending ? 'Saving…' : editing ? 'Save changes' : 'Save as draft'}
             </Button>
           </div>
         </form>
@@ -198,7 +263,15 @@ function TripForm({ busy, onDone }: { busy: { vehicles: Set<number>; drivers: Se
  * offer a move the API would refuse — the button set and the state machine
  * have a single definition between them.
  */
-function TripRow({ trip, onError }: { trip: Trip; onError: (message: string | null) => void }) {
+function TripRow({
+  trip,
+  onEdit,
+  onError,
+}: {
+  trip: Trip;
+  onEdit: (trip: Trip) => void;
+  onError: (message: string | null) => void;
+}) {
   const dispatchTrip = useDispatchTrip();
   const start = useStartTrip();
   const complete = useCompleteTrip();
@@ -266,6 +339,16 @@ function TripRow({ trip, onError }: { trip: Trip; onError: (message: string | nu
       </div>
 
       <div className="flex shrink-0 gap-1">
+        {/*
+          Editing is not a transition, so it is not in `can` — the server allows
+          it while the trip is a draft and refuses afterwards.
+        */}
+        {trip.status === 'draft' && (
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => onEdit(trip)}>
+            Edit
+          </Button>
+        )}
+
         {trip.can.includes('dispatched') && (
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(dispatchTrip.mutateAsync({ id: trip.id }))}>
             Dispatch
@@ -426,6 +509,7 @@ function TripRow({ trip, onError }: { trip: Trip; onError: (message: string | nu
 function TripsPage() {
   const [status, setStatus] = React.useState<TripStatus | 'all'>('all');
   const [creating, setCreating] = React.useState(false);
+  const [editing, setEditing] = React.useState<Trip | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   const { data: trips, isLoading, isError } = useTrips(status === 'all' ? {} : { status });
@@ -463,7 +547,16 @@ function TripsPage() {
           </p>
         </div>
 
-        {!creating && <Button onClick={() => setCreating(true)}>Plan a trip</Button>}
+        {!creating && !editing && (
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setCreating(true);
+            }}
+          >
+            Plan a trip
+          </Button>
+        )}
       </div>
 
       {summary ? (
@@ -505,7 +598,19 @@ function TripsPage() {
         ))}
       </div>
 
-      {creating && <TripForm busy={busy} onDone={() => setCreating(false)} />}
+      {(creating || editing) && (
+        <TripForm
+          // Keyed so switching between rows rebuilds the form with the new
+          // trip's values; react-hook-form reads defaults once per instance.
+          key={editing?.id ?? 'new'}
+          busy={busy}
+          trip={editing}
+          onDone={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+        />
+      )}
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
@@ -535,7 +640,16 @@ function TripsPage() {
         <Card>
           <CardContent className="p-0">
             {list.map((trip) => (
-              <TripRow key={trip.id} trip={trip} onError={setError} />
+              <TripRow
+                key={trip.id}
+                trip={trip}
+                onEdit={(t) => {
+                  setCreating(false);
+                  setEditing(t);
+                  setError(null);
+                }}
+                onError={setError}
+              />
             ))}
           </CardContent>
         </Card>

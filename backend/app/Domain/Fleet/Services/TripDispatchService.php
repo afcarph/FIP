@@ -73,6 +73,50 @@ final readonly class TripDispatchService
     }
 
     /**
+     * Amend a draft.
+     *
+     * The vehicle and driver may change, so both are re-proven against the
+     * caller's own fleet and re-checked for clashes — a planner who swaps in a
+     * van already booked for the afternoon should hear about it now rather
+     * than at dispatch. This trip is excluded from its own clash check.
+     *
+     * Only fields present in the payload are touched. A form that sends five
+     * of seven fields must not blank the other two.
+     */
+    public function update(User $actor, Trip $trip, array $data): Trip
+    {
+        $changes = [];
+
+        if (array_key_exists('vehicle_id', $data)) {
+            $vehicle = $this->vehicleFor($actor, (int) $data['vehicle_id']);
+            $this->assertVehicleFree($vehicle, $trip);
+
+            $changes['vehicle_id'] = $vehicle->getKey();
+            // Kept in step with the vehicle: both are denormalised from it, and
+            // a trip filed under the old fleet would go missing from reports.
+            $changes['company_id'] = $vehicle->company_id;
+            $changes['fleet_id'] = $vehicle->fleet_id;
+        }
+
+        if (array_key_exists('driver_id', $data)) {
+            $driver = $this->driverFor($actor, (int) $data['driver_id']);
+            $this->assertDriverFree($driver, $trip);
+
+            $changes['driver_id'] = $driver->getKey();
+        }
+
+        foreach (['origin_label', 'destination_label', 'purpose', 'scheduled_for', 'notes'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $changes[$field] = $data[$field];
+            }
+        }
+
+        $trip->forceFill($changes)->save();
+
+        return $trip;
+    }
+
+    /**
      * Draft -> dispatched. The vehicle and driver are re-checked, because a
      * draft may have sat for a day and the fleet moves underneath it.
      */

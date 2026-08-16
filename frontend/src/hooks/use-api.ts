@@ -738,6 +738,19 @@ function useTripAction<TBody>(path: (id: number) => string) {
   });
 }
 
+export function useUpdateTrip() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: { id: number } & Record<string, unknown>) =>
+      (await api.patch<Trip>(`/fleet/trips/${id}`, payload)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'fleet'] });
+    },
+  });
+}
+
 export function useCreateTrip() {
   const queryClient = useQueryClient();
 

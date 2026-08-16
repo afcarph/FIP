@@ -44,11 +44,22 @@ class TripPolicy
         return $user->can('trips.manage');
     }
 
+    /**
+     * Only a draft may be edited.
+     *
+     * Stricter than "not finished" on purpose. Once a trip is dispatched a
+     * driver has been told where they are going, and changing the destination
+     * underneath them is how somebody ends up at the wrong place. A finished
+     * or abandoned trip is a record rather than a form, and editing one would
+     * rewrite what happened.
+     *
+     * Plans do change after dispatch. The lifecycle already answers that:
+     * cancel with a reason and plan again, which leaves two honest records
+     * instead of one silently altered.
+     */
     public function update(User $user, Trip $trip): bool
     {
-        // A finished or abandoned trip is a record, not a form. Editing one
-        // would rewrite what happened.
-        return ! $trip->isTerminal()
+        return $trip->status === Trip::STATUS_DRAFT
             && $this->sharesTenant($user, $trip)
             && $user->can('trips.manage');
     }
