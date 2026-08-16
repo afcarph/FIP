@@ -57,8 +57,10 @@ final class SubscriptionLimitService
             self::SEATS => User::query()->where('company_id', $companyId)->count(),
 
             // A revoked device has been taken out of service, so it should not
-            // hold a slot the company is paying for.
+            // hold a slot the company is paying for. Nor should a browser:
+            // see UserDevice::scopeCountsTowardPlan.
             self::DEVICES => UserDevice::query()
+                ->countsTowardPlan()
                 ->whereNull('revoked_at')
                 ->whereIn('user_id', User::query()->where('company_id', $companyId)->select('id'))
                 ->count(),

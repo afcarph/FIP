@@ -208,6 +208,95 @@ class SubscriptionLimitTest extends TestCase
 
     // ------------------------------------------------------------- service ---
 
+    public function test_a_browser_sign_in_does_not_spend_the_device_allowance(): void
+    {
+        // Found on production: a company of two people held ten "devices",
+        // eight of them browsers. A plan's devices are the handsets that ride
+        // in vehicles and report position; signing in on the web registers
+        // too, but that registration can never be attached to a vehicle and
+        // had never reported a fix.
+        config(['fip.subscription.tiers.free.devices' => 2]);
+
+        $company = Company::factory()->create(['subscription_tier' => 'free']);
+        $user = User::factory()->create(['company_id' => $company->id]);
+
+        foreach (range(1, 5) as $n) {
+            UserDevice::create([
+                'user_id' => $user->getKey(),
+                'device_uuid' => "browser-{$n}",
+                'platform' => 'web',
+            ]);
+        }
+
+        $this->assertSame(0, app(SubscriptionLimitService::class)->usage($company->id, SubscriptionLimitService::DEVICES));
+    }
+
+    public function test_browsers_cannot_crowd_out_a_drivers_phone(): void
+    {
+        // The failure the count caused: one manager on a few laptops exhausted
+        // a small tenant, and the refusal named a limit the drivers had not
+        // reached.
+        config(['fip.subscription.tiers.free.devices' => 1]);
+
+        $company = Company::factory()->create(['subscription_tier' => 'free']);
+        $driver = $this->actingAsRole('driver', ['company_id' => $company->id]);
+
+        foreach (range(1, 3) as $n) {
+            UserDevice::create([
+                'user_id' => $driver->getKey(),
+                'device_uuid' => "laptop-{$n}",
+                'platform' => 'web',
+            ]);
+        }
+
+        $this->postJson('/api/v1/devices', [
+            'device_uuid' => 'phone-that-should-fit',
+            'platform' => 'android',
+        ])->assertStatus(201);
+    }
+
+    public function test_a_phone_still_spends_the_allowance(): void
+    {
+        // The counterpart. Excluding browsers must not quietly excuse handsets.
+        config(['fip.subscription.tiers.free.devices' => 1]);
+
+        $company = Company::factory()->create(['subscription_tier' => 'free']);
+        $driver = $this->actingAsRole('driver', ['company_id' => $company->id]);
+
+        UserDevice::create([
+            'user_id' => $driver->getKey(),
+            'device_uuid' => 'first-handset',
+            'platform' => 'ios',
+        ]);
+
+        $this->postJson('/api/v1/devices', [
+            'device_uuid' => 'second-handset',
+            'platform' => 'android',
+        ])->assertStatus(402);
+    }
+
+    public function test_registering_a_browser_is_never_refused_for_capacity(): void
+    {
+        // Enforcement and counting have to agree. Refusing something that does
+        // not spend the allowance would be the same mistake pointing the other
+        // way — and it would lock a manager out of the web app.
+        config(['fip.subscription.tiers.free.devices' => 1]);
+
+        $company = Company::factory()->create(['subscription_tier' => 'free']);
+        $driver = $this->actingAsRole('driver', ['company_id' => $company->id]);
+
+        UserDevice::create([
+            'user_id' => $driver->getKey(),
+            'device_uuid' => 'the-only-handset',
+            'platform' => 'ios',
+        ]);
+
+        $this->postJson('/api/v1/devices', [
+            'device_uuid' => 'a-laptop',
+            'platform' => 'web',
+        ])->assertStatus(201);
+    }
+
     // ------------------------------------------ the tenant's own view ---
 
     public function test_a_fleet_manager_can_read_their_own_capacity(): void

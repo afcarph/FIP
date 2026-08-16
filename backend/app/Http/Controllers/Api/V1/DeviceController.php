@@ -66,7 +66,16 @@ class DeviceController extends Controller
             ->where('device_uuid', $request->string('device_uuid')->toString())
             ->exists();
 
-        if (! $alreadyRegistered) {
+        // And only a platform the plan actually counts. Refusing something
+        // that never spends the allowance would be the same error as counting
+        // it: the two have to agree, so both read PLAN_PLATFORMS.
+        $spendsCapacity = in_array(
+            $request->string('platform')->toString(),
+            UserDevice::PLAN_PLATFORMS,
+            true,
+        );
+
+        if (! $alreadyRegistered && $spendsCapacity) {
             $this->limits->assertCanAdd($request->user(), SubscriptionLimitService::DEVICES);
         }
 

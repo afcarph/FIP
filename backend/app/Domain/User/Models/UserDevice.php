@@ -68,6 +68,17 @@ class UserDevice extends Model
 {
     use HasFactory;
 
+    /**
+     * The platforms a subscription's device allowance is about.
+     *
+     * A plan's "devices" are the handsets that ride in vehicles and report
+     * position. A browser is not one: signing in on the web creates a
+     * registration too, because the app needs an identity to log out and to
+     * stamp on requests, but it can never be attached to a vehicle and has
+     * never reported a fix.
+     */
+    public const PLAN_PLATFORMS = ['ios', 'android'];
+
     protected $fillable = [
         'user_id', 'vehicle_id', 'device_uuid', 'device_name', 'platform',
         'app_version', 'os_version', 'fcm_token', 'biometric_key',
@@ -168,6 +179,20 @@ class UserDevice extends Model
             && ! $this->isCharging()
             && $this->battery_percentage !== null
             && $this->battery_percentage <= (int) config('fip.device_health.low_battery_pct');
+    }
+
+    /**
+     * Registrations that spend a company's device allowance.
+     *
+     * Counting browsers here let one manager on two laptops exhaust a small
+     * tenant's whole allowance before a single driver's phone could register —
+     * and the refusal named a limit the drivers had not reached. Enforcement
+     * and counting must use this together: refusing something that does not
+     * count would be the same mistake pointing the other way.
+     */
+    public function scopeCountsTowardPlan(Builder $query): Builder
+    {
+        return $query->whereIn('platform', self::PLAN_PLATFORMS);
     }
 
     public function scopeActive(Builder $query): Builder
