@@ -10,6 +10,7 @@ use App\Domain\User\Models\User;
 use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
@@ -92,6 +93,47 @@ class LocationHistoryTest extends TestCase
 
         $this->assertArrayHasKey('window', $meta);
         $this->assertNotNull($meta['window']['from']);
+    }
+
+    public function test_a_window_sent_in_utc_selects_the_same_instants(): void
+    {
+        // Found on production. `recorded_at` is stored as a local wall clock
+        // and a browser sends its window in UTC, so parsing the window as UTC
+        // and binding it unchanged compared 16:00Z against Manila clock
+        // faces: "today" returned yesterday evening and dropped this
+        // afternoon. Eight hours wrong, silently, on the one screen that
+        // reconstructs where a person has been.
+        $this->travelTo(Carbon::parse('2026-08-16 12:00:00', config('app.timezone')));
+
+        $before = Carbon::parse('2026-08-15 16:06:00', config('app.timezone'));
+        $inside = Carbon::parse('2026-08-16 09:23:00', config('app.timezone'));
+
+        foreach ([$before, $inside] as $at) {
+            DeviceLocation::create([
+                'device_id' => $this->device->getKey(),
+                'vehicle_id' => $this->vehicle->getKey(),
+                'latitude' => 14.5,
+                'longitude' => 120.9,
+                'recorded_at' => $at,
+                'received_at' => $at,
+            ]);
+        }
+
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        // Local midnight, expressed the way a browser expresses it.
+        $from = Carbon::parse('2026-08-16 00:00:00', config('app.timezone'))->utc()->toIso8601ZuluString();
+        $to = Carbon::parse('2026-08-16 12:00:00', config('app.timezone'))->utc()->toIso8601ZuluString();
+
+        $rows = $this->getJson(sprintf(
+            '/api/v1/fleet/vehicles/%d/locations?from=%s&to=%s',
+            $this->vehicle->id,
+            urlencode($from),
+            urlencode($to),
+        ))->assertStatus(200)->json('data');
+
+        $this->assertCount(1, $rows, 'yesterday evening leaked into a window that starts at local midnight');
+        $this->assertSame($inside->toIso8601String(), $rows[0]['recorded_at']);
     }
 
     public function test_the_response_states_the_limits_it_enforces(): void

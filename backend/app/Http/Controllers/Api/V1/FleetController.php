@@ -396,8 +396,18 @@ class FleetController extends Controller
 
         $maxDays = (int) config('fip.location.max_history_days');
 
-        $to = isset($data['to']) ? Carbon::parse($data['to']) : now();
-        $from = isset($data['from']) ? Carbon::parse($data['from']) : $to->copy()->subDay();
+        // Moved into the application's timezone before they are compared.
+        // `recorded_at` is stored as a local wall clock, and a browser sends
+        // its window in UTC — so an instant parsed as UTC binds as its UTC
+        // wall clock and is measured against Manila ones. That is an
+        // eight-hour skew: "today" quietly returned yesterday evening and
+        // dropped this afternoon. Same instants, written the way the column
+        // is written.
+        $zone = config('app.timezone');
+
+        $to = (isset($data['to']) ? Carbon::parse($data['to']) : now())->setTimezone($zone);
+        $from = (isset($data['from']) ? Carbon::parse($data['from']) : $to->copy()->subDay())
+            ->setTimezone($zone);
 
         if ($from->diffInDays($to) > $maxDays) {
             throw new DomainException(
