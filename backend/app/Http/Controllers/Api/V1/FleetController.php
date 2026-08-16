@@ -348,7 +348,10 @@ class FleetController extends Controller
             ->whereNotNull('vehicle_id')
             ->whereNotNull('last_location_at')
             ->whereHas('vehicle', fn ($q) => $q->forUser($request->user()))
-            ->with('vehicle:id,plate_number,nickname,make_id,model_id,status')
+            ->with([
+                'vehicle:id,plate_number,nickname,make_id,model_id,status',
+                'user:id,first_name,last_name',
+            ])
             ->get();
 
         return ApiResponse::success($devices->map(static fn (UserDevice $device) => [
@@ -356,10 +359,15 @@ class FleetController extends Controller
             'plate_number' => $device->vehicle?->plate_number,
             'display_name' => $device->vehicle?->display_name,
             'device_id' => $device->getKey(),
+            'driver_name' => $device->user?->full_name,
             'latitude' => $device->last_latitude,
             'longitude' => $device->last_longitude,
             'recorded_at' => $device->last_location_at?->toIso8601String(),
             'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+            // Freshness is decided here, not on the map. The threshold is one
+            // setting shared with device health, and a client that re-derived
+            // it would drift from the server the day the setting changes.
+            'is_fresh' => $device->hasFreshLocation(),
         ])->values()->all());
     }
 

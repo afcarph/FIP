@@ -189,6 +189,51 @@ class LocationHistoryTest extends TestCase
         $this->assertSame($this->vehicle->id, $response->json('data.0.vehicle_id'));
     }
 
+    public function test_the_fleet_map_says_how_old_each_position_is(): void
+    {
+        /*
+         * The map draws a stale position differently from a live one, so the
+         * age has to travel with the coordinate. Deciding it here rather than
+         * in the browser keeps one threshold for the whole product: the map
+         * and device health would otherwise disagree the day it is changed.
+         */
+        config(['fip.device_health.location_stale_after_minutes' => 30]);
+
+        $this->device->forceFill([
+            'last_latitude' => 14.6,
+            'last_longitude' => 120.98,
+            'last_location_at' => now()->subHours(3),
+        ])->save();
+
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $response = $this->getJson('/api/v1/fleet/locations');
+
+        $this->assertFalse($response->json('data.0.is_fresh'));
+        $this->assertNotNull($response->json('data.0.recorded_at'));
+
+        $this->device->forceFill(['last_location_at' => now()->subMinutes(2)])->save();
+
+        $this->assertTrue($this->getJson('/api/v1/fleet/locations')->json('data.0.is_fresh'));
+    }
+
+    public function test_the_fleet_map_names_the_person_carrying_the_device(): void
+    {
+        // Without it the map is a set of plates on a street, and an operator
+        // deciding who to call has to cross-reference another page.
+        $this->device->forceFill([
+            'last_latitude' => 14.6, 'last_longitude' => 120.98, 'last_location_at' => now(),
+        ])->save();
+        $this->device->user->forceFill(['first_name' => 'Ramon', 'last_name' => 'Cruz'])->save();
+
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $this->assertSame(
+            'Ramon Cruz',
+            $this->getJson('/api/v1/fleet/locations')->json('data.0.driver_name'),
+        );
+    }
+
     public function test_the_fleet_map_excludes_other_companies(): void
     {
         $this->device->forceFill([

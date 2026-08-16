@@ -68,6 +68,10 @@ const FLEET_NAV: NavItem[] = [
   { href: '/vehicles', label: 'Vehicles', icon: Car },
   { href: '/fleet/drivers', label: 'Drivers', icon: IdCard, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   { href: '/fleet/devices', label: 'Device health', icon: Smartphone, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  // Deliberately not offered to viewers. Everything else on this list describes
+  // the fleet; this one describes where identifiable people currently are, and
+  // the API guards it with its own permission rather than with a role.
+  { href: '/fleet/map', label: 'Fleet map', icon: Map, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   { href: '/fleet/maintenance', label: 'Maintenance', icon: Wrench, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   { href: '/expenses', label: 'Fuel & expenses', icon: Receipt },
   { href: '/fleet/alerts', label: 'Fuel alerts', icon: TriangleAlert, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },

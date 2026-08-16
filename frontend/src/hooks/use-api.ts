@@ -45,6 +45,7 @@ import type {
   User,
   Vehicle,
   VehicleEfficiency,
+  VehicleLocation,
 } from '@/types/api';
 
 /**
@@ -75,6 +76,7 @@ export const queryKeys = {
     ['vehicles', id, 'fuel-readings', filters] as const,
   fleetAlerts: (filters?: Record<string, unknown>) => ['fleet', 'alerts', filters] as const,
   fleetDevices: (filter?: string) => ['fleet', 'devices', filter ?? 'all'] as const,
+  fleetLocations: () => ['fleet', 'locations'] as const,
   companies: (filters?: Record<string, unknown>) => ['companies', filters] as const,
   company: (id: number) => ['companies', id] as const,
   fleetDrivers: (filters?: Record<string, unknown>) => ['fleet', 'drivers', filters] as const,
@@ -537,6 +539,23 @@ export function useFleetDevices(filter?: DeviceHealthFilter) {
       };
     },
     refetchInterval: 60_000,
+  });
+}
+
+/**
+ * Where each tracked vehicle was last reported.
+ *
+ * Refetched on the same minute as device health, and for the same reason: a
+ * map that keeps showing a position after the vehicle has moved is worse than
+ * one that admits it has nothing. Positions are the freshest thing this app
+ * holds, so they are never served from a stale cache on mount.
+ */
+export function useFleetLocations() {
+  return useQuery({
+    queryKey: queryKeys.fleetLocations(),
+    queryFn: async () => (await api.get<VehicleLocation[]>('/fleet/locations')).data,
+    refetchInterval: 60_000,
+    staleTime: 0,
   });
 }
 

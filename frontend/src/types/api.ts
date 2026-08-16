@@ -734,6 +734,30 @@ export interface DeviceHealth {
   registered_at: string | null;
 }
 
+/**
+ * One vehicle's last known position, from `GET /fleet/locations`.
+ *
+ * Only vehicles whose device has ever reported appear at all — a vehicle
+ * missing from this list has no position, which the fleet map states rather
+ * than leaving to be inferred from an empty patch of map.
+ *
+ * `is_fresh` is the server's judgement, not the client's: the staleness
+ * threshold is one setting shared with device health, and a map that decided
+ * for itself would disagree with the device page the day it changes.
+ */
+export interface VehicleLocation {
+  vehicle_id: number;
+  plate_number: string | null;
+  display_name: string | null;
+  device_id: number;
+  driver_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  recorded_at: string | null;
+  last_seen_at: string | null;
+  is_fresh: boolean;
+}
+
 export type DeviceHealthFilter = 'online' | 'offline' | 'low_battery' | 'charging';
 
 export interface DeviceHealthSummary {
