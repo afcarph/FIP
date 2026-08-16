@@ -367,7 +367,11 @@ class VehicleController extends Controller
 
         return [
             'distance_km' => round($distance, 2),
-            'trips' => (clone $completed)->count(),
+            // Only the trips that contributed to it. The count sits beside the
+            // distance, so counting trips that recorded none implies an average
+            // per trip that never happened — a fleet where half the drivers
+            // skip the odometer would read as one doing half the mileage.
+            'trips' => (clone $completed)->where('distance_km', '>', 0)->count(),
         ];
     }
 }

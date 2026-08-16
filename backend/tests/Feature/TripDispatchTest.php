@@ -792,6 +792,33 @@ class TripDispatchTest extends TestCase
         $this->assertArrayNotHasKey('litres', $payload);
     }
 
+    public function test_the_trip_count_only_includes_trips_that_recorded_distance(): void
+    {
+        /*
+         * Found on production. A driver completed one trip with odometer
+         * readings and an earlier one without, and the figure read "888 km
+         * over 2 completed trips" — implying an average per trip that never
+         * happened. The count sits beside the distance, so it must describe
+         * the trips the distance came from.
+         */
+        $this->tripIn($this->acme, [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'status' => Trip::STATUS_COMPLETED,
+            'ended_at' => now()->subDay(),
+            'distance_km' => 888,
+        ]);
+        $this->tripIn($this->acme, [
+            'vehicle_id' => $this->vehicle->getKey(),
+            'status' => Trip::STATUS_COMPLETED,
+            'ended_at' => now()->subDays(2),
+        ]);
+
+        $this->getJson("/api/v1/vehicles/{$this->vehicle->getKey()}/efficiency")
+            ->assertStatus(200)
+            ->assertJsonPath('data.from_trips.distance_km', 888.0)
+            ->assertJsonPath('data.from_trips.trips', 1);
+    }
+
     public function test_the_distance_is_absent_when_nothing_has_been_driven(): void
     {
         // Null rather than zero: no completed trips is no answer.
