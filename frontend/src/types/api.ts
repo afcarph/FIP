@@ -718,7 +718,19 @@ export interface DeviceHealth {
   is_revoked: boolean;
   revoked_at: string | null;
   last_seen_at: string | null;
-  last_location: { latitude: number; longitude: number; recorded_at: string } | null;
+  /**
+   * Absent entirely when the device has never reported a position, or when the
+   * caller lacks `devices.location.view` — the same permission that guards
+   * `/fleet/locations`. `is_fresh` travels with the coordinate for the reason
+   * the battery's does: a position without its age is a guess about where a
+   * vehicle is now.
+   */
+  last_location?: {
+    latitude: number;
+    longitude: number;
+    recorded_at: string;
+    is_fresh: boolean;
+  } | null;
   registered_at: string | null;
 }
 

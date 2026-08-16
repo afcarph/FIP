@@ -9,6 +9,7 @@ use App\Domain\User\Models\User;
 use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -44,6 +45,7 @@ class DeviceHealthTest extends TestCase
             'fip.device_health.offline_after_minutes' => 15,
             'fip.device_health.battery_stale_after_minutes' => 60,
             'fip.device_health.low_battery_pct' => 20,
+            'fip.device_health.location_stale_after_minutes' => 30,
         ]);
     }
 
@@ -56,7 +58,13 @@ class DeviceHealthTest extends TestCase
      */
     private function device(array $overrides = []): UserDevice
     {
-        $guarded = ['battery_percentage', 'battery_state', 'battery_updated_at', 'revoked_at'];
+        // Positions are guarded for the same reason the battery is: only the
+        // ingest path writes them, so a fixture forces them past that guard
+        // rather than widening it.
+        $guarded = [
+            'battery_percentage', 'battery_state', 'battery_updated_at', 'revoked_at',
+            'last_latitude', 'last_longitude', 'last_location_at',
+        ];
 
         $device = UserDevice::create(array_merge([
             'user_id' => $this->driver->getKey(),
@@ -433,5 +441,64 @@ class DeviceHealthTest extends TestCase
         $this->assertTrue($response->json('data.0.is_online'));
         $this->assertFalse($response->json('data.0.is_tracking'));
         $this->assertTrue($response->json('data.0.is_revoked'));
+    }
+
+    // ------------------------------------------------------------ position ---
+
+    public function test_a_recent_position_is_reported_as_fresh(): void
+    {
+        /*
+         * The same rule the battery follows: a coordinate travels with its age,
+         * because a position without one is a guess about where a vehicle is
+         * now rather than a statement about where it was.
+         */
+        $this->device(['last_latitude' => 14.4, 'last_longitude' => 121.0, 'last_location_at' => now()->subMinutes(5)]);
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $this->getJson('/api/v1/fleet/devices')
+            ->assertStatus(200)
+            ->assertJsonPath('data.0.last_location.is_fresh', true);
+    }
+
+    public function test_an_old_position_is_reported_as_stale(): void
+    {
+        $this->device(['last_latitude' => 14.4, 'last_longitude' => 121.0, 'last_location_at' => now()->subHours(4)]);
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $this->getJson('/api/v1/fleet/devices')
+            ->assertStatus(200)
+            ->assertJsonPath('data.0.last_location.is_fresh', false);
+    }
+
+    public function test_a_device_that_has_never_reported_a_position_carries_none(): void
+    {
+        // Absent rather than a pair of zeroes, which would place every silent
+        // vehicle off the coast of Africa.
+        $this->device(['last_location_at' => null]);
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $this->getJson('/api/v1/fleet/devices')
+            ->assertStatus(200)
+            ->assertJsonMissingPath('data.0.last_location');
+    }
+
+    public function test_the_position_is_withheld_without_the_location_permission(): void
+    {
+        /*
+         * `/fleet/locations` refuses outright without devices.location.view, so
+         * the same coordinate must not be free here. Every role that can reach
+         * this endpoint holds the permission today, which is why this is worth
+         * pinning: it stops a future role gaining positions by accident.
+         */
+        $this->device(['last_latitude' => 14.4, 'last_longitude' => 121.0, 'last_location_at' => now()]);
+
+        $manager = $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+        $manager->revokePermissionTo('devices.location.view');
+        $manager->roles()->first()->revokePermissionTo('devices.location.view');
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $this->getJson('/api/v1/fleet/devices')
+            ->assertStatus(200)
+            ->assertJsonMissingPath('data.0.last_location');
     }
 }

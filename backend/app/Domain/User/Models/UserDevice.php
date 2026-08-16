@@ -133,6 +133,21 @@ class UserDevice extends Model
      * "online" here means the server has heard from it, which is the only thing
      * the server can honestly claim. A device may be online and not tracking.
      */
+    /**
+     * Whether the last position can still be believed.
+     *
+     * Same idea as hasFreshBattery: a coordinate with no age beside it is a
+     * guess about where a vehicle is now, and an operator acting on a
+     * day-old fix would go to the wrong place.
+     */
+    public function hasFreshLocation(): bool
+    {
+        return $this->last_location_at !== null
+            && $this->last_location_at->gt(
+                now()->subMinutes((int) config('fip.device_health.location_stale_after_minutes')),
+            );
+    }
+
     public function isOnline(): bool
     {
         return $this->last_seen_at !== null

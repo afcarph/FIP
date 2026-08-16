@@ -80,11 +80,29 @@ class DeviceHealthResource extends JsonResource
 
             'last_seen_at' => $this->last_seen_at?->toIso8601String(),
 
-            'last_location' => $this->last_location_at !== null ? [
-                'latitude' => $this->last_latitude,
-                'longitude' => $this->last_longitude,
-                'recorded_at' => $this->last_location_at->toIso8601String(),
-            ] : null,
+            /*
+             * Gated on the permission that guards positions elsewhere.
+             *
+             * Every role that can reach this endpoint happens to hold it today,
+             * so the check is currently redundant — which is exactly why it is
+             * written down. `/fleet/locations` refuses without it, and the same
+             * coordinate should not be free here because of who happens to be
+             * allowed in. A dispatcher role with device health and no location
+             * grant would otherwise get positions by accident.
+             *
+             * Freshness travels with it, for the reason battery does: a
+             * coordinate with no age beside it is a guess about where a vehicle
+             * is now.
+             */
+            'last_location' => $this->when(
+                $request->user()?->can('devices.location.view') === true && $this->last_location_at !== null,
+                fn () => [
+                    'latitude' => $this->last_latitude,
+                    'longitude' => $this->last_longitude,
+                    'recorded_at' => $this->last_location_at->toIso8601String(),
+                    'is_fresh' => $this->hasFreshLocation(),
+                ],
+            ),
 
             'registered_at' => $this->created_at?->toIso8601String(),
         ];

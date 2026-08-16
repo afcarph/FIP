@@ -42,6 +42,21 @@ function concern(device: DeviceHealth): { label: string; tone: 'danger' | 'warni
   if (device.battery.is_low) return { label: 'Low battery', tone: 'warning' };
   if (!device.is_tracking) return { label: 'No vehicle', tone: 'warning' };
 
+  /*
+   * Online, entitled to track, and still not saying where it is.
+   *
+   * Worth its own flag because the row's other columns all read as healthy:
+   * the device is talking to the server and the battery is fine, so nothing
+   * else on the line hints that the vehicle cannot be located. Usually
+   * location permission was denied on the handset after setup.
+   *
+   * Only claimed when the caller can see positions at all — a missing
+   * `last_location` may just mean they are not entitled to it.
+   */
+  if (device.last_location === undefined) return null;
+  if (device.last_location === null) return { label: 'No position', tone: 'warning' };
+  if (!device.last_location.is_fresh) return { label: 'Position stale', tone: 'warning' };
+
   return null;
 }
 
@@ -81,6 +96,25 @@ function DeviceRow({ device }: { device: DeviceHealth }) {
         <p className="text-xs text-muted-foreground">
           {device.last_seen_at ? formatRelative(device.last_seen_at) : 'Never reported'}
         </p>
+      </div>
+
+      {/*
+        Position age, kept separate from "last seen" because they answer
+        different questions. Last seen is when the server last heard from the
+        handset; this is when the vehicle was last locatable, and a device can
+        be online for hours without reporting either.
+      */}
+      <div className="hidden w-28 shrink-0 text-right lg:block">
+        {device.last_location === undefined ? (
+          <p className="text-xs text-muted-foreground">&mdash;</p>
+        ) : (
+          <>
+            <p className="text-sm">{device.last_location ? 'Located' : 'No position'}</p>
+            <p className="text-xs text-muted-foreground">
+              {device.last_location ? formatRelative(device.last_location.recorded_at) : 'Never'}
+            </p>
+          </>
+        )}
       </div>
     </Link>
   );

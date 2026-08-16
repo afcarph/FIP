@@ -80,9 +80,18 @@ function DeviceDetail({ device }: { device: DeviceHealth }) {
             )}
           </Field>
 
+          {/*
+            Entitlement, not activity. `is_tracking` says the device is allowed
+            to report positions — it is registered, not revoked, and attached to
+            a vehicle. It says nothing about whether any position has arrived,
+            and the previous wording "Reporting position" claimed it had: a
+            device could read as reporting directly above a fix two days old.
+            The freshness of the last location, below, is the one that answers
+            whether anything is actually coming in.
+          */}
           <Field label="Tracking">
             {device.is_tracking
-              ? 'Reporting position'
+              ? 'Allowed to report position'
               : device.is_revoked
                 ? 'Revoked — cannot report'
                 : 'No vehicle attached'}
@@ -116,15 +125,25 @@ function DeviceDetail({ device }: { device: DeviceHealth }) {
           </Field>
 
           <Field label="Last location">
-            {device.last_location ? (
+            {/*
+              Three different answers, and they must not be collapsed. Absent
+              means the caller cannot see positions at all; null means this
+              device has genuinely never reported one; a coordinate carries its
+              own age, because a stale fix read as current sends somebody to
+              where a vehicle used to be.
+            */}
+            {device.last_location === undefined ? (
+              <span className="text-muted-foreground">Not visible to your role</span>
+            ) : device.last_location === null ? (
+              'Never reported'
+            ) : (
               <>
                 {device.last_location.latitude.toFixed(5)}, {device.last_location.longitude.toFixed(5)}
                 <span className="block text-xs text-muted-foreground">
                   {formatRelative(device.last_location.recorded_at)}
+                  {device.last_location.is_fresh ? '' : ' · stale'}
                 </span>
               </>
-            ) : (
-              'Never reported'
             )}
           </Field>
         </CardContent>

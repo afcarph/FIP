@@ -184,6 +184,17 @@ return [
          * and a vehicle whose device dies is a vehicle nobody can see.
          */
         'low_battery_pct' => (int) env('FIP_DEVICE_LOW_BATTERY_PCT', 20),
+
+        /*
+         * Past this, a position is where a vehicle was rather than where it is.
+         *
+         * Longer than the offline window on purpose, and for a different
+         * reason than the battery one: a phone reports its presence far more
+         * often than it moves, and the sampling filter deliberately suppresses
+         * fixes for a vehicle that is standing still. A fifteen-minute gap in
+         * positions is a parked van, not a fault.
+         */
+        'location_stale_after_minutes' => (int) env('FIP_DEVICE_LOCATION_STALE_MINUTES', 30),
     ],
 
     /*
