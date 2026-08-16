@@ -94,6 +94,22 @@ class LocationHistoryTest extends TestCase
         $this->assertNotNull($meta['window']['from']);
     }
 
+    public function test_the_response_states_the_limits_it_enforces(): void
+    {
+        // A client has to know these to stop an operator asking for a year, or
+        // to say why a track stops short. Sending them means no second copy of
+        // the numbers drifts from this configuration.
+        config(['fip.location.max_history_days' => 14, 'fip.location.max_history_rows' => 2_000]);
+
+        $this->seedTrack();
+        $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $meta = $this->getJson("/api/v1/fleet/vehicles/{$this->vehicle->id}/locations")->json('meta');
+
+        $this->assertSame(14, $meta['limits']['max_days']);
+        $this->assertSame(2_000, $meta['limits']['max_rows']);
+    }
+
     // ------------------------------------------------------- authorisation ---
 
     public function test_company_manager_is_refused_history_without_the_permission(): void

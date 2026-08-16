@@ -45,6 +45,8 @@ import type {
   User,
   Vehicle,
   VehicleEfficiency,
+  DeviceLocationPoint,
+  LocationHistoryLimits,
   VehicleLocation,
 } from '@/types/api';
 
@@ -77,6 +79,8 @@ export const queryKeys = {
   fleetAlerts: (filters?: Record<string, unknown>) => ['fleet', 'alerts', filters] as const,
   fleetDevices: (filter?: string) => ['fleet', 'devices', filter ?? 'all'] as const,
   fleetLocations: () => ['fleet', 'locations'] as const,
+  vehicleLocationHistory: (id: number, from: string, to: string) =>
+    ['fleet', 'vehicles', id, 'locations', from, to] as const,
   companies: (filters?: Record<string, unknown>) => ['companies', filters] as const,
   company: (id: number) => ['companies', id] as const,
   fleetDrivers: (filters?: Record<string, unknown>) => ['fleet', 'drivers', filters] as const,
@@ -556,6 +560,43 @@ export function useFleetLocations() {
     queryFn: async () => (await api.get<VehicleLocation[]>('/fleet/locations')).data,
     refetchInterval: 60_000,
     staleTime: 0,
+  });
+}
+
+/**
+ * Where one vehicle has been, over a window the caller chooses.
+ *
+ * Unlike current positions this is not polled. A track of the past does not
+ * change while it is being read, and re-fetching it every minute would restart
+ * a replay under the operator running it. It is also the one read in this app
+ * that reconstructs a person's movements, so it happens when asked for and not
+ * on a timer.
+ *
+ * The server's own limits come back in `meta.limits` rather than being
+ * mirrored here — see the history endpoint.
+ */
+export function useVehicleLocationHistory(
+  vehicleId: number | null,
+  from: string,
+  to: string,
+) {
+  return useQuery({
+    queryKey: queryKeys.vehicleLocationHistory(vehicleId ?? 0, from, to),
+    enabled: vehicleId !== null,
+    queryFn: async () => {
+      const response = await api.get<DeviceLocationPoint[]>(
+        `/fleet/vehicles/${vehicleId}/locations`,
+        // The server caps this at its own maximum; asking for more than it
+        // allows is not an error, it just does not get more.
+        { from, to, per_page: 2000 },
+      );
+
+      return {
+        points: response.data,
+        limits: response.meta?.limits as LocationHistoryLimits | undefined,
+        pagination: response.meta?.pagination,
+      };
+    },
   });
 }
 

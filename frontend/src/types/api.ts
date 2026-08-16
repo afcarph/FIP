@@ -758,6 +758,32 @@ export interface VehicleLocation {
   is_fresh: boolean;
 }
 
+/**
+ * One recorded position from a vehicle's track.
+ *
+ * Both clocks are kept. `recorded_at` is when the device was there;
+ * `received_at` is when the server heard about it, which can be hours later if
+ * the phone was offline. A track is read on the first; the second is what
+ * explains a fix that arrived out of order.
+ */
+export interface DeviceLocationPoint {
+  id: number;
+  vehicle_id: number;
+  latitude: number;
+  longitude: number;
+  accuracy_m: number | null;
+  altitude_m: number | null;
+  speed_kph: number | null;
+  heading_deg: number | null;
+  recorded_at: string | null;
+  received_at: string | null;
+}
+
+export interface LocationHistoryLimits {
+  max_days: number;
+  max_rows: number;
+}
+
 export type DeviceHealthFilter = 'online' | 'offline' | 'low_battery' | 'charging';
 
 export interface DeviceHealthSummary {

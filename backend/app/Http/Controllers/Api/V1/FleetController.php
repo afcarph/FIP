@@ -420,6 +420,11 @@ class FleetController extends Controller
 
         return ApiResponse::paginated($paginator, DeviceLocationResource::collection($paginator), [
             'window' => ['from' => $from->toIso8601String(), 'to' => $to->toIso8601String()],
+            // The limits travel with the answer. A client that has to know
+            // them — to stop an operator asking for a year, or to say why a
+            // track is cut short — would otherwise hardcode a copy and drift
+            // from this configuration the first time it is tuned.
+            'limits' => ['max_days' => $maxDays, 'max_rows' => (int) config('fip.location.max_history_rows')],
         ]);
     }
 

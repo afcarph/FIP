@@ -12,6 +12,7 @@ import {
   IdCard,
   LayoutDashboard,
   LogOut,
+  History,
   Map,
   Menu,
   Moon,
@@ -45,6 +46,12 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   /** Omit to show for everyone signed in. */
   roles?: Role[];
+  /**
+   * Gate on a permission instead of a role. Needed where a role does not
+   * settle it: a company manager is a fleet role but deliberately holds no
+   * location history, so a role list here would offer a page the API refuses.
+   */
+  permission?: string;
 }
 
 /**
@@ -72,6 +79,9 @@ const FLEET_NAV: NavItem[] = [
   // the fleet; this one describes where identifiable people currently are, and
   // the API guards it with its own permission rather than with a role.
   { href: '/fleet/map', label: 'Fleet map', icon: Map, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  // Guarded by permission, not role: fleet managers hold location history and
+  // company managers deliberately do not.
+  { href: '/fleet/history', label: 'Location history', icon: History, permission: 'devices.location.history' },
   { href: '/fleet/maintenance', label: 'Maintenance', icon: Wrench, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
   { href: '/expenses', label: 'Fuel & expenses', icon: Receipt },
   { href: '/fleet/alerts', label: 'Fuel alerts', icon: TriangleAlert, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
@@ -125,7 +135,7 @@ const ADMIN_NAV: NavItem[] = [
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, hasRole, logout, isLoading } = useAuth();
+  const { user, hasRole, can, logout, isLoading } = useAuth();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -134,8 +144,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => setMobileOpen(false), [pathname]);
 
   const visible = React.useCallback(
-    (items: NavItem[]) => items.filter((item) => !item.roles || hasRole(...item.roles)),
-    [hasRole],
+    (items: NavItem[]) =>
+      items.filter(
+        (item) =>
+          (!item.roles || hasRole(...item.roles)) && (!item.permission || can(item.permission)),
+      ),
+    [hasRole, can],
   );
 
   const sections = [
