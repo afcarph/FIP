@@ -10,8 +10,10 @@ use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
 use App\Domain\Fleet\Services\FleetOverviewService;
 use App\Domain\Reporting\Services\DashboardService;
+use App\Domain\User\Models\Company;
 use App\Domain\User\Models\User;
 use App\Domain\User\Models\UserDevice;
+use App\Domain\User\Services\SubscriptionLimitService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Models\VehicleAssignment;
 use App\Http\Controllers\Controller;
@@ -34,6 +36,7 @@ class FleetController extends Controller
     public function __construct(
         private readonly DashboardService $dashboards,
         private readonly FleetOverviewService $overview,
+        private readonly SubscriptionLimitService $limits,
     ) {}
 
     /**
@@ -328,6 +331,33 @@ class FleetController extends Controller
             'driver' => $driver->full_name,
             'assigned_at' => $assignment->assigned_at->toIso8601String(),
         ]);
+    }
+
+    /**
+     * @OA\Get(path="/fleet/subscription", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="What the caller's own company is using against its plan",
+     *
+     *   @OA\Response(response=200, description="Usage against limits"))
+     */
+    public function subscription(Request $request): JsonResponse
+    {
+        // The company comes from the token, never from a parameter. This is
+        // the tenant-facing twin of the admin view, and the only difference
+        // that matters is that a caller cannot name somebody else's company.
+        $user = $request->user();
+        $companyId = $user->company_id;
+
+        if ($companyId === null) {
+            // A private motorist is not a tenant. Saying so beats returning
+            // zeroes against a plan they are not on.
+            return ApiResponse::success(['applies' => false]);
+        }
+
+        $company = Company::query()->select('id', 'subscription_tier')->find($companyId);
+
+        return ApiResponse::success([
+            'applies' => true,
+        ] + $this->limits->describe($companyId, $company?->subscription_tier));
     }
 
     /**

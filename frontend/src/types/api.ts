@@ -784,6 +784,33 @@ export interface LocationHistoryLimits {
   max_rows: number;
 }
 
+/**
+ * What a company is using against the plan it is on.
+ *
+ * `limit: null` means unlimited and stays null rather than becoming a number a
+ * client would draw as a cap. `applies: false` is a caller with no company —
+ * a private motorist is not a tenant, and zeroes against a plan they are not
+ * on would be a lie with a progress bar on it.
+ */
+export interface SubscriptionUsage {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  over_limit: boolean;
+}
+
+export interface SubscriptionCapacity {
+  applies: boolean;
+  tier?: string;
+  /** The plan numbers are placeholders awaiting a business decision. */
+  is_provisional?: boolean;
+  resources?: {
+    vehicles: SubscriptionUsage;
+    seats: SubscriptionUsage;
+    devices: SubscriptionUsage;
+  };
+}
+
 export type DeviceHealthFilter = 'online' | 'offline' | 'low_battery' | 'charging';
 
 export interface DeviceHealthSummary {

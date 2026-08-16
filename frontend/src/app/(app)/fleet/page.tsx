@@ -23,7 +23,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
-import { useFleetDashboard } from '@/hooks/use-api';
+import { useFleetDashboard, useFleetSubscription } from '@/hooks/use-api';
 import {
   formatCompactCurrency,
   formatCurrency,
@@ -31,6 +31,62 @@ import {
   formatNumber,
   formatRelative,
 } from '@/lib/utils';
+
+/**
+ * What the company is using against its plan.
+ *
+ * Here rather than only in the admin console because a limit nobody can see is
+ * a limit met as a refusal, halfway through adding a vehicle. Unlimited is
+ * written as "No limit" rather than drawn as a full bar, and the numbers say
+ * they are provisional, because they are: no plan has been approved, and a
+ * screen that presents them as settled invites somebody to sell against them.
+ */
+function Capacity() {
+  const { data } = useFleetSubscription();
+
+  if (!data?.applies || !data.resources) return null;
+
+  const rows = [
+    { key: 'vehicles', label: 'Vehicles', usage: data.resources.vehicles },
+    { key: 'seats', label: 'People', usage: data.resources.seats },
+    { key: 'devices', label: 'Devices', usage: data.resources.devices },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Plan capacity</CardTitle>
+        <CardDescription>
+          {data.tier ? `On the ${data.tier} plan` : 'Current usage'}
+          {data.is_provisional ? ' · limits are provisional and not yet approved' : ''}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="grid gap-4 sm:grid-cols-3">
+        {rows.map(({ key, label, usage }) => (
+          <div key={key}>
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="tabular text-2xl font-semibold">
+              {usage.used}
+              {usage.limit === null ? (
+                <span className="ml-1 text-sm font-normal text-muted-foreground">· no limit</span>
+              ) : (
+                <span className="ml-1 text-sm font-normal text-muted-foreground">
+                  of {usage.limit}
+                </span>
+              )}
+            </p>
+            {usage.over_limit ? (
+              <p className="text-xs text-amber-700 dark:text-amber-500">
+                Over the plan. Nothing has been removed; new ones are refused.
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
 
 /** Time-of-day greeting, from the reader's own clock rather than the server's. */
 function greeting(): string {
@@ -179,6 +235,8 @@ function FleetPageBody() {
               </CardContent>
             </Card>
           </div>
+
+          <Capacity />
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>

@@ -46,6 +46,7 @@ import type {
   Vehicle,
   VehicleEfficiency,
   DeviceLocationPoint,
+  SubscriptionCapacity,
   LocationHistoryLimits,
   VehicleLocation,
 } from '@/types/api';
@@ -79,6 +80,7 @@ export const queryKeys = {
   fleetAlerts: (filters?: Record<string, unknown>) => ['fleet', 'alerts', filters] as const,
   fleetDevices: (filter?: string) => ['fleet', 'devices', filter ?? 'all'] as const,
   fleetLocations: () => ['fleet', 'locations'] as const,
+  fleetSubscription: () => ['fleet', 'subscription'] as const,
   vehicleLocationHistory: (id: number, from: string, to: string) =>
     ['fleet', 'vehicles', id, 'locations', from, to] as const,
   companies: (filters?: Record<string, unknown>) => ['companies', filters] as const,
@@ -560,6 +562,19 @@ export function useFleetLocations() {
     queryFn: async () => (await api.get<VehicleLocation[]>('/fleet/locations')).data,
     refetchInterval: 60_000,
     staleTime: 0,
+  });
+}
+
+/**
+ * What the caller's own company is using against its plan.
+ *
+ * Scoped to the caller by the server, which takes the company from the token.
+ * There is no company parameter to pass and none should be added.
+ */
+export function useFleetSubscription() {
+  return useQuery({
+    queryKey: queryKeys.fleetSubscription(),
+    queryFn: async () => (await api.get<SubscriptionCapacity>('/fleet/subscription')).data,
   });
 }
 

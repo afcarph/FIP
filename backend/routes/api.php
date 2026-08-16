@@ -213,6 +213,11 @@ Route::prefix('v1')->group(function (): void {
         Route::prefix('fleet')->group(function (): void {
             Route::get('/', [FleetController::class, 'index']);
             Route::get('dashboard', [FleetController::class, 'dashboard']);
+            // A tenant reading its own capacity. The admin console has the
+            // same figures for any company; this one is scoped to the caller's
+            // and needs no admin rights, because a fleet manager who cannot
+            // see the limit only meets it as a refusal.
+            Route::get('subscription', [FleetController::class, 'subscription']);
             Route::get('drivers', [FleetController::class, 'drivers']);
             // Adding a driver used to require a direct database insert; the
             // drivers.manage permission existed but no route consumed it.

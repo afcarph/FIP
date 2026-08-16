@@ -208,6 +208,77 @@ class SubscriptionLimitTest extends TestCase
 
     // ------------------------------------------------------------- service ---
 
+    // ------------------------------------------ the tenant's own view ---
+
+    public function test_a_fleet_manager_can_read_their_own_capacity(): void
+    {
+        // Without this a limit is only ever met as a refusal at the moment of
+        // creation, which is the worst time to learn about it.
+        config(['fip.subscription.tiers.free.vehicles' => 3]);
+
+        $company = Company::factory()->create(['subscription_tier' => 'free']);
+        Vehicle::factory()->count(2)->create(['company_id' => $company->id]);
+
+        $this->actingAsRole('fleet_manager', ['company_id' => $company->id]);
+
+        $body = $this->getJson('/api/v1/fleet/subscription')->assertStatus(200)->json('data');
+
+        $this->assertTrue($body['applies']);
+        $this->assertSame('free', $body['tier']);
+        $this->assertSame(2, $body['resources']['vehicles']['used']);
+        $this->assertSame(3, $body['resources']['vehicles']['limit']);
+        $this->assertSame(1, $body['resources']['vehicles']['remaining']);
+    }
+
+    public function test_the_tenant_view_reports_the_numbers_as_provisional(): void
+    {
+        // The same admission the admin console carries. A screen that presents
+        // these as settled invites somebody to sell against them.
+        $company = Company::factory()->create(['subscription_tier' => 'business']);
+        $this->actingAsRole('fleet_manager', ['company_id' => $company->id]);
+
+        $body = $this->getJson('/api/v1/fleet/subscription')->assertStatus(200)->json('data');
+
+        $this->assertTrue($body['is_provisional']);
+    }
+
+    public function test_the_tenant_view_cannot_be_pointed_at_another_company(): void
+    {
+        // The company is taken from the token. There is no parameter to change,
+        // and this pins that there never becomes one.
+        $mine = Company::factory()->create(['subscription_tier' => 'free']);
+        $theirs = Company::factory()->create(['subscription_tier' => 'enterprise']);
+
+        Vehicle::factory()->count(2)->create(['company_id' => $mine->id]);
+        Vehicle::factory()->count(9)->create(['company_id' => $theirs->id]);
+
+        $this->actingAsRole('fleet_manager', ['company_id' => $mine->id]);
+
+        $body = $this->getJson("/api/v1/fleet/subscription?company_id={$theirs->id}")
+            ->assertStatus(200)
+            ->json('data');
+
+        $this->assertSame('free', $body['tier']);
+        $this->assertSame(2, $body['resources']['vehicles']['used']);
+    }
+
+    public function test_a_private_motorist_is_told_the_plan_does_not_apply(): void
+    {
+        // Not a tenant. Zeroes against a plan they are not on would be a lie
+        // with a progress bar on it.
+        $this->actingAsRole('driver', ['company_id' => null]);
+
+        $body = $this->getJson('/api/v1/fleet/subscription')->assertStatus(200)->json('data');
+
+        $this->assertFalse($body['applies']);
+        $this->assertArrayNotHasKey('resources', $body);
+    }
+
+    public function test_reading_capacity_requires_authentication(): void
+    {
+        $this->getJson('/api/v1/fleet/subscription')->assertStatus(401);
+    }
+
     public function test_describe_reports_usage_against_limits(): void
     {
         Vehicle::factory()->count(3)->forCompany($this->company->id)->create();
