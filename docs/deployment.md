@@ -61,39 +61,43 @@ $DC exec -T api php artisan route:cache
 
 # 3. Web client. Not mounted: the staging overlay resets its volumes and builds
 #    a production target, so a change reaches a browser only via a new image.
+#    Then check the container really moved — see below.
 $DC build web
-$DC up -d --force-recreate web
+$DC up -d web
 ```
 
-### The web client needs `--force-recreate`, and then needs checking
+### Check the web container is running the image you just built
 
-`up -d web` after a `build` will frequently leave the **old container running**.
-The build succeeds, the command reports no error, and production keeps serving
-the previous bundle — so the change appears to have been deployed and verifying
-it tests the code you thought you replaced. This has happened; a map fix was
-verified as absent when it had simply never shipped.
+`docker compose up -d web` after a `build` normally recreates the container and
+picks up the new image. In a controlled test on this host it did exactly that:
+image `50da8433` running, rebuilt to `9b689c4a`, and a plain `up -d web`
+recreated the container onto the new digest.
 
-The mechanism is worth knowing so the behaviour stops looking random. Compose
-decides whether to recreate a service by comparing a hash of its *definition*,
-stored on the container as `com.docker.compose.config-hash`. Rebuilding an
-image under the same tag does not change that hash, so `up -d` concludes the
-service is up to date. Compose's own image bookkeeping can drift from reality
-as a result — on this host the container's `com.docker.compose.image` label and
-the image it was actually running were two different digests.
+It has, however, been observed once leaving the **old container running** after
+a rebuild — the build succeeded, the command reported no error, and production
+kept serving the previous bundle. The change looked deployed, so verifying it
+tested the code it was supposed to have replaced. That cost an afternoon: a map
+fix was investigated as broken when it had simply never shipped.
 
-Always `--force-recreate`, then confirm the running container is the image you
-just built:
+The cause of that one occurrence was not established, so treat the check rather
+than the flag as the rule. Compose decides whether to recreate by comparing a
+hash of the service *definition*, stored on the container as
+`com.docker.compose.config-hash`, and its image bookkeeping can drift from
+reality — on this host the container's `com.docker.compose.image` label and the
+image it was actually running were two different digests.
+
+So after every web deploy, compare the digests:
 
 ```bash
-$DC build web && $DC up -d --force-recreate web
+$DC build web && $DC up -d web
 sleep 15
 echo "image:     $(docker images --no-trunc -q fip-web | head -1)"
 echo "container: $(docker inspect -f '{{.Image}}' fip-web-1)"
 docker ps --filter name=fip-web --format '{{.Status}}'
 ```
 
-The two digests must be identical. If they differ, the container is stale
-whatever the deploy output said.
+The two must be identical. If they differ, the container is stale whatever the
+deploy output said, and `$DC up -d --force-recreate web` will move it.
 
 ### Caches
 
