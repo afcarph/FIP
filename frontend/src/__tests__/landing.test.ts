@@ -32,10 +32,23 @@ describe('where a signed-in account lands', () => {
     expect(landingFor(['user'])).toBe('/dashboard');
   });
 
-  it('sends a driver to their own dashboard', () => {
-    // Drivers are not a fleet role here: they log their own fill-ups and read
-    // their own vehicle, so the personal page is genuinely theirs.
-    expect(landingFor(['driver'])).toBe('/dashboard');
+  it('sends a driver to fuel and expenses, not the personal dashboard', () => {
+    /*
+     * This used to answer /dashboard on the reasoning that a driver logs their
+     * own fill-ups and reads their own vehicle. Only the first half is true:
+     * `$user->vehicles()` is a hasMany on `owner_id`, and a company driver owns
+     * nothing, so the vehicle, maintenance and range cards are permanently
+     * blank — while the spend cards, which *do* find their fill-ups, present
+     * their employer's fuel money as the driver's personal spend and savings.
+     */
+    expect(landingFor(['driver'])).toBe('/expenses');
+  });
+
+  it('keeps a driver on expenses even when they also hold user', () => {
+    // Same shape as the fleet-manager case: the employment role is the more
+    // specific fact about why they signed in, so it decides.
+    expect(landingFor(['driver', 'user'])).toBe('/expenses');
+    expect(landingFor(['user', 'driver'])).toBe('/expenses');
   });
 
   it('treats a fleet manager who also holds user as a fleet account', () => {

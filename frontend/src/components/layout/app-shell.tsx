@@ -74,6 +74,11 @@ const PRIMARY_NAV: NavItem[] = [
    * and owns, not what their company runs — so for a fleet account it is a
    * page that stays empty however busy the fleet is, sitting directly above
    * the Fleet overview they actually want and wearing almost the same heading.
+   *
+   * A driver is hidden from it for a sharper reason than emptiness: their
+   * fill-ups do carry their user_id, so the page renders their employer's
+   * fuel spend under "your savings" beside a vehicle list that is blank
+   * because they own none. Half wrong reads worse than empty.
    */
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, onlyWhenHome: true },
 ];

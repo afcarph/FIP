@@ -103,6 +103,20 @@ export function landingFor(roles: string[]): string {
     return '/fleet';
   }
 
+  /*
+   * A company driver is not a private motorist. /dashboard is built from
+   * `$user->fuelPurchases()` and `$user->vehicles()`, and a driver owns no
+   * vehicles — so the vehicle, maintenance and range half of that page is
+   * permanently empty, while the spend half reports their employer's fuel
+   * money as the driver's own personal spend and savings.
+   *
+   * Fuel & expenses is where their work actually is: `expenses.view` and
+   * `expenses.create` are the only permissions the driver role holds that let
+   * them *do* anything on the web, logging a fill-up being the one thing the
+   * product asks of them outside the phone.
+   */
+  if (roles.includes('driver')) return '/expenses';
+
   return '/dashboard';
 }
 
