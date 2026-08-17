@@ -9,6 +9,7 @@ use App\Domain\Fleet\Models\DeviceLocation;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
 use App\Domain\Fleet\Services\FleetOverviewService;
+use App\Domain\Fleet\Services\OnboardingService;
 use App\Domain\Reporting\Services\DashboardService;
 use App\Domain\User\Models\Company;
 use App\Domain\User\Models\User;
@@ -37,6 +38,7 @@ class FleetController extends Controller
         private readonly DashboardService $dashboards,
         private readonly FleetOverviewService $overview,
         private readonly SubscriptionLimitService $limits,
+        private readonly OnboardingService $onboarding,
     ) {}
 
     /**
@@ -331,6 +333,27 @@ class FleetController extends Controller
             'driver' => $driver->full_name,
             'assigned_at' => $assignment->assigned_at->toIso8601String(),
         ]);
+    }
+
+    /**
+     * @OA\Get(path="/fleet/onboarding", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="How far the caller's own company has got with first setup",
+     *
+     *   @OA\Response(response=200, description="Steps, each derived from real records"))
+     */
+    public function onboarding(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('fleet.view'), 403);
+
+        $companyId = $request->user()->company_id;
+
+        // A caller with no company has no fleet to set up. Saying so beats
+        // returning five undone steps to somebody who cannot do any of them.
+        if ($companyId === null) {
+            return ApiResponse::success(['applies' => false]);
+        }
+
+        return ApiResponse::success(['applies' => true] + $this->onboarding->forCompany($companyId));
     }
 
     /**

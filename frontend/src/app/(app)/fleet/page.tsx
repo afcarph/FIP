@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { ExpenseChart } from '@/components/charts/expense-chart';
 import { FleetOverview } from '@/components/fleet/fleet-overview';
 import { RequireRole } from '@/components/auth/require-role';
+import { GettingStarted } from '@/components/fleet/getting-started';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -198,6 +199,11 @@ function FleetPageBody() {
           </Link>
         </Button>
       </header>
+
+      {/* Above the figures on purpose: for a company with nothing yet, the
+          figures are all zero and the next step is the only useful thing on
+          the page. It removes itself once the fleet is set up. */}
+      <GettingStarted />
 
       {noCompany ? (
         <EmptyState

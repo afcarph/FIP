@@ -824,6 +824,30 @@ export interface PlanCatalogue {
   is_provisional: boolean;
 }
 
+/**
+ * One thing a new company still has to do.
+ *
+ * Derived server-side from real records rather than a stored checklist, so it
+ * cannot congratulate a company for a vehicle it has since deleted. The client
+ * renders what it is given and computes no progress of its own.
+ */
+export interface OnboardingStep {
+  key: string;
+  title: string;
+  description: string;
+  href: string;
+  action: string;
+  done: boolean;
+}
+
+export interface OnboardingProgress {
+  applies: boolean;
+  steps?: OnboardingStep[];
+  completed?: number;
+  total?: number;
+  is_complete?: boolean;
+}
+
 export interface SubscriptionUsage {
   used: number;
   limit: number | null;

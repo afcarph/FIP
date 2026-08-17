@@ -46,6 +46,7 @@ import type {
   Vehicle,
   VehicleEfficiency,
   DeviceLocationPoint,
+  OnboardingProgress,
   PlanCatalogue,
   SubscriptionCapacity,
   LocationHistoryLimits,
@@ -82,6 +83,7 @@ export const queryKeys = {
   fleetDevices: (filter?: string) => ['fleet', 'devices', filter ?? 'all'] as const,
   fleetLocations: () => ['fleet', 'locations'] as const,
   fleetSubscription: () => ['fleet', 'subscription'] as const,
+  fleetOnboarding: () => ['fleet', 'onboarding'] as const,
   plans: () => ['plans'] as const,
   vehicleLocationHistory: (id: number, from: string, to: string) =>
     ['fleet', 'vehicles', id, 'locations', from, to] as const,
@@ -564,6 +566,20 @@ export function useFleetLocations() {
     queryFn: async () => (await api.get<VehicleLocation[]>('/fleet/locations')).data,
     refetchInterval: 60_000,
     staleTime: 0,
+  });
+}
+
+/**
+ * How far this company has got with first setup.
+ *
+ * Refetched when the window regains focus: a manager who leaves to add their
+ * first vehicle in another tab should come back to a list that knows.
+ */
+export function useOnboarding() {
+  return useQuery({
+    queryKey: queryKeys.fleetOnboarding(),
+    queryFn: async () => (await api.get<OnboardingProgress>('/fleet/onboarding')).data,
+    refetchOnWindowFocus: true,
   });
 }
 

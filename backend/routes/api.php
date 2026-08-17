@@ -226,6 +226,8 @@ Route::prefix('v1')->group(function (): void {
             // and needs no admin rights, because a fleet manager who cannot
             // see the limit only meets it as a refusal.
             Route::get('subscription', [FleetController::class, 'subscription']);
+            // First-setup progress, derived from the tenant's own records.
+            Route::get('onboarding', [FleetController::class, 'onboarding']);
             Route::get('drivers', [FleetController::class, 'drivers']);
             // Adding a driver used to require a direct database insert; the
             // drivers.manage permission existed but no route consumed it.
