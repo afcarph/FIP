@@ -34,6 +34,8 @@ class CompanyResource extends JsonResource
             'contact_email' => $this->contact_email,
             'contact_phone' => $this->contact_phone,
             'subscription_tier' => $this->subscription_tier,
+            'subscription_status' => $this->subscription_status,
+            'trial_ends_at' => $this->trial_ends_at?->toIso8601String(),
             'is_active' => $this->is_active,
 
             'counts' => [
@@ -43,9 +45,11 @@ class CompanyResource extends JsonResource
             ],
 
             // Present only where the controller resolved it.
+            // Set by the listing, which counts usage in its own query. The
+            // detail endpoint attaches the same shape via `additional`.
             'subscription' => $this->when(
-                $this->additional['subscription'] ?? false,
-                fn () => $this->additional['subscription'],
+                $this->resource->subscriptionReport !== null || ($this->additional['subscription'] ?? false),
+                fn () => $this->resource->subscriptionReport ?? $this->additional['subscription'],
             ),
 
             'created_at' => $this->created_at?->toIso8601String(),

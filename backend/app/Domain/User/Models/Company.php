@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -81,6 +82,18 @@ class Company extends Model
 {
     use Auditable;
     use HasFactory;
+
+    /**
+     * Capacity for this company, when a caller has already worked it out.
+     *
+     * Declared rather than assigned dynamically: an undeclared assignment on a
+     * model becomes an *attribute*, which would put a computed report into the
+     * things Eloquent thinks it should save.
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $subscriptionReport = null;
+
     use SoftDeletes;
 
     protected $fillable = [
@@ -163,6 +176,18 @@ class Company extends Model
     public function drivers(): HasMany
     {
         return $this->hasMany(Driver::class);
+    }
+
+    /**
+     * Every device registered to somebody in this company.
+     *
+     * Devices hang off users rather than off the company, so counting them
+     * needs the hop. Kept as a relation so the administration listing can
+     * count them in its own query rather than once per row.
+     */
+    public function devices(): HasManyThrough
+    {
+        return $this->hasManyThrough(UserDevice::class, User::class);
     }
 
     public function vehicles(): HasMany

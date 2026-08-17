@@ -370,6 +370,93 @@ class CompanyRegistrationTest extends TestCase
             ])->assertStatus(201);
     }
 
+    // ------------------------------------------------- the platform view ---
+
+    public function test_the_company_listing_carries_each_tenants_capacity(): void
+    {
+        // A platform administrator should see which tenants are near a limit
+        // without opening each one.
+        $company = Company::factory()->create(['subscription_tier' => 'business']);
+        Vehicle::factory()->count(21)->create(['company_id' => $company->getKey()]);
+
+        $this->actingAsRole('super_admin', ['company_id' => null]);
+
+        $row = collect($this->getJson('/api/v1/admin/companies')->assertStatus(200)->json('data'))
+            ->firstWhere('id', $company->getKey());
+
+        $this->assertSame('business', $row['subscription']['tier']);
+        $this->assertSame(Company::STATUS_ACTIVE, $row['subscription']['status']);
+        $this->assertSame(21, $row['subscription']['resources']['vehicles']['used']);
+        $this->assertSame(25, $row['subscription']['resources']['vehicles']['limit']);
+        // 21 of 25 is 84%, past the configured 80% mark.
+        $this->assertTrue($row['subscription']['resources']['vehicles']['approaching_limit']);
+    }
+
+    public function test_a_tenant_with_room_is_not_flagged_as_approaching(): void
+    {
+        $company = Company::factory()->create(['subscription_tier' => 'business']);
+        Vehicle::factory()->count(2)->create(['company_id' => $company->getKey()]);
+
+        $this->actingAsRole('super_admin', ['company_id' => null]);
+
+        $row = collect($this->getJson('/api/v1/admin/companies')->json('data'))
+            ->firstWhere('id', $company->getKey());
+
+        $this->assertFalse($row['subscription']['resources']['vehicles']['approaching_limit']);
+    }
+
+    public function test_an_unlimited_resource_is_never_approaching_a_limit(): void
+    {
+        // There is no proportion of unlimited, and a tenant that could never be
+        // refused must not appear in a list of tenants about to be.
+        $company = Company::factory()->create([
+            'subscription_tier' => 'enterprise',
+            'subscription_status' => Company::STATUS_ACTIVE,
+        ]);
+        Vehicle::factory()->count(40)->create(['company_id' => $company->getKey()]);
+
+        $this->actingAsRole('super_admin', ['company_id' => null]);
+
+        $row = collect($this->getJson('/api/v1/admin/companies')->json('data'))
+            ->firstWhere('id', $company->getKey());
+
+        $this->assertNull($row['subscription']['resources']['vehicles']['limit']);
+        $this->assertFalse($row['subscription']['resources']['vehicles']['approaching_limit']);
+    }
+
+    public function test_the_listing_does_not_query_per_tenant(): void
+    {
+        // The reason capacity is computed from counts the listing already has.
+        // Left as a test because the obvious refactor — calling describe() per
+        // row — is invisible until somebody has fifty tenants.
+        Company::factory()->count(6)->create(['subscription_tier' => 'business']);
+
+        $this->actingAsRole('super_admin', ['company_id' => null]);
+
+        \DB::enableQueryLog();
+        $this->getJson('/api/v1/admin/companies')->assertStatus(200);
+        $queries = count(\DB::getQueryLog());
+        \DB::disableQueryLog();
+
+        $this->assertLessThan(
+            20,
+            $queries,
+            "the company listing ran {$queries} queries; capacity is probably being counted per row",
+        );
+    }
+
+    public function test_a_platform_administrator_has_no_company(): void
+    {
+        // Company context is explicit rather than carried on the account: a
+        // super admin belongs to no tenant, and every company-level read names
+        // the company it means.
+        $user = $this->actingAsRole('super_admin', ['company_id' => null]);
+
+        $this->assertNull($user->company_id);
+        $this->getJson('/api/v1/fleet/subscription')->assertStatus(200)
+            ->assertJsonPath('data.applies', false);
+    }
+
     // ------------------------------------------------------------- plans ---
 
     public function test_the_plans_endpoint_is_public_and_carries_no_pricing(): void

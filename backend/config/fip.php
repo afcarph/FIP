@@ -268,6 +268,18 @@ return [
         'pending_tier' => env('FIP_PENDING_ENTERPRISE_TIER', 'business'),
 
         /*
+         * When a tenant is close enough to a limit to be worth telling somebody
+         * about, as a percentage of the allowance.
+         *
+         * Existing behaviour is binary — under the limit, or refused at it —
+         * which means the first anybody hears of a full plan is a customer
+         * being blocked. 80% is early enough to act on and late enough not to
+         * cry wolf; it decides what an administrator is shown, never what is
+         * enforced.
+         */
+        'approaching_limit_pct' => (int) env('FIP_APPROACHING_LIMIT_PCT', 80),
+
+        /*
          * What happens when a trial runs out.
          *
          * ⚠️ PROVISIONAL — REQUIRES BUSINESS APPROVAL.

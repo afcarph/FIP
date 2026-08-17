@@ -14,7 +14,35 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCompanies } from '@/hooks/use-api';
 import type { Company } from '@/types/api';
 
+/**
+ * Where a subscription stands, as opposed to which plan it is on.
+ *
+ * Only states worth interrupting a scan for get a chip. An ordinary active
+ * account says nothing, because a list where every row is badged is a list
+ * where no badge is read.
+ */
+function statusChip(status?: string): { label: string; variant: 'secondary' | 'outline' | 'destructive' } | null {
+  switch (status) {
+    case 'trialing':
+      return { label: 'Trial', variant: 'outline' };
+    case 'pending_setup':
+      return { label: 'Awaiting setup', variant: 'outline' };
+    case 'expired':
+      return { label: 'Expired', variant: 'destructive' };
+    default:
+      return null;
+  }
+}
+
 function CompanyRow({ company }: { company: Company }) {
+  const status = statusChip(company.subscription_status);
+
+  // Any resource close to its ceiling is worth flagging on the row: the point
+  // is to notice a tenant before they are refused, not after.
+  const nearCapacity = Object.values(company.subscription?.resources ?? {}).some(
+    (resource) => resource.approaching_limit || resource.over_limit,
+  );
+
   return (
     <Link
       href={`/admin/companies/${company.id}`}
@@ -36,9 +64,29 @@ function CompanyRow({ company }: { company: Company }) {
         {company.counts?.users ?? 0} users · {company.counts?.vehicles ?? 0} vehicles
       </div>
 
-      <Badge variant="secondary" className="shrink-0 capitalize">
-        {company.subscription_tier}
-      </Badge>
+      <div className="flex shrink-0 items-center gap-2">
+        {/*
+          Two different facts, so two badges. The plan is what they are on; the
+          status is where that plan stands — an account can be on enterprise
+          and not yet confirmed, or on a trial that has run out, and a single
+          chip would have to pick one and hide the other.
+        */}
+        {nearCapacity ? (
+          <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-500">
+            Near capacity
+          </Badge>
+        ) : null}
+
+        {status ? (
+          <Badge variant={status.variant} className="shrink-0">
+            {status.label}
+          </Badge>
+        ) : null}
+
+        <Badge variant="secondary" className="shrink-0 capitalize">
+          {company.subscription_tier.replace(/_/g, ' ')}
+        </Badge>
+      </div>
     </Link>
   );
 }

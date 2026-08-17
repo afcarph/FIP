@@ -872,9 +872,12 @@ export interface Company {
   contact_email: string | null;
   contact_phone: string | null;
   subscription_tier: string;
+  subscription_status?: string;
+  trial_ends_at?: string | null;
   is_active: boolean;
   counts?: { users?: number; vehicles?: number; drivers?: number };
-  /** Present on the detail view only — it costs three counting queries. */
+  /** On both the listing and the detail view: the listing counts usage in its
+   *  own query so every row can show capacity without a query apiece. */
   subscription?: SubscriptionReport;
   created_at: string | null;
 }
@@ -887,11 +890,24 @@ export interface Company {
  * permanently full.
  */
 export interface SubscriptionReport {
+  status?: string;
+  /** The plan whose numbers apply; differs while an agreement is unconfirmed. */
+  effective_tier?: string;
+  trial_ends_at?: string | null;
+  trial_expired?: boolean;
+  has_negotiated_limits?: boolean;
   tier: string;
   is_provisional: boolean;
   resources: Record<
     'vehicles' | 'seats' | 'devices',
-    { used: number; limit: number | null; remaining: number | null; over_limit: boolean }
+    {
+      used: number;
+      limit: number | null;
+      remaining: number | null;
+      over_limit: boolean;
+      /** Near the limit but not refused yet — a warning, never enforcement. */
+      approaching_limit?: boolean;
+    }
   >;
 }
 

@@ -54,6 +54,11 @@ class CompanyAdminController extends Controller
 
         $paginator = Company::query()
             ->withCount(['users', 'vehicles', 'drivers'])
+            // Devices hang off users rather than off the company, and only
+            // handsets spend the allowance. Counted in the same query because
+            // the listing reports capacity for every row, and asking per row
+            // is how a page of tenants becomes a hundred queries.
+            ->withCount(['devices' => fn ($q) => $q->countsTowardPlan()->whereNull('revoked_at')])
             ->when(
                 isset($data['search']),
                 fn ($q) => $q->where(function ($q) use ($data): void {
@@ -65,6 +70,18 @@ class CompanyAdminController extends Controller
             ->orderBy('name')
             ->paginate((int) ($data['per_page'] ?? 25))
             ->withQueryString();
+
+        // Every row carries its own capacity, so an administrator can see at a
+        // glance which tenants are near a limit rather than opening each one.
+        $paginator->getCollection()->transform(function (Company $company): Company {
+            $company->subscriptionReport = $this->limits->report($company, [
+                SubscriptionLimitService::VEHICLES => (int) $company->vehicles_count,
+                SubscriptionLimitService::SEATS => (int) $company->users_count,
+                SubscriptionLimitService::DEVICES => (int) $company->devices_count,
+            ]);
+
+            return $company;
+        });
 
         return ApiResponse::paginated($paginator, CompanyResource::collection($paginator));
     }
@@ -95,7 +112,9 @@ class CompanyAdminController extends Controller
 
             'tiers' => collect($configured)->map(fn (array $limits, string $name) => [
                 'name' => $name,
-                'label' => ucfirst($name),
+                // ucfirst alone renders `free_trial` as "Free_trial" in the
+                // plan select. Underscores are a config-key detail.
+                'label' => ucwords(str_replace('_', ' ', $name)),
                 // null means unlimited, and stays null rather than becoming a
                 // number the client would render as a cap.
                 'limits' => [

@@ -183,21 +183,54 @@ final class SubscriptionLimitService
         // question any caller asks.
 
         $company = Company::query()->find($companyId);
+
+        $usage = [];
+
+        foreach ([self::VEHICLES, self::SEATS, self::DEVICES] as $resource) {
+            $usage[$resource] = $this->usage($companyId, $resource);
+        }
+
+        return $this->report($company, $usage, $tier);
+    }
+
+    /**
+     * The same report, from usage somebody has already counted.
+     *
+     * The administration listing needs this for every tenant on the page, and
+     * asking the database three more times per row to learn what it has just
+     * selected is how a company list becomes a hundred queries. Nothing here
+     * touches the database.
+     *
+     * @param array<string, int> $usage
+     * @return array<string, mixed>
+     */
+    public function report(?Company $company, array $usage, ?string $tier = null): array
+    {
+        $threshold = (int) config('fip.subscription.approaching_limit_pct', 80);
         $resources = [];
 
         foreach ([self::VEHICLES, self::SEATS, self::DEVICES] as $resource) {
             $limit = $company !== null
                 ? $this->limitForCompany($company, $resource)
                 : $this->limitFor($tier, $resource);
-            $used = $this->usage($companyId, $resource);
+            $used = $usage[$resource] ?? 0;
 
             $resources[$resource] = [
                 'used' => $used,
                 'limit' => $limit,
                 'remaining' => $limit === null ? null : max(0, $limit - $used),
                 'over_limit' => $limit !== null && $used > $limit,
+                // Close enough to matter, but not yet refused. An unlimited
+                // resource is never approaching anything, and one already over
+                // is past this rather than approaching it.
+                'approaching_limit' => $limit !== null
+                    && $limit > 0
+                    && $used <= $limit
+                    && ($used / $limit) * 100 >= $threshold,
             ];
         }
+
+        $tier ??= $company?->subscription_tier;
 
         return [
             'tier' => $tier ?? config('fip.subscription.default_tier'),
