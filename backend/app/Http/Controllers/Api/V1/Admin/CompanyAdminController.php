@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Domain\User\Models\Company;
+use App\Domain\User\Services\CompanyRegistrationService;
 use App\Domain\User\Services\SubscriptionLimitService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\StoreCompanyRequest;
@@ -32,7 +33,10 @@ use Illuminate\Http\Request;
  */
 class CompanyAdminController extends Controller
 {
-    public function __construct(private readonly SubscriptionLimitService $limits) {}
+    public function __construct(
+        private readonly SubscriptionLimitService $limits,
+        private readonly CompanyRegistrationService $subscriptions,
+    ) {}
 
     /**
      * @OA\Get(path="/admin/companies", tags={"Admin — Companies"}, security={{"bearerAuth":{}}},
@@ -157,7 +161,25 @@ class CompanyAdminController extends Controller
     {
         $this->authorize('update', $company);
 
-        $company->update($request->validated());
+        $data = $request->validated();
+
+        // A plan change is a transition, not a column write: it carries trial
+        // dates, the status, and — when an enterprise agreement is being
+        // confirmed — the negotiated limits. Everything else on the company is
+        // an ordinary update.
+        if (array_key_exists('subscription_tier', $data)) {
+            $this->subscriptions->changePlan(
+                $company,
+                (string) $data['subscription_tier'],
+                $data['subscription_limits'] ?? null,
+            );
+
+            unset($data['subscription_tier'], $data['subscription_limits']);
+        }
+
+        if ($data !== []) {
+            $company->update($data);
+        }
 
         // Reducing a tier below current usage is allowed and deliberate: the
         // limits refuse new records without touching existing ones, so a

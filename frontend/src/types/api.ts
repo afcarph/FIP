@@ -792,6 +792,38 @@ export interface LocationHistoryLimits {
  * a private motorist is not a tenant, and zeroes against a plan they are not
  * on would be a lie with a progress bar on it.
  */
+/**
+ * A plan a prospective client can choose at registration.
+ *
+ * The limits come from the backend and are rendered as given. A registration
+ * page carrying its own numbers would be a second copy of them, and the two
+ * would drift the first time the business changed one. There is no price here
+ * because none exists yet, and the signup page is the worst possible place to
+ * invent one.
+ */
+export interface Plan {
+  name: string;
+  label: string;
+  description: string;
+  /** Offered at registration. `free` is legacy and is not. */
+  selectable: boolean;
+  /** Negotiated: an administrator confirms the real limits before it applies. */
+  requires_confirmation: boolean;
+  limits: {
+    vehicles: number | null;
+    users: number | null;
+    devices: number | null;
+  };
+}
+
+export interface PlanCatalogue {
+  plans: Plan[];
+  default: string;
+  trial_days: number;
+  /** The numbers await a business decision and must not be shown as settled. */
+  is_provisional: boolean;
+}
+
 export interface SubscriptionUsage {
   used: number;
   limit: number | null;
@@ -802,6 +834,12 @@ export interface SubscriptionUsage {
 export interface SubscriptionCapacity {
   applies: boolean;
   tier?: string;
+  status?: string;
+  /** The plan whose numbers are actually applied; differs while pending. */
+  effective_tier?: string;
+  trial_ends_at?: string | null;
+  trial_expired?: boolean;
+  has_negotiated_limits?: boolean;
   /** The plan numbers are placeholders awaiting a business decision. */
   is_provisional?: boolean;
   resources?: {

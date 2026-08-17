@@ -417,6 +417,16 @@ class SubscriptionLimitTest extends TestCase
 
     public function test_an_unlimited_resource_reports_no_limit_rather_than_zero(): void
     {
+        // The company is put on the plan rather than the plan being named at a
+        // company on a different one. `describe` reports what is actually in
+        // force — including a negotiated agreement and an enterprise selection
+        // still awaiting confirmation — so asking it about a plan the company
+        // is not on is no longer a question with an answer.
+        $this->company->update([
+            'subscription_tier' => 'enterprise',
+            'subscription_status' => Company::STATUS_ACTIVE,
+        ]);
+
         $report = app(SubscriptionLimitService::class)->describe($this->company->id, 'enterprise');
 
         $this->assertNull($report['resources']['vehicles']['limit']);

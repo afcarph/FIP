@@ -31,6 +31,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $contact_phone
  * @property string|null $logo_path
  * @property string $subscription_tier
+ * @property string $subscription_status
+ * @property Carbon|null $trial_started_at
+ * @property Carbon|null $trial_ends_at
+ * @property array<string, int|null>|null $subscription_limits
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -82,11 +86,58 @@ class Company extends Model
     protected $fillable = [
         'name', 'legal_name', 'tin', 'industry', 'type', 'address_line', 'city_id',
         'contact_email', 'contact_phone', 'logo_path', 'subscription_tier', 'is_active',
+        'subscription_status', 'trial_started_at', 'trial_ends_at', 'subscription_limits',
     ];
+
+    /** Trialing until it lapses; active once paying; expired when it lapses. */
+    public const STATUS_TRIALING = 'trialing';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_EXPIRED = 'expired';
+
+    /**
+     * Chosen, but not yet honoured.
+     *
+     * Enterprise limits are negotiated, so a stranger selecting that plan at
+     * registration must not be handed them. The company exists and works; it
+     * runs on the default plan's allowance until a platform administrator
+     * confirms what was actually agreed.
+     */
+    public const STATUS_PENDING_SETUP = 'pending_setup';
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'trial_started_at' => 'datetime',
+            'trial_ends_at' => 'datetime',
+            'subscription_limits' => 'array',
+        ];
+    }
+
+    /** A trial that has run out. Says nothing about what should happen next. */
+    public function trialHasExpired(): bool
+    {
+        return $this->trial_ends_at !== null && $this->trial_ends_at->isPast();
+    }
+
+    /**
+     * The plan whose limits actually apply.
+     *
+     * Not always the plan on the record. An enterprise selection awaiting
+     * confirmation runs on the default allowance, because the alternative is
+     * granting negotiated capacity to whoever typed the company name — and the
+     * safe direction is the smaller number, exactly as it is for a tier nobody
+     * recognises.
+     */
+    public function effectiveTier(): string
+    {
+        if ($this->subscription_status === self::STATUS_PENDING_SETUP) {
+            return (string) config('fip.subscription.default_tier');
+        }
+
+        return (string) ($this->subscription_tier ?? config('fip.subscription.default_tier'));
     }
 
     public function city(): BelongsTo

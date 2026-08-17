@@ -185,6 +185,39 @@ export function useResetPassword() {
   });
 }
 
+/**
+ * Registering a fleet operator: company, subscription and its first admin.
+ *
+ * Lands on /fleet rather than /dashboard. The account that has just been
+ * created is a company administrator, and the fleet is the context they
+ * registered for — sending them to a personal summary would be the wrong room.
+ */
+export function useRegisterCompany() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const response = await api.post<Session>(
+        '/auth/register-company',
+        { ...payload, device: { device_uuid: deviceUuid(), platform: 'web' } },
+        { skipAuth: true },
+      );
+
+      return response.data;
+    },
+    onSuccess: (session) => {
+      tokenStore.set(session.access_token);
+      queryClient.setQueryData(['auth', 'me'], {
+        user: session.user,
+        roles: session.roles,
+        permissions: session.permissions,
+      });
+      router.push('/fleet');
+    },
+  });
+}
+
 export function useRegister() {
   const router = useRouter();
   const queryClient = useQueryClient();

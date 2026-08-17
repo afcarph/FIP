@@ -266,6 +266,20 @@ final readonly class AuthService
 
     // ------------------------------------------------------------ internals
 
+    /**
+     * Sign in an account this service did not create.
+     *
+     * Company registration builds its company, subscription and administrator
+     * in one transaction of its own, then needs exactly what every other entry
+     * point gets back: a token, the roles, and the device remembered. Rather
+     * than duplicate that assembly, it borrows this — the only difference is
+     * who created the user.
+     */
+    public function issueSessionFor(User $user, ?array $device = null): array
+    {
+        return $this->issueSession($user, $device);
+    }
+
     private function issueSession(User $user, ?array $device): array
     {
         $token = JWTAuth::fromUser($user);

@@ -37,6 +37,18 @@ class UpdateCompanyRequest extends FormRequest
                 Rule::in(array_keys((array) config('fip.subscription.tiers', []))),
             ],
 
+            /*
+             * Negotiated limits, for confirming an enterprise agreement. A
+             * null value for a resource is a deliberate "no limit"; omitting
+             * the key entirely leaves the plan's configured number in force.
+             * Platform-only by virtue of the route — a tenant cannot reach
+             * this endpoint at all.
+             */
+            'subscription_limits' => ['sometimes', 'array'],
+            'subscription_limits.vehicles' => ['nullable', 'integer', 'min:0'],
+            'subscription_limits.seats' => ['nullable', 'integer', 'min:0'],
+            'subscription_limits.devices' => ['nullable', 'integer', 'min:0'],
+
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

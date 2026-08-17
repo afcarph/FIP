@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OcrController;
+use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\PriceController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -51,6 +52,13 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('throttle:auth')->group(function (): void {
         Route::post('auth/register', [AuthController::class, 'register']);
+        // Registering a client rather than a person: company, subscription and
+        // the administrator who will run it, in one transaction.
+        Route::post('auth/register-company', [AuthController::class, 'registerCompany']);
+        // The plans a prospective client may choose between. Public because
+        // the page that shows them is reached before anybody has an account,
+        // and it carries limits and their provisional status — never pricing.
+        Route::get('plans', [PlanController::class, 'index']);
         Route::post('auth/login', [AuthController::class, 'login']);
         Route::post('auth/mfa/verify', [AuthController::class, 'verifyMfa']);
         Route::post('auth/biometric/challenge', [AuthController::class, 'biometricChallenge']);

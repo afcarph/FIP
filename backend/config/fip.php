@@ -239,7 +239,47 @@ return [
     'subscription' => [
         'default_tier' => env('FIP_DEFAULT_TIER', 'free'),
 
+        /*
+         * How long a free trial runs, in days.
+         *
+         * ⚠️ PROVISIONAL, like the numbers below. No approved trial length
+         * exists in this repository; 14 is a common starting point and is
+         * configuration rather than code precisely so the business can set the
+         * real one without a deploy. It is reported as provisional wherever it
+         * is shown.
+         */
+        'trial_days' => (int) env('FIP_TRIAL_DAYS', 14),
+
+        /*
+         * What happens when a trial runs out.
+         *
+         * ⚠️ PROVISIONAL — REQUIRES BUSINESS APPROVAL.
+         *
+         * `block_creation` is the least destructive behaviour that still means
+         * something: the company keeps every record, every screen and every
+         * login, and only *new* vehicles, people and devices are refused —
+         * through the same 402 path a full plan already uses. `none` lets an
+         * expired trial carry on unchanged, for a business that would rather
+         * chase conversions by hand.
+         *
+         * Deleting or hiding data is deliberately not an option here. A driver
+         * must not lose their vehicle mid-shift because a trial lapsed, and no
+         * decision to destroy a prospect's data has been taken by anyone.
+         */
+        'trial_expiry' => env('FIP_TRIAL_EXPIRY_BEHAVIOUR', 'block_creation'),
+
         'tiers' => [
+            /*
+             * The evaluation plan. Its limits deliberately match `free` — the
+             * same provisional placeholders, not a second set of invented
+             * numbers — so that approving the real figures is one decision
+             * rather than two.
+             */
+            'free_trial' => [
+                'vehicles' => (int) env('FIP_TIER_TRIAL_VEHICLES', 3),
+                'seats' => (int) env('FIP_TIER_TRIAL_SEATS', 2),
+                'devices' => (int) env('FIP_TIER_TRIAL_DEVICES', 3),
+            ],
             'free' => [
                 'vehicles' => (int) env('FIP_TIER_FREE_VEHICLES', 3),
                 'seats' => (int) env('FIP_TIER_FREE_SEATS', 2),

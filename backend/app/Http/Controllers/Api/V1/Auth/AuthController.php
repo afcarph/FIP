@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Domain\User\Services\AuthService;
+use App\Domain\User\Services\CompanyRegistrationService;
+use App\Domain\User\Services\SubscriptionLimitService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\BiometricLoginRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\MfaVerifyRequest;
+use App\Http\Requests\Auth\RegisterCompanyRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Support\Http\ApiResponse;
@@ -22,7 +25,11 @@ use Laravel\Socialite\Facades\Socialite;
  */
 class AuthController extends Controller
 {
-    public function __construct(private readonly AuthService $auth) {}
+    public function __construct(
+        private readonly AuthService $auth,
+        private readonly CompanyRegistrationService $companies,
+        private readonly SubscriptionLimitService $limits,
+    ) {}
 
     /**
      * @OA\Post(
@@ -47,6 +54,41 @@ class AuthController extends Controller
         $session = $this->auth->register($request->validated());
 
         return ApiResponse::created($this->presentSession($session), 'Welcome to FIP.');
+    }
+
+    /**
+     * @OA\Post(
+     *   path="/auth/register-company", tags={"Authentication"},
+     *   summary="Register a fleet operator: company, subscription and its first administrator",
+     *
+     *   @OA\Response(response=201, description="Registered and signed in"),
+     *   @OA\Response(response=409, description="Email already registered"),
+     *   @OA\Response(response=422, description="Unknown plan or invalid details")
+     * )
+     */
+    public function registerCompany(RegisterCompanyRequest $request): JsonResponse
+    {
+        ['company' => $company, 'admin' => $admin] = $this->companies->register($request->validated());
+
+        // Signed straight in, as the personal path already does: an
+        // administrator who has just typed their password should not be asked
+        // for it again to reach the fleet they created.
+        $session = $this->auth->issueSessionFor($admin, $request->input('device'));
+
+        return ApiResponse::created(
+            $this->presentSession($session) + [
+                'company' => [
+                    'id' => $company->getKey(),
+                    'name' => $company->name,
+                ],
+                // The subscription as the server recorded it, so the client
+                // renders what was actually persisted rather than what it
+                // asked for. They differ for enterprise, which waits for an
+                // administrator to confirm negotiated limits.
+                'subscription' => $this->limits->describe($company->getKey(), $company->subscription_tier),
+            ],
+            'Welcome to FIP.',
+        );
     }
 
     /**

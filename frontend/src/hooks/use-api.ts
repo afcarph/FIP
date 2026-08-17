@@ -46,6 +46,7 @@ import type {
   Vehicle,
   VehicleEfficiency,
   DeviceLocationPoint,
+  PlanCatalogue,
   SubscriptionCapacity,
   LocationHistoryLimits,
   VehicleLocation,
@@ -81,6 +82,7 @@ export const queryKeys = {
   fleetDevices: (filter?: string) => ['fleet', 'devices', filter ?? 'all'] as const,
   fleetLocations: () => ['fleet', 'locations'] as const,
   fleetSubscription: () => ['fleet', 'subscription'] as const,
+  plans: () => ['plans'] as const,
   vehicleLocationHistory: (id: number, from: string, to: string) =>
     ['fleet', 'vehicles', id, 'locations', from, to] as const,
   companies: (filters?: Record<string, unknown>) => ['companies', filters] as const,
@@ -562,6 +564,21 @@ export function useFleetLocations() {
     queryFn: async () => (await api.get<VehicleLocation[]>('/fleet/locations')).data,
     refetchInterval: 60_000,
     staleTime: 0,
+  });
+}
+
+/**
+ * The plans on offer at registration.
+ *
+ * Public, and read before anybody has an account — so it must not carry the
+ * authenticated client's assumptions. The limits it returns are rendered as
+ * given rather than mirrored here.
+ */
+export function usePlans() {
+  return useQuery({
+    queryKey: queryKeys.plans(),
+    queryFn: async () => (await api.get<PlanCatalogue>('/plans', undefined, { skipAuth: true })).data,
+    staleTime: 5 * 60_000,
   });
 }
 

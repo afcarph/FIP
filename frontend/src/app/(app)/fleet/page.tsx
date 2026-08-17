@@ -33,6 +33,19 @@ import {
 } from '@/lib/utils';
 
 /**
+ * `free_trial` is a config key, not a sentence. Rendering it raw put "On the
+ * free_trial plan" in front of a customer.
+ */
+function planLabel(tier?: string): string {
+  if (!tier) return 'current';
+
+  return tier
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * What the company is using against its plan.
  *
  * Here rather than only in the admin console because a limit nobody can see is
@@ -46,6 +59,10 @@ function Capacity() {
 
   if (!data?.applies || !data.resources) return null;
 
+  // Recorded plan versus the one actually being applied.
+  const awaitingConfirmation =
+    data.effective_tier !== undefined && data.tier !== undefined && data.effective_tier !== data.tier;
+
   const rows = [
     { key: 'vehicles', label: 'Vehicles', usage: data.resources.vehicles },
     { key: 'seats', label: 'People', usage: data.resources.seats },
@@ -57,9 +74,35 @@ function Capacity() {
       <CardHeader>
         <CardTitle className="text-base">Plan capacity</CardTitle>
         <CardDescription>
-          {data.tier ? `On the ${data.tier} plan` : 'Current usage'}
+          {data.tier ? `On the ${planLabel(data.tier)} plan` : 'Current usage'}
           {data.is_provisional ? ' · limits are provisional and not yet approved' : ''}
         </CardDescription>
+
+        {/*
+          The plan and the numbers can honestly disagree. An enterprise
+          agreement is negotiated, so until somebody confirms it the standard
+          allowance applies — and a card that said "on the enterprise plan"
+          above a limit of three would read as enterprise meaning three.
+        */}
+        {awaitingConfirmation ? (
+          <p className="text-sm text-amber-700 dark:text-amber-500">
+            Your {planLabel(data.tier)} plan is being set up. The figures below are the standard allowance and
+            apply until we confirm the limits agreed with you.
+          </p>
+        ) : null}
+
+        {data.trial_ends_at && !data.trial_expired ? (
+          <p className="text-sm text-muted-foreground">
+            Your trial ends {formatRelative(data.trial_ends_at)}.
+          </p>
+        ) : null}
+
+        {data.trial_expired ? (
+          <p className="text-sm text-amber-700 dark:text-amber-500">
+            Your trial has ended. Nothing has been removed, but new vehicles, people and devices
+            cannot be added until you move onto a plan.
+          </p>
+        ) : null}
       </CardHeader>
 
       <CardContent className="grid gap-4 sm:grid-cols-3">
