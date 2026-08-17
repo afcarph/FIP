@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 import { FormError } from '@/components/auth/form-error';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -107,7 +107,7 @@ export default function NewFillUpPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Log a fill-up</CardTitle>
+          <h1 className="text-lg font-semibold leading-none tracking-tight">Log a fill-up</h1>
           <p className="text-sm text-muted-foreground">
             The odometer is optional, but without it efficiency cannot be worked out.
           </p>

@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import { FormError } from '@/components/auth/form-error';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateVehicle, useFuelTypes } from '@/hooks/use-api';
@@ -84,7 +84,7 @@ export default function NewVehiclePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add a vehicle</CardTitle>
+          <h1 className="text-lg font-semibold leading-none tracking-tight">Add a vehicle</h1>
           <p className="text-sm text-muted-foreground">
             Fuel type and plate number are all that is needed; the rest sharpens the efficiency
             figures.
