@@ -116,10 +116,12 @@ export function useLogin() {
         '/auth/login',
         {
           ...credentials,
+          // No device_name: the server derives a readable one ("Chrome on
+          // macOS") from the request's own User-Agent header. Sending the raw
+          // string meant the owner's device list showed a wall of
+          // `Mozilla/5.0 (Macintosh…` and stored a fingerprint to render it.
           device: {
             device_uuid: deviceUuid(),
-            device_name:
-              typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : 'Web',
             platform: 'web',
           },
         },

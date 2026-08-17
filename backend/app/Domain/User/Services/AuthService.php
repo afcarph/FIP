@@ -11,6 +11,7 @@ use App\Domain\User\Models\UserDevice;
 use App\Domain\User\Models\UserPreference;
 use App\Domain\User\Repositories\UserRepository;
 use App\Support\Exceptions\DomainException;
+use App\Support\Http\BrowserLabel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -289,15 +290,42 @@ final readonly class AuthService
 
     private function rememberDevice(User $user, array $device): void
     {
+        $platform = $device['platform'] ?? 'web';
+
         UserDevice::updateOrCreate(
             ['user_id' => $user->getKey(), 'device_uuid' => $device['device_uuid']],
             array_filter([
-                'device_name' => $device['device_name'] ?? null,
-                'platform' => $device['platform'] ?? 'web',
+                'device_name' => $this->deviceName($platform, $device),
+                'platform' => $platform,
                 'fcm_token' => $device['fcm_token'] ?? null,
                 'last_seen_at' => now(),
             ], static fn ($v) => $v !== null),
         );
+    }
+
+    /**
+     * What to call this registration in the owner's device list.
+     *
+     * A handset names itself — "Ramon's iPhone" means something to the person
+     * holding it. A browser cannot: it was sending its User-Agent, so the list
+     * read as a wall of `Mozilla/5.0 (Macintosh…` with no way to tell one row
+     * from another, on the one screen where somebody revokes a session they do
+     * not recognise.
+     *
+     * So for web the label is derived here from the request's own header
+     * rather than taken from the payload. The server already has it, which
+     * means a client cannot store something misleading under this name, and
+     * the full fingerprint never has to be kept.
+     *
+     * @param array<string, mixed> $device
+     */
+    private function deviceName(string $platform, array $device): ?string
+    {
+        if ($platform === 'web') {
+            return BrowserLabel::from(request()?->userAgent());
+        }
+
+        return $device['device_name'] ?? null;
     }
 
     private function invalidCredentials(): DomainException

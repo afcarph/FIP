@@ -70,6 +70,80 @@ class AuthenticationTest extends TestCase
         $response->assertJsonStructure(['data' => ['access_token', 'expires_in', 'user']]);
     }
 
+    public function test_a_browser_registration_is_named_readably(): void
+    {
+        // The owner's device list is where somebody revokes a session they do
+        // not recognise. It used to show the raw User-Agent, which answers
+        // nothing.
+        User::factory()->create([
+            'email' => 'browser@example.com',
+            'password' => Hash::make('Str0ng!Passw0rd#2026'),
+        ]);
+
+        $this->withHeader(
+            'User-Agent',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36',
+        )->postJson('/api/v1/auth/login', [
+            'email' => 'browser@example.com',
+            'password' => 'Str0ng!Passw0rd#2026',
+            'device' => ['device_uuid' => 'a-browser', 'platform' => 'web'],
+        ])->assertStatus(200);
+
+        $this->assertDatabaseHas('user_devices', [
+            'device_uuid' => 'a-browser',
+            'device_name' => 'Chrome on macOS',
+        ]);
+    }
+
+    public function test_a_client_cannot_store_its_own_name_for_a_browser(): void
+    {
+        // The header is the server's, the payload is the caller's. Trusting
+        // the payload would let a client write anything into a list a person
+        // makes security decisions from.
+        User::factory()->create([
+            'email' => 'liar@example.com',
+            'password' => Hash::make('Str0ng!Passw0rd#2026'),
+        ]);
+
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/130.0')
+            ->postJson('/api/v1/auth/login', [
+                'email' => 'liar@example.com',
+                'password' => 'Str0ng!Passw0rd#2026',
+                'device' => [
+                    'device_uuid' => 'claims-otherwise',
+                    'platform' => 'web',
+                    'device_name' => "Ramon's iPhone",
+                ],
+            ])->assertStatus(200);
+
+        $this->assertDatabaseHas('user_devices', [
+            'device_uuid' => 'claims-otherwise',
+            'device_name' => 'Firefox on Windows',
+        ]);
+        $this->assertDatabaseMissing('user_devices', ['device_name' => "Ramon's iPhone"]);
+    }
+
+    public function test_a_handset_still_names_itself(): void
+    {
+        // A phone knows what it is called and that name means something to the
+        // person holding it. Only browsers are relabelled.
+        User::factory()->create([
+            'email' => 'driver@example.com',
+            'password' => Hash::make('Str0ng!Passw0rd#2026'),
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'driver@example.com',
+            'password' => 'Str0ng!Passw0rd#2026',
+            'device' => ['device_uuid' => 'a-handset', 'platform' => 'ios', 'device_name' => "Ramon's iPhone"],
+        ])->assertStatus(200);
+
+        $this->assertDatabaseHas('user_devices', [
+            'device_uuid' => 'a-handset',
+            'device_name' => "Ramon's iPhone",
+        ]);
+    }
+
     public function test_an_unknown_email_and_a_wrong_password_are_indistinguishable(): void
     {
         User::factory()->create(['email' => 'known@example.com', 'password' => Hash::make('Str0ng!Passw0rd#2026')]);
