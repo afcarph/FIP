@@ -194,6 +194,8 @@ class CheckProductionConfig extends Command
         $mailer = (string) config('mail.default');
         $host = (string) config('mail.mailers.smtp.host');
 
+        $this->checkSender($production);
+
         // Catchers, not transports. Anything here accepts mail and keeps it.
         $catchers = ['mailhog', 'mailpit', 'maildev', 'localhost', '127.0.0.1'];
 
@@ -228,6 +230,65 @@ class CheckProductionConfig extends Command
         }
 
         $this->ok('mail', $mailer === 'smtp' ? $host : $mailer);
+    }
+
+    /**
+     * Whether the address mail claims to come from is one we can send as.
+     *
+     * Production sent as `no-reply@fip.ph`, a domain belonging to somebody
+     * else — it resolves to a parking host and publishes no SPF at all. Two
+     * separate problems live in that one value. Every receiver would treat the
+     * mail as unauthenticated and bin it, and the platform was putting a third
+     * party's domain on its own outgoing post.
+     *
+     * The rule is deliberately about the sending domain rather than about DNS:
+     * a pre-deploy check must give the same answer on a laptop with no network
+     * as it does on the host. If the links in the mail point at
+     * fip.nelleeph.com, the envelope should say nelleeph.com too — that is
+     * both what a recipient expects to see and what DKIM alignment requires.
+     */
+    private function checkSender(bool $production): void
+    {
+        $from = (string) config('mail.from.address');
+        $appUrl = (string) config('app.url');
+
+        if ($from === '') {
+            $this->bad('mail from', 'MAIL_FROM_ADDRESS is empty; mail would be sent with no sender.');
+
+            return;
+        }
+
+        $sender = mb_strtolower((string) mb_strstr($from, '@', false));
+        $sender = ltrim($sender, '@');
+        $site = mb_strtolower((string) parse_url($appUrl, PHP_URL_HOST));
+
+        if ($sender === '' || $site === '') {
+            $this->caution('mail from', "Could not compare {$from} against APP_URL.");
+
+            return;
+        }
+
+        // Same registrable domain, so mail from a subdomain sender or a site
+        // on a subdomain both pass: fip.nelleeph.com and nelleeph.com align.
+        if ($this->registrable($sender) === $this->registrable($site)) {
+            $this->ok('mail from', $from);
+
+            return;
+        }
+
+        $message = "MAIL_FROM_ADDRESS is {$from}, but this deployment is {$site}. "
+            .'Mail sent as a domain you do not control fails SPF and DKIM, and puts somebody '
+            ."else's name on your post.";
+
+        $production ? $this->bad('mail from', $message) : $this->caution('mail from', $message);
+    }
+
+    /** The last two labels — enough to align a subdomain with its parent. */
+    private function registrable(string $host): string
+    {
+        $labels = explode('.', trim($host, '.'));
+
+        return implode('.', array_slice($labels, -2));
     }
 
     private function checkDoeIngest(): void

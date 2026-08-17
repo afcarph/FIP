@@ -95,6 +95,11 @@ class MailDeliverabilityCheckTest extends TestCase
             'mail.default' => 'smtp',
             'mail.mailers.smtp.host' => 'smtp.sendgrid.net',
             'mail.mailers.smtp.username' => null,
+            // Aligned so this test is about credentials alone. Without it the
+            // sender check fires on whatever MAIL_FROM_ADDRESS the developer's
+            // own .env happens to hold, and the two faults get confused.
+            'mail.from.address' => 'no-reply@nelleeph.com',
+            'app.url' => 'https://fip.nelleeph.com',
         ]);
 
         $output = $this->check();
@@ -105,6 +110,79 @@ class MailDeliverabilityCheckTest extends TestCase
         $this->assertStringContainsString('MAIL_USERNAME is empty', $output);
         $this->assertMatchesRegularExpression('/!\s+mail/', $output);
         $this->assertDoesNotMatchRegularExpression('/✗\s+mail/u', $output);
+    }
+
+    // ------------------------------------------------- the sending domain ---
+
+    public function test_sending_as_a_domain_we_do_not_control_fails_production(): void
+    {
+        // The live fault: production sent as no-reply@fip.ph while serving
+        // fip.nelleeph.com. fip.ph belongs to somebody else — it resolves to a
+        // parking host and publishes no SPF — so every message failed
+        // authentication and carried a third party's domain on it.
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => 'smtp-relay.example.com',
+            'mail.mailers.smtp.username' => 'someone',
+            'mail.from.address' => 'no-reply@fip.ph',
+            'app.url' => 'https://fip.nelleeph.com',
+        ]);
+
+        $output = $this->check();
+
+        $this->assertStringContainsString('mail from', $output);
+        $this->assertStringContainsString('fails SPF and DKIM', $output);
+        $this->assertStringContainsString('Do not deploy', $output);
+    }
+
+    public function test_a_sender_on_the_deployments_own_domain_passes(): void
+    {
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => 'smtp-relay.example.com',
+            'mail.mailers.smtp.username' => 'someone',
+            'mail.from.address' => 'no-reply@nelleeph.com',
+            'app.url' => 'https://fip.nelleeph.com',
+        ]);
+
+        $this->assertStringNotContainsString('fails SPF and DKIM', $this->check());
+    }
+
+    public function test_a_subdomain_sender_aligns_with_its_parent(): void
+    {
+        // mail.nelleeph.com sending for fip.nelleeph.com is the normal shape
+        // once a provider is configured, and must not be reported as foreign.
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => 'smtp-relay.example.com',
+            'mail.mailers.smtp.username' => 'someone',
+            'mail.from.address' => 'no-reply@mail.nelleeph.com',
+            'app.url' => 'https://fip.nelleeph.com',
+        ]);
+
+        $this->assertStringNotContainsString('fails SPF and DKIM', $this->check());
+    }
+
+    public function test_an_empty_sender_is_refused(): void
+    {
+        config(['mail.from.address' => '', 'app.url' => 'https://fip.nelleeph.com']);
+
+        $this->assertStringContainsString('no sender', $this->check());
+    }
+
+    public function test_the_sender_check_needs_no_network(): void
+    {
+        // Deliberately not a DNS lookup: a pre-deploy gate has to give the
+        // same answer on a laptop with no network as it does on the host.
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => 'smtp-relay.example.com',
+            'mail.mailers.smtp.username' => 'someone',
+            'mail.from.address' => 'no-reply@definitely-not-registered-'.uniqid().'.invalid',
+            'app.url' => 'https://fip.nelleeph.com',
+        ]);
+
+        $this->assertStringContainsString('fails SPF and DKIM', $this->check());
     }
 
     public function test_a_configured_transport_passes(): void
