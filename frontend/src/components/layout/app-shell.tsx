@@ -197,7 +197,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="Main navigation"
       >
         <div className="flex h-16 items-center justify-between border-b px-4">
-          <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
+          {/*
+            Home, for whoever is reading it. Hardcoding /dashboard sent a fleet
+            manager clicking the logo to the private motorist's page — their
+            own fill-ups, not their fleet — which is the same fault the
+            Dashboard nav entry had. Same source of truth as sign-in, so the
+            three cannot disagree.
+          */}
+          <Link href={landingFor(roles)} className="flex items-center gap-2 overflow-hidden">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Fuel className="size-4" aria-hidden="true" />
             </div>
