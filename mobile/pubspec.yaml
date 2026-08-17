@@ -39,6 +39,14 @@ dependencies:
   # background work — it reads a value the OS already publishes.
   battery_plus: ^6.2.1
 
+  # What the handset is, for the owner's device list. Registrations were
+  # arriving named "FIP mobile" or not at all, so a person looking at their own
+  # devices to revoke one could not tell two phones apart. Needs no permission
+  # and reads only the model — since iOS 16 the user-assigned device name is
+  # not available to an app without an entitlement, which suits us: the model
+  # is what belongs in that list, not somebody's name for their phone.
+  device_info_plus: ^11.2.0
+
   # --- Camera & OCR upload ------------------------------------------------
   image_picker: ^1.1.2
   image_cropper: ^8.0.2

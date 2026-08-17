@@ -73,4 +73,41 @@ void main() {
 
     expect(identity.appVersion!.length, 24);
   });
+
+  group('what the handset is called', () {
+    // Registrations arrived either unnamed or as "FIP mobile" — the same for
+    // every phone in the fleet — so the owner's device list could not tell two
+    // apart on the one screen where a session gets revoked.
+
+    test('a maker and a model read as one name', () {
+      expect(BuildIdentity.describeAndroid('Google', 'Pixel 8'), 'Google Pixel 8');
+    });
+
+    test('a model that already carries the brand is not said twice', () {
+      expect(BuildIdentity.describeAndroid('OnePlus', 'OnePlus 12'), 'OnePlus 12');
+    });
+
+    test('a bare model code keeps its maker, which is what makes it mean anything', () {
+      expect(BuildIdentity.describeAndroid('samsung', 'SM-S911B'), 'Samsung SM-S911B');
+    });
+
+    test('a lowercase maker is not shouted back at the owner', () {
+      expect(BuildIdentity.describeAndroid('xiaomi', 'Redmi Note 13'), 'Xiaomi Redmi Note 13');
+    });
+
+    test('a missing model falls back to the maker rather than to nothing', () {
+      expect(BuildIdentity.describeAndroid('Google', ''), 'Google');
+    });
+
+    test('a missing maker still yields the model', () {
+      expect(BuildIdentity.describeAndroid(null, 'Pixel 8'), 'Pixel 8');
+    });
+
+    test('nothing at all is null rather than an empty name', () {
+      // Null is honest and the server leaves the column alone; an empty string
+      // would be stored and render as a blank row, which is the bug.
+      expect(BuildIdentity.describeAndroid(null, null), isNull);
+      expect(BuildIdentity.describeAndroid('  ', '  '), isNull);
+    });
+  });
 }

@@ -114,7 +114,10 @@ class DeviceSetupController extends StateNotifier<DeviceSetupState> {
       // device registered before this fix picks up its version on the next run.
       final registered = await tracking.register(
         platform: Platform.isIOS ? 'ios' : 'android',
-        deviceName: 'FIP mobile',
+        // What the handset is, not what the app is. Every device in the fleet
+        // registered as "FIP mobile", so the owner's list could not tell two
+        // phones apart on the one screen where a session gets revoked.
+        deviceName: build.deviceName,
         appVersion: build.appVersion,
         osVersion: build.osVersion,
       );

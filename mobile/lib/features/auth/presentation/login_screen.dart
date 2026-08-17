@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../driver/data/build_identity.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -69,12 +70,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // is unsafe, since the widget may have been disposed by then.
       final platform = Theme.of(context).platform == TargetPlatform.iOS ? 'ios' : 'android';
 
+      // Signing in registers the device too, and it was the path leaving rows
+      // unnamed: only the driver setup flow ever sent a name, so every handset
+      // whose owner had simply logged in appeared as a blank row in their own
+      // device list. Best-effort — a null name never blocks a sign-in.
+      final build = await BuildIdentity.resolve();
+
       final session = await api.post<Map<String, dynamic>>(
         '/auth/login',
         body: {
           'email': _emailController.text.trim(),
           'password': _passwordController.text,
-          'device': {'device_uuid': await api.deviceUuid(), 'platform': platform},
+          'device': {
+            'device_uuid': await api.deviceUuid(),
+            'platform': platform,
+            if (build.deviceName != null) 'device_name': build.deviceName,
+          },
         },
         skipAuth: true,
       );
