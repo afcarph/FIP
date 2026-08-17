@@ -360,6 +360,10 @@ export function useCreateVehicle() {
       // on whether any exist, so both caches have to be dropped.
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      // And the getting-started list, whose first step this completes. Without
+      // it the checklist keeps saying "add your first vehicle" for a minute
+      // beside a dashboard already counting one.
+      queryClient.invalidateQueries({ queryKey: queryKeys.fleetOnboarding() });
     },
   });
 }
@@ -433,6 +437,7 @@ export function useLogFillUp() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      queryClient.invalidateQueries({ queryKey: queryKeys.fleetOnboarding() });
     },
   });
 }
@@ -580,6 +585,15 @@ export function useOnboarding() {
     queryKey: queryKeys.fleetOnboarding(),
     queryFn: async () => (await api.get<OnboardingProgress>('/fleet/onboarding')).data,
     refetchOnWindowFocus: true,
+    /*
+     * Never served stale. The client-wide default holds a query fresh for a
+     * minute, which is right for figures and wrong for this: a company that
+     * adds its first vehicle and comes straight back would be told to add
+     * one, next to a dashboard already counting it. Five existence checks are
+     * cheap enough to pay on every visit, and the mutations that complete a
+     * step invalidate this key besides.
+     */
+    staleTime: 0,
   });
 }
 
@@ -716,7 +730,10 @@ export function useCreateDriver() {
   return useMutation({
     mutationFn: async (payload: Record<string, unknown>) =>
       (await api.post<FleetDriver>('/fleet/drivers', payload)).data,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fleet', 'drivers'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fleet', 'drivers'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.fleetOnboarding() });
+    },
   });
 }
 

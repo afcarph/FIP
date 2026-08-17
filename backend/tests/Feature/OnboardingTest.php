@@ -162,6 +162,125 @@ class OnboardingTest extends TestCase
         $this->assertTrue($body['is_complete']);
     }
 
+    public function test_a_vehicle_and_a_driver_are_not_an_assignment(): void
+    {
+        // The state a company is in for as long as it takes to connect the two.
+        // Two of five, and the third step is the one being asked for.
+        Vehicle::factory()->create(['company_id' => $this->company->id]);
+        $this->driver();
+
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $body = $this->progress();
+
+        $this->assertSame(2, $body['completed']);
+        $this->assertFalse($this->step($body, 'assignment')['done']);
+    }
+
+    public function test_deleting_the_only_driver_brings_the_step_back(): void
+    {
+        $driver = $this->driver();
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $this->assertTrue($this->step($this->progress(), 'driver')['done']);
+
+        $driver->delete();
+
+        $this->assertFalse($this->step($this->progress(), 'driver')['done']);
+    }
+
+    public function test_releasing_the_only_assignment_brings_the_step_back(): void
+    {
+        // The reverse of the released-assignment case: it counted while live,
+        // and must stop counting the moment it is not.
+        $vehicle = Vehicle::factory()->create(['company_id' => $this->company->id]);
+        $driver = $this->driver();
+
+        $assignment = VehicleAssignment::create([
+            'vehicle_id' => $vehicle->getKey(),
+            'driver_id' => $driver->getKey(),
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $this->assertTrue($this->step($this->progress(), 'assignment')['done']);
+
+        $assignment->update(['released_at' => now()]);
+
+        $this->assertFalse($this->step($this->progress(), 'assignment')['done']);
+    }
+
+    public function test_revoking_the_only_handset_brings_the_step_back(): void
+    {
+        // A revoked device has been taken out of service. It cannot report a
+        // position, so the fleet is back to having no phone on the road.
+        $user = $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $device = UserDevice::create([
+            'user_id' => $user->getKey(),
+            'device_uuid' => 'a-handset',
+            'platform' => 'ios',
+        ]);
+
+        $this->assertTrue($this->step($this->progress(), 'device')['done']);
+
+        $device->forceFill(['revoked_at' => now()])->save();
+
+        $this->assertFalse($this->step($this->progress(), 'device')['done']);
+    }
+
+    public function test_deleting_the_only_fill_up_brings_the_step_back(): void
+    {
+        $vehicle = Vehicle::factory()->create(['company_id' => $this->company->id]);
+        $purchase = FuelPurchase::factory()->create(['vehicle_id' => $vehicle->getKey()]);
+
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $this->assertTrue($this->step($this->progress(), 'fuel')['done']);
+
+        $purchase->delete();
+
+        $this->assertFalse($this->step($this->progress(), 'fuel')['done']);
+    }
+
+    public function test_a_completed_checklist_reopens_when_the_fleet_is_dismantled(): void
+    {
+        // The whole property in one test: nothing is remembered, so a company
+        // that tears its fleet down is offered the steps again rather than
+        // being congratulated for records that are gone.
+        $user = $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+        $vehicle = Vehicle::factory()->create(['company_id' => $this->company->id]);
+        $driver = $this->driver();
+
+        VehicleAssignment::create([
+            'vehicle_id' => $vehicle->getKey(),
+            'driver_id' => $driver->getKey(),
+            'assigned_at' => now(),
+        ]);
+        UserDevice::create([
+            'user_id' => $user->getKey(),
+            'device_uuid' => 'a-handset',
+            'platform' => 'ios',
+        ]);
+        FuelPurchase::factory()->create(['vehicle_id' => $vehicle->getKey()]);
+
+        $this->assertTrue($this->progress()['is_complete']);
+
+        $vehicle->delete();
+
+        $body = $this->progress();
+
+        $this->assertFalse($body['is_complete']);
+        $this->assertFalse($this->step($body, 'vehicle')['done']);
+        // The fill-up and the assignment hung off that vehicle, so they go too.
+        $this->assertFalse($this->step($body, 'fuel')['done']);
+        $this->assertFalse($this->step($body, 'assignment')['done']);
+        // The driver and the handset are still there, and still count.
+        $this->assertTrue($this->step($body, 'driver')['done']);
+        $this->assertTrue($this->step($body, 'device')['done']);
+    }
+
     // ------------------------------------------------------- who may read ---
 
     public function test_another_companys_records_do_not_count_towards_progress(): void

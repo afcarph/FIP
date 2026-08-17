@@ -7,6 +7,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOnboarding } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import type { OnboardingStep } from '@/types/api';
 
@@ -35,9 +36,16 @@ import type { OnboardingStep } from '@/types/api';
  * That preference lives in this browser rather than on the company: it is a
  * display choice by one person, not a fact about the tenant, and storing it
  * server-side would hide the list from colleagues who have not seen it.
+ *
+ * Keyed by user for the same reason. A shared machine is normal in a depot
+ * office, and a global key meant one person hiding the list also hid it from
+ * the next colleague to sign in — who had never seen it, and whose fleet is
+ * the one still needing set up.
  */
 
-const DISMISSED_KEY = 'fip.onboarding_dismissed';
+function dismissedKey(userId?: number): string {
+  return `fip.onboarding_dismissed.${userId ?? 'anonymous'}`;
+}
 
 function StepRow({ step, isNext }: { step: OnboardingStep; isNext: boolean }) {
   return (
@@ -80,14 +88,19 @@ function StepRow({ step, isNext }: { step: OnboardingStep; isNext: boolean }) {
 
 export function GettingStarted() {
   const { data } = useOnboarding();
+  const { user } = useAuth();
   const [dismissed, setDismissed] = React.useState(true);
 
-  // Read after mount: localStorage does not exist while this renders on the
-  // server, and assuming "not dismissed" would flash the card at somebody who
-  // put it away.
+  const key = dismissedKey(user?.id);
+
+  // Read after mount, and again when the account changes: localStorage does
+  // not exist while this renders on the server, assuming "not dismissed"
+  // would flash the card at somebody who put it away, and signing in as
+  // somebody else has to re-read under their own key rather than inherit the
+  // previous person's answer.
   React.useEffect(() => {
-    setDismissed(window.localStorage.getItem(DISMISSED_KEY) === 'true');
-  }, []);
+    setDismissed(window.localStorage.getItem(key) === 'true');
+  }, [key]);
 
   if (dismissed) return null;
   if (!data?.applies || !data.steps || data.is_complete) return null;
@@ -109,7 +122,7 @@ export function GettingStarted() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              window.localStorage.setItem(DISMISSED_KEY, 'true');
+              window.localStorage.setItem(key, 'true');
               setDismissed(true);
             }}
           >
