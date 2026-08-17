@@ -236,6 +236,11 @@ Route::prefix('v1')->group(function (): void {
             // A login for a driver who has none, so they can open the app.
             // Narrower than user administration: see DriverAccountService.
             Route::post('drivers/{driver}/account', [FleetController::class, 'createDriverAccount']);
+            // One driver's handsets, read through drivers.user_id. Distinct
+            // from fleet device health below, which lists devices already
+            // attached to a vehicle and so cannot answer "have they installed
+            // it yet" for a driver who has not been assigned one.
+            Route::get('drivers/{driver}/devices', [FleetController::class, 'driverDevices']);
             Route::post('assignments', [FleetController::class, 'assign']);
             // Releasing is its own verb rather than assigning to nobody: the
             // row is kept and dated, because fuel and fraud reporting read who

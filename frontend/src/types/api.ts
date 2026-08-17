@@ -976,6 +976,28 @@ export interface FleetDriver {
 }
 
 /**
+ * A handset belonging to one driver, from `/fleet/drivers/{id}/devices`.
+ *
+ * Only active ones are ever returned — a handset platform, not revoked, which
+ * is the same definition the onboarding checklist uses. So the presence of a
+ * row *is* the answer to "have they installed it", and there is no `is_active`
+ * flag to re-derive it from and get wrong.
+ *
+ * Carries no position: the endpoint is reached with `drivers.view`, which a
+ * company manager holds while holding no location permission.
+ */
+export interface DriverDevice {
+  id: number;
+  device_name: string | null;
+  platform: string;
+  app_version: string | null;
+  last_seen_at: string | null;
+  registered_at: string | null;
+  /** Null until the device is pointed at a vehicle, which is a separate step. */
+  vehicle?: { id: number; plate_number: string } | null;
+}
+
+/**
  * The operational block on the fleet dashboard, served under `overview`.
  *
  * Nested rather than spread across the payload's top level because

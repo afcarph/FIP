@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useCreateDriverAccount } from '@/hooks/use-api';
 import { ApiError } from '@/lib/api-client';
 import { appLinks, driverSignInUrl } from '@/lib/app-distribution';
-import type { FleetDriver } from '@/types/api';
+import type { DriverDevice, FleetDriver } from '@/types/api';
 
 /**
  * Getting one driver onto the app.
@@ -242,7 +242,20 @@ function InstallStep() {
   );
 }
 
-export function DriverSetup({ driver, hasDevice }: { driver: FleetDriver; hasDevice: boolean }) {
+export function DriverSetup({
+  driver,
+  device,
+}: {
+  driver: FleetDriver;
+  /** An active handset, or null. Only active ones ever reach this component. */
+  device: DriverDevice | null;
+}) {
+  const hasDevice = device !== null;
+  // Attached to a vehicle, which is what makes it a fleet health row. Separate
+  // from having the app at all, and the confusion between the two is the whole
+  // reason this component stopped reading device health.
+  const isReporting = hasDevice && Boolean(device.vehicle);
+
   return (
     <div className="space-y-4">
       <StepCard index={1} title="Give them a login" done={Boolean(driver.account)}>
@@ -250,7 +263,20 @@ export function DriverSetup({ driver, hasDevice }: { driver: FleetDriver; hasDev
       </StepCard>
 
       <StepCard index={2} title="Install FIP Driver" done={hasDevice}>
-        <InstallStep />
+        {hasDevice ? (
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {device.device_name ?? 'A handset'}
+            </span>{' '}
+            is signed in for {driver.full_name}
+            {device.platform === 'ios' || device.platform === 'android'
+              ? ` on ${device.platform === 'ios' ? 'iOS' : 'Android'}`
+              : null}
+            . Nothing further to do here.
+          </p>
+        ) : (
+          <InstallStep />
+        )}
       </StepCard>
 
       <StepCard index={3} title="Assign them a vehicle" done={Boolean(driver.assigned_vehicle)}>
@@ -268,17 +294,31 @@ export function DriverSetup({ driver, hasDevice }: { driver: FleetDriver; hasDev
         )}
       </StepCard>
 
-      <StepCard index={4} title="Their phone reports in" done={hasDevice}>
-        {hasDevice ? (
+      <StepCard index={4} title="Their phone reports in" done={isReporting}>
+        {isReporting ? (
           <p className="text-sm text-muted-foreground">
-            A handset is registered for {driver.full_name} and is reporting. It appears on device
-            health.
+            Reporting for{' '}
+            <span className="font-medium text-foreground">{device.vehicle?.plate_number}</span>. It
+            appears on device health.
+          </p>
+        ) : hasDevice ? (
+          /*
+           * The state that used to be reported as "not installed". The app is
+           * on the phone and signed in; what is missing is the vehicle, which
+           * is step 3 — so this says so instead of contradicting step 2.
+           */
+          <p className="text-sm text-muted-foreground">
+            The app is installed and signed in, but it is not attached to a vehicle yet, so it is
+            not reporting and will not appear on device health. That happens once{' '}
+            {driver.assigned_vehicle
+              ? 'the driver opens the app and picks up the assignment'
+              : 'they are assigned a vehicle in step 3'}
+            .
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
             Nothing has reported yet. Once they sign in on the phone and allow location, the device
-            registers itself and appears here and on device health — there is nothing further to do
-            in this screen.
+            registers itself — there is nothing further to do in this screen.
           </p>
         )}
       </StepCard>

@@ -12,6 +12,7 @@ import type {
   DeviceHealth,
   DeviceHealthFilter,
   DeviceHealthSummary,
+  DriverDevice,
   AdminUser,
   Company,
   FleetDriver,
@@ -85,6 +86,7 @@ export const queryKeys = {
   fleetSubscription: () => ['fleet', 'subscription'] as const,
   fleetOnboarding: () => ['fleet', 'onboarding'] as const,
   fleetDriver: (id: number) => ['fleet', 'drivers', id] as const,
+  fleetDriverDevices: (id: number) => ['fleet', 'drivers', id, 'devices'] as const,
   plans: () => ['plans'] as const,
   vehicleLocationHistory: (id: number, from: string, to: string) =>
     ['fleet', 'vehicles', id, 'locations', from, to] as const,
@@ -598,6 +600,27 @@ export function useCreateDriverAccount(driverId: number) {
       queryClient.invalidateQueries({ queryKey: ['fleet', 'drivers'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.fleetOnboarding() });
     },
+  });
+}
+
+/**
+ * The handsets one driver has signed in on.
+ *
+ * Deliberately not device health. Health lists devices that are already
+ * attached to a vehicle, so it cannot answer "have they installed it yet" for
+ * a driver who has not been assigned a truck — which is most drivers, at
+ * exactly the moment somebody is setting them up. Asking through the driver's
+ * own account keeps the two questions apart.
+ *
+ * `staleTime: 0` because this is watched: a manager sits on this page while
+ * the driver installs the app on the phone in front of them.
+ */
+export function useDriverDevices(driverId: number) {
+  return useQuery({
+    queryKey: queryKeys.fleetDriverDevices(driverId),
+    queryFn: async () => (await api.get<DriverDevice[]>(`/fleet/drivers/${driverId}/devices`)).data,
+    staleTime: 0,
+    enabled: Number.isFinite(driverId),
   });
 }
 

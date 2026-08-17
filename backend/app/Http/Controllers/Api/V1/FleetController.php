@@ -23,6 +23,7 @@ use App\Http\Requests\Fleet\CreateDriverAccountRequest;
 use App\Http\Requests\Fleet\StoreDriverRequest;
 use App\Http\Requests\Fleet\UpdateDriverRequest;
 use App\Http\Resources\DeviceLocationResource;
+use App\Http\Resources\DriverDeviceResource;
 use App\Http\Resources\DriverResource;
 use App\Support\Exceptions\DomainException;
 use App\Support\Http\ApiResponse;
@@ -368,6 +369,54 @@ class FleetController extends Controller
              */
             'temporary_password' => $password,
         ], 'Login created. Give the driver this password now — it cannot be shown again.');
+    }
+
+    /**
+     * @OA\Get(path="/fleet/drivers/{driver}/devices", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="The handsets one driver has signed in on",
+     *
+     *   @OA\Response(response=200, description="Active handsets; empty if the driver has no login"),
+     *   @OA\Response(response=403, description="Not entitled, or another company's driver"))
+     */
+    public function driverDevices(Request $request, Driver $driver): JsonResponse
+    {
+        // Same gate as the roster this is a detail of. `drivers.view` rather
+        // than `fleet.view` on purpose: a viewer holds fleet.view and is not
+        // given the roster, so they are not given a driver's handsets either.
+        abort_unless($request->user()->can('drivers.view'), 403);
+        $this->assertDriverIsInScope($request->user(), $driver);
+
+        /*
+         * A driver is not a user. The link is `drivers.user_id`, it is often
+         * null, and until it is filled in there is nothing to look up — an
+         * empty collection, never a fallback to some other user's devices.
+         */
+        if ($driver->user_id === null) {
+            return ApiResponse::success([]);
+        }
+
+        $devices = UserDevice::query()
+            ->where('user_id', $driver->user_id)
+            /*
+             * The company is re-checked on the *linked user* rather than taken
+             * on trust from the driver row. The two cannot normally disagree,
+             * but if they ever did this endpoint would be the way to read a
+             * stranger's handsets, so it fails closed instead.
+             */
+            ->whereHas('user', fn ($user) => $user->where('company_id', $driver->company_id))
+            /*
+             * Exactly the onboarding checklist's definition of a device, by
+             * calling the same two scopes rather than restating them: a
+             * handset platform, not revoked. Restating it is how this page and
+             * that checklist came to disagree in the first place.
+             */
+            ->countsTowardPlan()
+            ->active()
+            ->with('vehicle:id,plate_number')
+            ->orderByDesc('last_seen_at')
+            ->get();
+
+        return ApiResponse::success(DriverDeviceResource::collection($devices));
     }
 
     /** A driver outside the caller's company is not theirs to touch. */
