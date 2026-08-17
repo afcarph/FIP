@@ -78,13 +78,17 @@ function Capacity() {
             While a plan is being set up the headline must not claim the
             chosen plan's numbers are in force — "On the Enterprise plan"
             above a limit of three reads as Enterprise meaning three.
+
+            The provisional caveat is a separate line rather than a third
+            clause here: "being set up" is about this company's own limits,
+            while provisional is about ours not being approved yet, and
+            chaining two different kinds of "not final" made neither clear.
           */}
           {awaitingConfirmation
             ? `${planLabel(data.tier)} plan · being set up`
             : data.tier
               ? `On the ${planLabel(data.tier)} plan`
               : 'Current usage'}
-          {data.is_provisional ? ' · limits are provisional and not yet approved' : ''}
         </CardDescription>
 
         {/*
@@ -111,6 +115,18 @@ function Capacity() {
           <p className="text-sm text-amber-700 dark:text-amber-500">
             Your trial has ended. Nothing has been removed, but new vehicles, people and devices
             cannot be added until you move onto a plan.
+          </p>
+        ) : null}
+
+        {/*
+          The same sentence the registration page uses. The card is read by a
+          customer, and "limits are provisional and not yet approved" is a note
+          to ourselves about placeholders — true, and not what a customer needs
+          to be told. It disappears on its own once the figures are approved.
+        */}
+        {data.is_provisional ? (
+          <p className="text-xs text-muted-foreground">
+            Allowances shown are indicative and not final commercial terms.
           </p>
         ) : null}
       </CardHeader>
