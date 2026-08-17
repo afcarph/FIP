@@ -272,11 +272,16 @@ class VehicleController extends Controller
         $this->authorize('view', $vehicle);
 
         $paginator = $vehicle->fuelReadings()
+            // In the application's timezone before the day is taken: the
+            // column is a local wall clock, and a client sending a UTC instant
+            // would otherwise ask for the boundaries of a different day.
             ->when($request->has('from'), fn ($q) => $q->where(
-                'recorded_at', '>=', Carbon::parse($request->string('from')->toString())->startOfDay(),
+                'recorded_at', '>=', Carbon::parse($request->string('from')->toString())
+                    ->setTimezone(config('app.timezone'))->startOfDay(),
             ))
             ->when($request->has('to'), fn ($q) => $q->where(
-                'recorded_at', '<=', Carbon::parse($request->string('to')->toString())->endOfDay(),
+                'recorded_at', '<=', Carbon::parse($request->string('to')->toString())
+                    ->setTimezone(config('app.timezone'))->endOfDay(),
             ))
             ->when($request->has('source'), fn ($q) => $q->where('source', $request->string('source')->toString()))
             // Newest first, matching every other history endpoint. A chart

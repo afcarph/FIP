@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -67,6 +68,7 @@ use Illuminate\Support\Carbon;
 class UserDevice extends Model
 {
     use HasFactory;
+    use Prunable;
 
     /**
      * The platforms a subscription's device allowance is about.
@@ -190,6 +192,43 @@ class UserDevice extends Model
      * and counting must use this together: refusing something that does not
      * count would be the same mistake pointing the other way.
      */
+    /**
+     * Silent web registrations, and nothing else.
+     *
+     * Four conditions, each of which is the point rather than defensive
+     * padding. Only `web`, because a handset carries the history a fleet is
+     * measured on and must never disappear because a driver was on leave.
+     * Only rows with no vehicle, because a device attached to one is in
+     * service by definition. Only rows with no positions, because
+     * `device_locations.device_id` cascades on delete — pruning a device that
+     * somehow held a track would take the track with it, silently. And only
+     * after a long silence, measured from the last contact or, for a
+     * registration that never reported at all, from when it was created.
+     *
+     * Zero days means keep everything. An absent or misread setting must not
+     * be read as "older than zero days", which would delete the lot.
+     */
+    public function prunable(): Builder
+    {
+        $days = (int) config('fip.device_health.web_registration_retention_days');
+
+        if ($days <= 0) {
+            return static::query()->whereRaw('1 = 0');
+        }
+
+        $cutoff = now()->subDays($days);
+
+        return static::query()
+            ->where('platform', 'web')
+            ->whereNull('vehicle_id')
+            ->whereDoesntHave('locations')
+            ->where(fn (Builder $q) => $q
+                ->where('last_seen_at', '<', $cutoff)
+                ->orWhere(fn (Builder $never) => $never
+                    ->whereNull('last_seen_at')
+                    ->where('created_at', '<', $cutoff)));
+    }
+
     public function scopeCountsTowardPlan(Builder $query): Builder
     {
         return $query->whereIn('platform', self::PLAN_PLATFORMS);

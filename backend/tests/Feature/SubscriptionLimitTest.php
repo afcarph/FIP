@@ -351,16 +351,49 @@ class SubscriptionLimitTest extends TestCase
         $this->assertSame(2, $body['resources']['vehicles']['used']);
     }
 
-    public function test_a_private_motorist_is_told_the_plan_does_not_apply(): void
+    public function test_a_driver_cannot_read_their_employers_plan(): void
     {
-        // Not a tenant. Zeroes against a plan they are not on would be a lie
-        // with a progress bar on it.
-        $this->actingAsRole('driver', ['company_id' => null]);
+        // A driver holds no fleet.view. What the company is entitled to and
+        // how much of it is spent is the fleet's business; the driver's screens
+        // are their vehicle, their trips and their own handset.
+        $company = Company::factory()->create(['subscription_tier' => 'business']);
+        $this->actingAsRole('driver', ['company_id' => $company->id]);
+
+        $this->getJson('/api/v1/fleet/subscription')->assertStatus(403);
+    }
+
+    public function test_a_viewer_may_read_the_plan_they_can_already_see_the_fleet_of(): void
+    {
+        // Read-only oversight covers the fleet overview, which is where this
+        // card sits. Refusing it here would leave a hole in a page they are
+        // entitled to.
+        $company = Company::factory()->create(['subscription_tier' => 'business']);
+        $this->actingAsRole('viewer', ['company_id' => $company->id]);
+
+        $this->getJson('/api/v1/fleet/subscription')->assertStatus(200);
+    }
+
+    public function test_a_platform_administrator_is_told_the_plan_does_not_apply(): void
+    {
+        // Belonging to no company, they are not a tenant. Zeroes against a plan
+        // nobody is on would be a lie with a progress bar on it. A private
+        // motorist never gets this far — see the test below.
+        $this->actingAsRole('super_admin', ['company_id' => null]);
 
         $body = $this->getJson('/api/v1/fleet/subscription')->assertStatus(200)->json('data');
 
         $this->assertFalse($body['applies']);
         $this->assertArrayNotHasKey('resources', $body);
+    }
+
+    public function test_a_private_motorist_is_refused_rather_than_told_it_does_not_apply(): void
+    {
+        // No company and no fleet.view: the permission answers first, which is
+        // the right order. Nothing about a plan is disclosed to somebody with
+        // no fleet at all.
+        $this->actingAsRole('user', ['company_id' => null]);
+
+        $this->getJson('/api/v1/fleet/subscription')->assertStatus(403);
     }
 
     public function test_reading_capacity_requires_authentication(): void

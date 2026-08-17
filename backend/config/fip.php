@@ -195,6 +195,25 @@ return [
          * positions is a parked van, not a fault.
          */
         'location_stale_after_minutes' => (int) env('FIP_DEVICE_LOCATION_STALE_MINUTES', 30),
+
+        /*
+         * How long a silent web registration is kept.
+         *
+         * Signing in on the web writes a device row, and the browser's
+         * identifier lives in localStorage — so a cleared profile, a private
+         * window or a second browser each mint one that nothing ever removes.
+         * They are session identities rather than devices: they cannot be
+         * attached to a vehicle and cannot report a position.
+         *
+         * 90 days is long enough that a browser used occasionally is never
+         * disturbed, and it only ever removes a registration that has been
+         * silent for a quarter. Set to 0 to keep them forever.
+         *
+         * Handsets are never pruned by this, however quiet they go. A phone
+         * carries the history the fleet is measured on, and a vehicle's track
+         * must not disappear because a driver was on leave.
+         */
+        'web_registration_retention_days' => (int) env('FIP_WEB_DEVICE_RETENTION_DAYS', 90),
     ],
 
     /*

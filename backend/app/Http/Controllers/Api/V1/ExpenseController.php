@@ -73,8 +73,14 @@ class ExpenseController extends Controller
     {
         $paginator = $this->scope($request)
             ->when($request->has('vehicle_id'), fn ($q) => $q->where('vehicle_id', $request->integer('vehicle_id')))
-            ->when($request->has('from'), fn ($q) => $q->where('purchased_at', '>=', Carbon::parse($request->string('from')->toString())->startOfDay()))
-            ->when($request->has('to'), fn ($q) => $q->where('purchased_at', '<=', Carbon::parse($request->string('to')->toString())->endOfDay()))
+            // Moved into the application's timezone before the day is taken.
+            // `purchased_at` is stored as a local wall clock, and a client may
+            // send either a plain date or a UTC instant; without this, "16
+            // August" from a browser sending Zulu time takes the boundaries of
+            // a different day. See FleetController::vehicleLocationHistory,
+            // where the same mismatch was eight hours of wrong answers.
+            ->when($request->has('from'), fn ($q) => $q->where('purchased_at', '>=', Carbon::parse($request->string('from')->toString())->setTimezone(config('app.timezone'))->startOfDay()))
+            ->when($request->has('to'), fn ($q) => $q->where('purchased_at', '<=', Carbon::parse($request->string('to')->toString())->setTimezone(config('app.timezone'))->endOfDay()))
             ->with(['vehicle', 'station.brand', 'fuelType'])
             ->latest('purchased_at')
             ->paginate(min((int) $request->integer('per_page', 20), 100));

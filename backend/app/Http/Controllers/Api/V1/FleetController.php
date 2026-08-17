@@ -341,6 +341,13 @@ class FleetController extends Controller
      */
     public function subscription(Request $request): JsonResponse
     {
+        // Gated like every other fleet read. What a company is entitled to
+        // and how much of it is spent is the fleet's business, not everyone's:
+        // a driver holds no fleet.view and has no reason to read their
+        // employer's plan. Viewers and managers, who already see the fleet
+        // this card sits on, do.
+        abort_unless($request->user()->can('fleet.view'), 403);
+
         // The company comes from the token, never from a parameter. This is
         // the tenant-facing twin of the admin view, and the only difference
         // that matters is that a caller cannot name somebody else's company.

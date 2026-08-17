@@ -39,27 +39,93 @@ directory nobody writes to.
 
 ## Order of operations
 
-Migrations before code, because the ingest and the API deploy separately and
-the ingest tolerates a missing column but not a missing table.
+Production runs Docker Compose from `/opt/fip`. `--env-file .env` is not
+optional: without it Compose cannot interpolate `DB_PASSWORD` and refuses to
+start.
 
 ```bash
-# 1. Schema
-cd backend && php artisan migrate --force
+ssh staging
+cd /opt/fip
+git fetch origin <branch> && git merge --ff-only FETCH_HEAD
 
-# 2. API
-composer install --no-dev --optimize-autoloader
-php artisan config:cache && php artisan route:cache && php artisan view:cache
-sudo systemctl reload php-fpm
+# The compose invocation, used for every command below.
+DC="docker compose -f infra/docker-compose.yml -f infra/docker-compose.staging.yml --env-file .env"
 
-# 3. Web client
-cd ../frontend && npm ci && npm run build && pm2 reload fip-web
+# 1. Schema, before code. The ingest tolerates a missing column, not a missing table.
+$DC exec -T api php artisan migrate --force
 
-# 4. Ingest
-cd ../doe-pdf-ingest && pip install -r requirements.txt
+# 2. API. The backend is bind-mounted, so the code on disk is already live —
+#    but its caches are not. See "Caches" below.
+$DC exec -T api php artisan config:cache
+$DC exec -T api php artisan route:cache
+
+# 3. Web client. Not mounted: the staging overlay resets its volumes and builds
+#    a production target, so a change reaches a browser only via a new image.
+$DC build web
+$DC up -d --force-recreate web
 ```
 
-`config:cache` must be re-run on every deploy that changes `.env`; a cached
-config silently ignores the file.
+### The web client needs `--force-recreate`, and then needs checking
+
+`up -d web` after a `build` will frequently leave the **old container running**.
+The build succeeds, the command reports no error, and production keeps serving
+the previous bundle — so the change appears to have been deployed and verifying
+it tests the code you thought you replaced. This has happened; a map fix was
+verified as absent when it had simply never shipped.
+
+The mechanism is worth knowing so the behaviour stops looking random. Compose
+decides whether to recreate a service by comparing a hash of its *definition*,
+stored on the container as `com.docker.compose.config-hash`. Rebuilding an
+image under the same tag does not change that hash, so `up -d` concludes the
+service is up to date. Compose's own image bookkeeping can drift from reality
+as a result — on this host the container's `com.docker.compose.image` label and
+the image it was actually running were two different digests.
+
+Always `--force-recreate`, then confirm the running container is the image you
+just built:
+
+```bash
+$DC build web && $DC up -d --force-recreate web
+sleep 15
+echo "image:     $(docker images --no-trunc -q fip-web | head -1)"
+echo "container: $(docker inspect -f '{{.Image}}' fip-web-1)"
+docker ps --filter name=fip-web --format '{{.Status}}'
+```
+
+The two digests must be identical. If they differ, the container is stale
+whatever the deploy output said.
+
+### Caches
+
+The backend being bind-mounted makes code changes live instantly and makes two
+kinds of change invisible until a cache is rebuilt:
+
+| Changed | Rebuild | Symptom if skipped |
+|---|---|---|
+| A route (new endpoint, changed path or verb) | `php artisan route:cache` | The endpoint 404s with `not_found`, while the code plainly defines it |
+| `.env` | `php artisan config:cache` | The file is read and ignored |
+| Blade views | `php artisan view:cache` | Stale markup |
+
+A new route 404ing after a deploy is not a routing bug and not a bad merge. It
+is the route cache, every time.
+
+### Verifying a deploy landed
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://fip.nelleeph.com/login          # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://fip.nelleeph.com/<new-route>    # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://fip.nelleeph.com/fleet/nope-xyz # 404
+```
+
+The third request is the one that matters: a Next.js route that exists answers
+200 and one that does not answers 404, so the pair together distinguishes "the
+page is deployed" from "everything answers 200".
+
+Verifying a **page** rather than a route means opening it in a browser, and a
+browser tab that is not in the foreground runs no `requestAnimationFrame` — a
+map will render nothing at all, indefinitely, with every network request
+succeeding. Record `document.visibilityState` beside any measurement taken from
+an automated browser.
 
 ## The cron
 
