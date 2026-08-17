@@ -84,6 +84,7 @@ export const queryKeys = {
   fleetLocations: () => ['fleet', 'locations'] as const,
   fleetSubscription: () => ['fleet', 'subscription'] as const,
   fleetOnboarding: () => ['fleet', 'onboarding'] as const,
+  fleetDriver: (id: number) => ['fleet', 'drivers', id] as const,
   plans: () => ['plans'] as const,
   vehicleLocationHistory: (id: number, from: string, to: string) =>
     ['fleet', 'vehicles', id, 'locations', from, to] as const,
@@ -571,6 +572,32 @@ export function useFleetLocations() {
     queryFn: async () => (await api.get<VehicleLocation[]>('/fleet/locations')).data,
     refetchInterval: 60_000,
     staleTime: 0,
+  });
+}
+
+/**
+ * Give a driver a login so they can sign into the app.
+ *
+ * The temporary password comes back exactly once and is never stored anywhere
+ * readable, so the caller has to show it immediately — see
+ * DriverAccountService. Invalidates the roster and the checklist, both of which
+ * change the moment this succeeds.
+ */
+export function useCreateDriverAccount(driverId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { email: string; phone?: string }) =>
+      (
+        await api.post<{ user: { id: number; email: string }; temporary_password: string }>(
+          `/fleet/drivers/${driverId}/account`,
+          payload,
+        )
+      ).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fleet', 'drivers'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.fleetOnboarding() });
+    },
   });
 }
 

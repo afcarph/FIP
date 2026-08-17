@@ -40,10 +40,12 @@ final class OnboardingService
         $vehicles = Vehicle::query()->where('company_id', $companyId)->count();
         $drivers = Driver::query()->where('company_id', $companyId)->count();
 
-        $assigned = VehicleAssignment::query()
+        $assignment = VehicleAssignment::query()
             ->active()
             ->whereIn('vehicle_id', Vehicle::query()->where('company_id', $companyId)->select('id'))
-            ->exists();
+            ->first();
+
+        $assigned = $assignment !== null;
 
         // Only a handset counts. A browser registration is a session identity
         // and can never report a position, so treating one as "you have a
@@ -85,10 +87,20 @@ final class OnboardingService
             ],
             [
                 'key' => 'device',
-                'title' => 'Get the app on a driver’s phone',
-                'description' => 'A registered handset is what reports position and battery. Nothing is tracked until one is.',
-                'href' => '/fleet/devices',
-                'action' => 'See device health',
+                'title' => 'Get FIP on a driver’s phone',
+                'description' => 'Install the FIP Driver App and sign in as an assigned driver to start receiving '
+                    .'position and battery. Nothing is tracked until a handset reports.',
+                /*
+                 * The driver who is already assigned, when there is one, so the
+                 * button lands on the person this step is actually about rather
+                 * than on a roster to search. Pointing at device health — which
+                 * lists handsets that have already registered — told somebody
+                 * with no handset to go and look at their handsets.
+                 */
+                'href' => $assignment?->driver_id !== null
+                    ? "/fleet/drivers/{$assignment->driver_id}/setup"
+                    : '/fleet/drivers',
+                'action' => 'Set up driver',
                 'done' => $device,
             ],
             [

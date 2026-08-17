@@ -8,6 +8,7 @@ use App\Domain\Ai\Models\FraudAlert;
 use App\Domain\Fleet\Models\DeviceLocation;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
+use App\Domain\Fleet\Services\DriverAccountService;
 use App\Domain\Fleet\Services\FleetOverviewService;
 use App\Domain\Fleet\Services\OnboardingService;
 use App\Domain\Reporting\Services\DashboardService;
@@ -18,6 +19,7 @@ use App\Domain\User\Services\SubscriptionLimitService;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Models\VehicleAssignment;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Fleet\CreateDriverAccountRequest;
 use App\Http\Requests\Fleet\StoreDriverRequest;
 use App\Http\Requests\Fleet\UpdateDriverRequest;
 use App\Http\Resources\DeviceLocationResource;
@@ -39,6 +41,7 @@ class FleetController extends Controller
         private readonly FleetOverviewService $overview,
         private readonly SubscriptionLimitService $limits,
         private readonly OnboardingService $onboarding,
+        private readonly DriverAccountService $driverAccounts,
     ) {}
 
     /**
@@ -177,7 +180,7 @@ class FleetController extends Controller
             ->forUser($request->user())
             ->when($request->has('fleet_id'), fn ($q) => $q->where('fleet_id', $request->integer('fleet_id')))
             ->when($request->has('status'), fn ($q) => $q->where('status', $request->string('status')->toString()))
-            ->with('fleet:id,name', 'currentAssignment.vehicle:id,plate_number')
+            ->with('fleet:id,name', 'currentAssignment.vehicle:id,plate_number', 'user:id,email')
             ->paginate(min((int) $request->integer('per_page', 20), 100));
 
         return ApiResponse::paginated($paginator, DriverResource::collection($paginator));
@@ -333,6 +336,52 @@ class FleetController extends Controller
             'driver' => $driver->full_name,
             'assigned_at' => $assignment->assigned_at->toIso8601String(),
         ]);
+    }
+
+    /**
+     * @OA\Post(path="/fleet/drivers/{driver}/account", tags={"Fleet"}, security={{"bearerAuth":{}}},
+     *   summary="Give a driver a login so they can use the app",
+     *
+     *   @OA\Response(response=201, description="Created, with a one-time temporary password"),
+     *   @OA\Response(response=402, description="No seat left on the plan"),
+     *   @OA\Response(response=403, description="Not entitled, or another company's driver"),
+     *   @OA\Response(response=409, description="Already has a login, or the email is taken"))
+     */
+    public function createDriverAccount(CreateDriverAccountRequest $request, Driver $driver): JsonResponse
+    {
+        // Two gates. The capability says minting a driver login is your job;
+        // the scope says this driver is yours to do it for. `drivers.invite` is
+        // narrower than `users.create` on purpose — see DriverAccountService.
+        abort_unless($request->user()->can('drivers.invite'), 403);
+        $this->assertDriverIsInScope($request->user(), $driver);
+
+        ['user' => $user, 'temporary_password' => $password] = $this->driverAccounts
+            ->createFor($driver, $request->validated());
+
+        return ApiResponse::created([
+            'user' => ['id' => $user->getKey(), 'email' => $user->email],
+            /*
+             * Returned exactly once and stored only as a hash. There is no way
+             * to read it back, which is deliberate: it exists to be handed to
+             * the driver now, not to be looked up later by whoever opens the
+             * page next.
+             */
+            'temporary_password' => $password,
+        ], 'Login created. Give the driver this password now — it cannot be shown again.');
+    }
+
+    /** A driver outside the caller's company is not theirs to touch. */
+    private function assertDriverIsInScope(User $actor, Driver $driver): void
+    {
+        if ($actor->isPlatformAdministrator()) {
+            return;
+        }
+
+        abort_unless(
+            $actor->company_id !== null && $driver->company_id === $actor->company_id,
+            403,
+            'That driver belongs to another company.',
+        );
     }
 
     /**

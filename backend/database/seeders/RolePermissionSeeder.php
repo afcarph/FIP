@@ -32,7 +32,15 @@ class RolePermissionSeeder extends Seeder
         'prices' => ['prices.view', 'prices.update', 'prices.moderate', 'prices.import'],
         'vehicles' => ['vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete'],
         'fleet' => ['fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers'],
-        'drivers' => ['drivers.view', 'drivers.manage'],
+        /*
+         * `drivers.invite` mints a login for somebody who already has a driver
+         * record, and nothing else: the driver role, inside the caller's own
+         * company, attached to that record. It is deliberately not
+         * `users.create` — that grants any role in any company the caller can
+         * see, and a fleet manager should be able to get their own driver onto
+         * the app without being able to make an administrator.
+         */
+        'drivers' => ['drivers.view', 'drivers.manage', 'drivers.invite'],
         // Planning work and sending it out are separate grants. A dispatcher
         // role can later be given the operational half without also being able
         // to invent trips.
@@ -78,7 +86,7 @@ class RolePermissionSeeder extends Seeder
             'permissions' => [
                 'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
                 'fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers',
-                'drivers.view', 'drivers.manage',
+                'drivers.view', 'drivers.manage', 'drivers.invite',
                 'trips.view', 'trips.manage', 'trips.dispatch',
                 'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
                 'maintenance.view', 'maintenance.manage',
@@ -97,7 +105,7 @@ class RolePermissionSeeder extends Seeder
                 'users.view', 'users.create', 'users.update',
                 'vehicles.view', 'vehicles.create', 'vehicles.update',
                 'fleet.view', 'fleet.manage', 'fleet.reports',
-                'drivers.view', 'drivers.manage',
+                'drivers.view', 'drivers.manage', 'drivers.invite',
                 'trips.view', 'trips.manage', 'trips.dispatch',
                 'expenses.view', 'expenses.create', 'expenses.update',
                 'maintenance.view', 'maintenance.manage',

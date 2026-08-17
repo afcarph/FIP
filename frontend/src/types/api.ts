@@ -831,6 +831,14 @@ export interface PlanCatalogue {
  * cannot congratulate a company for a vehicle it has since deleted. The client
  * renders what it is given and computes no progress of its own.
  */
+/** How a driver gets the app, when store listings are configured. */
+export interface AppDistribution {
+  android: string | null;
+  ios: string | null;
+  /** True when neither store link is configured, so the UI says so honestly. */
+  pending: boolean;
+}
+
 export interface OnboardingStep {
   key: string;
   title: string;
@@ -963,6 +971,8 @@ export interface FleetDriver {
   fleet?: { id: number; name: string } | null;
   assigned_vehicle?: { id: number; plate_number: string } | null;
   hired_at: string | null;
+  /** Null until somebody gives them a login; they cannot use the app before. */
+  account: { id: number; email?: string | null } | null;
 }
 
 /**

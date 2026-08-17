@@ -198,14 +198,30 @@ class RoleHierarchyTest extends TestCase
         $fleet = Role::where('name', 'fleet_manager')->first();
         $names = $fleet->permissions->pluck('name');
 
-        // 27 before trips, plus trips.view, trips.manage and trips.dispatch.
-        // The number is the point: it fails when a role quietly gains anything.
-        $this->assertCount(30, $names);
+        // 27 before trips, plus trips.view/manage/dispatch, plus drivers.invite
+        // when driver mobile onboarding needed a fleet manager to be able to
+        // hand their own driver a login. The number is the point: it fails when
+        // a role quietly gains anything, and it caught this addition.
+        $this->assertCount(31, $names);
         foreach (['fleet.manage', 'fleet.assign_drivers', 'fraud.resolve', 'devices.location.history',
-            'trips.view', 'trips.manage', 'trips.dispatch'] as $p) {
+            'trips.view', 'trips.manage', 'trips.dispatch', 'drivers.invite'] as $p) {
             $this->assertContains($p, $names->all(), "fleet_manager must retain $p");
         }
         $this->assertNotContains('users.create', $names->all());
+    }
+
+    public function test_inviting_a_driver_is_not_the_same_as_creating_users(): void
+    {
+        // The distinction the new permission exists for. A fleet manager may
+        // give one of their own drivers a login; they still may not create an
+        // arbitrary user, choose a role, or reach user administration.
+        $fleet = Role::where('name', 'fleet_manager')->first();
+        $names = $fleet->permissions->pluck('name')->all();
+
+        $this->assertContains('drivers.invite', $names);
+        $this->assertNotContains('users.create', $names);
+        $this->assertNotContains('users.view', $names);
+        $this->assertNotContains('roles.manage', $names);
     }
 
     public function test_consumer_roles_are_untouched(): void

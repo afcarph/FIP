@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\User\Models\Company;
+use App\Domain\User\Models\User;
 use App\Domain\User\Models\UserDevice;
 use App\Domain\Vehicle\Models\Vehicle;
 use App\Domain\Vehicle\Models\VehicleAssignment;
@@ -279,6 +280,98 @@ class OnboardingTest extends TestCase
         // The driver and the handset are still there, and still count.
         $this->assertTrue($this->step($body, 'driver')['done']);
         $this->assertTrue($this->step($body, 'device')['done']);
+    }
+
+    // ------------------------------------------------- the mobile step ---
+
+    public function test_an_ios_handset_completes_the_mobile_step(): void
+    {
+        $user = $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        UserDevice::create(['user_id' => $user->getKey(), 'device_uuid' => 'iphone', 'platform' => 'ios']);
+
+        $this->assertTrue($this->step($this->progress(), 'device')['done']);
+    }
+
+    public function test_another_companys_handset_does_not_complete_it(): void
+    {
+        // Devices hang off users, so the scope has to travel through them. A
+        // sister company's phone reporting is not this company's onboarding.
+        $stranger = Company::factory()->create();
+        $theirUser = User::factory()->create(['company_id' => $stranger->id]);
+
+        UserDevice::create(['user_id' => $theirUser->getKey(), 'device_uuid' => 'their-phone', 'platform' => 'android']);
+
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $this->assertFalse($this->step($this->progress(), 'device')['done']);
+    }
+
+    public function test_the_step_points_at_the_assigned_driver_when_there_is_one(): void
+    {
+        // The button has to land on the person the step is about. Pointing at
+        // device health sent somebody with no handset to look at their handsets.
+        $vehicle = Vehicle::factory()->create(['company_id' => $this->company->id]);
+        $driver = $this->driver();
+
+        VehicleAssignment::create([
+            'vehicle_id' => $vehicle->getKey(),
+            'driver_id' => $driver->getKey(),
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $step = $this->step($this->progress(), 'device');
+
+        $this->assertSame("/fleet/drivers/{$driver->getKey()}/setup", $step['href']);
+        $this->assertSame('Set up driver', $step['action']);
+    }
+
+    public function test_the_step_falls_back_to_the_roster_with_no_assignment(): void
+    {
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $this->assertSame('/fleet/drivers', $this->step($this->progress(), 'device')['href']);
+    }
+
+    public function test_a_driver_signing_in_and_registering_completes_the_step(): void
+    {
+        // The whole milestone, end to end: a driver with a login registers a
+        // handset from the app, and the company's checklist moves — with
+        // nothing stored anywhere to say so.
+        $vehicle = Vehicle::factory()->create(['company_id' => $this->company->id]);
+        $driver = $this->driver();
+
+        VehicleAssignment::create([
+            'vehicle_id' => $vehicle->getKey(),
+            'driver_id' => $driver->getKey(),
+            'assigned_at' => now(),
+        ]);
+
+        $manager = $this->actingAsRole('fleet_manager', ['company_id' => $this->company->id]);
+
+        $this->assertFalse($this->step($this->progress(), 'device')['done']);
+
+        // The manager gives them a login…
+        $password = $this->postJson("/api/v1/fleet/drivers/{$driver->getKey()}/account", [
+            'email' => 'pilot@haulers.test',
+        ])->assertStatus(201)->json('data.temporary_password');
+
+        // …the driver signs in on their phone and the app registers it.
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'pilot@haulers.test',
+            'password' => $password,
+        ])->assertStatus(200)->json('data.access_token');
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/v1/devices', ['device_uuid' => 'their-phone', 'platform' => 'android'])
+            ->assertStatus(201);
+
+        // Read back as the manager: the company's step is now done.
+        $this->actingAs($manager, 'api');
+
+        $this->assertTrue($this->step($this->progress(), 'device')['done']);
     }
 
     // ------------------------------------------------------- who may read ---

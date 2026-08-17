@@ -40,6 +40,20 @@ class DriverResource extends JsonResource
             'assigned_vehicle' => $this->whenLoaded('currentAssignment', fn () => $this->currentAssignment?->vehicle
                 ? ['id' => $this->currentAssignment->vehicle->id, 'plate_number' => $this->currentAssignment->vehicle->plate_number]
                 : null),
+            /*
+             * Whether this person can sign in, which is the question the app
+             * onboarding turns on. A driver record can exist for months with
+             * no login — that is how a fleet is entered — and until now no
+             * screen could tell, so "get the app on their phone" was being
+             * asked of somebody with nothing to sign in with.
+             *
+             * The email is shown because it is what they sign in with and the
+             * manager may need to read it back to them. Nothing else about the
+             * account is exposed here.
+             */
+            'account' => $this->user_id === null
+                ? null
+                : ['id' => $this->user_id, 'email' => $this->whenLoaded('user', fn () => $this->user?->email)],
             'hired_at' => $this->hired_at?->toDateString(),
         ];
     }
