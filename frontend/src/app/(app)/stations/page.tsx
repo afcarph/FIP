@@ -1,6 +1,6 @@
 'use client';
 
-import { Fuel, Search, Star } from 'lucide-react';
+import { Fuel, Search, Star, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -15,7 +15,7 @@ import { formatCurrency, formatDistance } from '@/lib/utils';
 
 export default function StationsPage() {
   const { latitude, longitude } = useGeolocation();
-  const { data: stations, isLoading } = useNearbyStations(latitude, longitude, 25);
+  const { data: stations, isLoading, isError } = useNearbyStations(latitude, longitude, 25);
 
   const [search, setSearch] = React.useState('');
 
@@ -113,6 +113,14 @@ export default function StationsPage() {
             </Link>
           ))}
         </div>
+      ) : isError ? (
+        <Card>
+          <EmptyState
+            icon={WifiOff}
+            title="Could not load stations"
+            description="The search could not be fetched. There may well be stations nearby — reload to try again."
+          />
+        </Card>
       ) : (
         <Card>
           <EmptyState

@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  ArrowLeft,
-  Check,
-  Fuel,
-  Search,
-  ShieldAlert,
-  TriangleAlert,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, Check, Fuel, Search, ShieldAlert, TriangleAlert, WifiOff, X } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -114,7 +106,7 @@ function FleetAlertsBody() {
     [status, severity],
   );
 
-  const { data: alerts, isLoading } = useFleetAlerts(filters);
+  const { data: alerts, isLoading, isError } = useFleetAlerts(filters);
 
   // Plate filtering is client-side because the API does not offer it and the
   // page already holds the rows; adding a server filter for this would be a
@@ -201,6 +193,15 @@ function FleetAlertsBody() {
                 <Skeleton key={key} className="h-28 w-full" />
               ))}
             </div>
+          ) : isError ? (
+            // "No open anomalies" is a reassuring thing to say and must never
+            // be said because a request failed.
+            <EmptyState
+              icon={WifiOff}
+              title="Could not load alerts"
+              description="The alerts could not be fetched, so this is not a statement that there are none. Reload to try again."
+              className="py-10"
+            />
           ) : rows.length === 0 ? (
             <EmptyState
               icon={ShieldAlert}

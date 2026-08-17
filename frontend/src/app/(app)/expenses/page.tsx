@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Plus, Receipt } from 'lucide-react';
+import { AlertTriangle, Plus, Receipt, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -26,7 +26,7 @@ export default function ExpensesPage() {
 
   const { data: vehicles } = useVehicles();
   const { data: summary, isLoading: summaryLoading } = useExpenseSummary({ vehicle_id: vehicleId });
-  const { data: purchases, isLoading } = useExpenses({ vehicle_id: vehicleId, per_page: 50 });
+  const { data: purchases, isLoading, isError } = useExpenses({ vehicle_id: vehicleId, per_page: 50 });
 
   return (
     <div className="space-y-6">
@@ -180,6 +180,14 @@ export default function ExpensesPage() {
                 </tbody>
               </table>
             </div>
+          ) : isError ? (
+            // Not the same as having logged nothing. A failed request that
+            // renders "No fill-ups logged" invites someone to log a duplicate.
+            <EmptyState
+              icon={WifiOff}
+              title="Could not load fill-ups"
+              description="The list could not be fetched, so this is not a record of no spending. Reload to try again."
+            />
           ) : (
             <EmptyState
               icon={Receipt}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -80,7 +80,7 @@ function NotificationRow({ notification }: { notification: AppNotification }) {
 
 export default function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = React.useState(false);
-  const { data: notifications, isLoading } = useNotifications(unreadOnly);
+  const { data: notifications, isLoading, isError } = useNotifications(unreadOnly);
   const markAll = useMarkAllNotificationsRead();
 
   const unreadCount = notifications?.filter((item) => item.read_at === null).length ?? 0;
@@ -121,6 +121,14 @@ export default function NotificationsPage() {
             <Skeleton key={key} className="h-24 w-full" />
           ))}
         </div>
+      ) : isError ? (
+        // "Nothing unread" is a claim about the world. It must not be made
+        // because a request failed.
+        <EmptyState
+          icon={WifiOff}
+          title="Could not load notifications"
+          description="These could not be fetched, so this is not a statement that nothing needs attention. Reload to try again."
+        />
       ) : !notifications?.length ? (
         <EmptyState
           icon={Bell}

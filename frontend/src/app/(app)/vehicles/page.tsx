@@ -1,6 +1,6 @@
 'use client';
 
-import { Car, Fuel, Gauge, Plus, Search, TriangleAlert } from 'lucide-react';
+import { Car, Fuel, Gauge, Plus, Search, TriangleAlert, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -52,7 +52,7 @@ export default function VehiclesPage() {
     [debouncedSearch, status, sort],
   );
 
-  const { data: vehicles, isLoading, isFetching } = useVehicles(filters);
+  const { data: vehicles, isLoading, isFetching, isError } = useVehicles(filters);
 
   const isFiltered = Boolean(debouncedSearch || status || sort);
   const rows = vehicles ?? [];
@@ -95,6 +95,14 @@ export default function VehiclesPage() {
                 <Skeleton key={key} className="h-14 w-full" />
               ))}
             </div>
+          ) : isError ? (
+            // Distinct from an empty fleet on purpose. A failed request that
+            // renders "No vehicles yet" tells an operator their fleet is gone.
+            <EmptyState
+              icon={WifiOff}
+              title="Could not load vehicles"
+              description="The list could not be fetched. This is a connection or server problem, not an empty fleet — reload to try again."
+            />
           ) : rows.length === 0 ? (
             <EmptyState
               icon={Car}
