@@ -62,7 +62,6 @@ function handset(overrides: Partial<DriverDevice> = {}): DriverDevice {
     device_name: 'Pilot Pixel',
     platform: 'android',
     app_version: '1.0.0',
-    last_seen_at: null,
     registered_at: null,
     vehicle: null,
     ...overrides,

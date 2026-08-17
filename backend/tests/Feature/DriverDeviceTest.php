@@ -373,4 +373,24 @@ class DriverDeviceTest extends TestCase
         $this->assertStringNotContainsString('last_location', $payload);
         $this->assertStringNotContainsString('latitude', $payload);
     }
+
+    public function test_it_does_not_say_when_the_driver_last_used_their_phone(): void
+    {
+        /*
+         * Minimised deliberately rather than left in because it was easy to
+         * include. The page never rendered it, and a timestamp of when a named
+         * person last picked up their phone is closer to watching them than to
+         * answering whether an app is installed — so `drivers.view` does not
+         * carry it. The query still orders by it; that needs no client to see.
+         */
+        $this->withAccount();
+        $this->device()->forceFill(['last_seen_at' => now()])->save();
+
+        $this->actingAsRole('company_manager', ['company_id' => $this->company->id]);
+
+        $devices = $this->devices();
+
+        $this->assertCount(1, $devices);
+        $this->assertArrayNotHasKey('last_seen_at', $devices[0]);
+    }
 }

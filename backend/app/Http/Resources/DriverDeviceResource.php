@@ -19,8 +19,14 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * whether an app is installed.
  *
  * So the shape here is only what the question needs: which handset, running
- * what, last heard from when, and whether it has been pointed at a vehicle
- * yet. No coordinates, no push credential.
+ * what, and whether it has been pointed at a vehicle yet. No coordinates and
+ * no push credential.
+ *
+ * `last_seen_at` is deliberately absent. The page never rendered it, and it is
+ * a record of when a named person last used their phone — which is closer to
+ * tracking someone than to telling a manager whether an app is installed. The
+ * listing is still ordered by it; ordering happens in the query and needs no
+ * client to see the value.
  *
  * The `@mixin` is how the property reads below are typed, rather than the
  * per-file `property.notFound` suppression the older resources in this folder
@@ -38,7 +44,6 @@ class DriverDeviceResource extends JsonResource
             'device_name' => $this->device_name,
             'platform' => $this->platform,
             'app_version' => $this->app_version,
-            'last_seen_at' => $this->last_seen_at?->toIso8601String(),
             'registered_at' => $this->created_at?->toIso8601String(),
             /*
              * The one field that separates "the app is on their phone" from

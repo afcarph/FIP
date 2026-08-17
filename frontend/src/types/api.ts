@@ -983,15 +983,16 @@ export interface FleetDriver {
  * row *is* the answer to "have they installed it", and there is no `is_active`
  * flag to re-derive it from and get wrong.
  *
- * Carries no position: the endpoint is reached with `drivers.view`, which a
- * company manager holds while holding no location permission.
+ * Carries no position and no last-seen time: the endpoint is reached with
+ * `drivers.view`, which a company manager holds while holding no location
+ * permission, and when a named person last used their phone is nearer to
+ * tracking them than to answering whether an app is installed.
  */
 export interface DriverDevice {
   id: number;
   device_name: string | null;
   platform: string;
   app_version: string | null;
-  last_seen_at: string | null;
   registered_at: string | null;
   /** Null until the device is pointed at a vehicle, which is a separate step. */
   vehicle?: { id: number; plate_number: string } | null;
