@@ -1,7 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -22,6 +24,7 @@ type FormValues = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const login = useLogin();
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const {
     register,
@@ -33,8 +36,9 @@ export default function LoginPage() {
 
   return (
     <AuthShell
+      tagline="Fleet Management"
       title="Sign in"
-      description="Welcome back — enter your details to continue."
+      description="Manage vehicles. Manage operations. Keep your fleet moving."
       footer={
         <>
           New here?{' '}
@@ -85,14 +89,33 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            error={Boolean(errors.password)}
-            aria-describedby={errors.password ? 'password-error' : undefined}
-            {...register('password')}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              className="pr-10"
+              error={Boolean(errors.password)}
+              aria-describedby={errors.password ? 'password-error' : undefined}
+              {...register('password')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((shown) => !shown)}
+              // Labelled by what the control does next, not by what is on
+              // screen, so a screen reader announces the action rather than
+              // the current state.
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              className="absolute right-0 top-0 flex h-full w-10 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden />
+              )}
+            </button>
+          </div>
           {errors.password ? (
             <p id="password-error" className="text-xs text-destructive">
               {errors.password.message}

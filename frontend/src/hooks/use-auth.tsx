@@ -89,6 +89,37 @@ export function useAuth(): AuthContextValue {
 }
 
 /** Sign-in mutation, handling both the direct and the MFA-challenge paths. */
+/**
+ * Where a signed-in user belongs.
+ *
+ * Ordered by how specific the role is: an administrator who also manages a
+ * fleet signed in to administer, and a fleet role outranks the personal
+ * dashboard. Anyone else falls through to the personal view, which is the only
+ * one that works without a company.
+ */
+export function landingFor(roles: string[]): string {
+  if (roles.includes('super_admin') || roles.includes('system_admin')) return '/admin';
+  if (roles.some((role) => ['fleet_manager', 'company_manager', 'viewer'].includes(role))) {
+    return '/fleet';
+  }
+
+  /*
+   * A company driver is not a private motorist. /dashboard is built from
+   * `$user->fuelPurchases()` and `$user->vehicles()`, and a driver owns no
+   * vehicles — so the vehicle, maintenance and range half of that page is
+   * permanently empty, while the spend half reports their employer's fuel
+   * money as the driver's own personal spend and savings.
+   *
+   * Fuel & expenses is where their work actually is: `expenses.view` and
+   * `expenses.create` are the only permissions the driver role holds that let
+   * them *do* anything on the web, logging a fill-up being the one thing the
+   * product asks of them outside the phone.
+   */
+  if (roles.includes('driver')) return '/expenses';
+
+  return '/dashboard';
+}
+
 export function useLogin() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -99,10 +130,12 @@ export function useLogin() {
         '/auth/login',
         {
           ...credentials,
+          // No device_name: the server derives a readable one ("Chrome on
+          // macOS") from the request's own User-Agent header. Sending the raw
+          // string meant the owner's device list showed a wall of
+          // `Mozilla/5.0 (Macintosh…` and stored a fingerprint to render it.
           device: {
             device_uuid: deviceUuid(),
-            device_name:
-              typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : 'Web',
             platform: 'web',
           },
         },
@@ -124,7 +157,10 @@ export function useLogin() {
         roles: (data as Session).roles,
         permissions: (data as Session).permissions,
       });
-      router.push('/dashboard');
+
+      // Fleet roles open onto the fleet, not a personal summary. Registration
+      // deliberately keeps /dashboard: a new account has no fleet yet.
+      router.push(landingFor((data as Session).roles ?? []));
     },
   });
 }
@@ -159,6 +195,39 @@ export function useResetPassword() {
       password_confirmation: string;
     }) => {
       await api.post('/auth/reset-password', payload, { skipAuth: true });
+    },
+  });
+}
+
+/**
+ * Registering a fleet operator: company, subscription and its first admin.
+ *
+ * Lands on /fleet rather than /dashboard. The account that has just been
+ * created is a company administrator, and the fleet is the context they
+ * registered for — sending them to a personal summary would be the wrong room.
+ */
+export function useRegisterCompany() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const response = await api.post<Session>(
+        '/auth/register-company',
+        { ...payload, device: { device_uuid: deviceUuid(), platform: 'web' } },
+        { skipAuth: true },
+      );
+
+      return response.data;
+    },
+    onSuccess: (session) => {
+      tokenStore.set(session.access_token);
+      queryClient.setQueryData(['auth', 'me'], {
+        user: session.user,
+        roles: session.roles,
+        permissions: session.permissions,
+      });
+      router.push('/fleet');
     },
   });
 }

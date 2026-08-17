@@ -14,6 +14,18 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>fip_mobile</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- Staging and production are HTTPS, so the only exception left is
@@ -29,18 +41,23 @@
 			</dict>
 		</dict>
 	</dict>
-	<key>CFBundleName</key>
-	<string>fip_mobile</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
+	<!-- Receipt capture. image_picker reaches the camera and the photo library,
+	     and iOS terminates the process outright if either is used without a
+	     usage description — it is not a catchable error. Both strings describe
+	     the fuel-receipt purpose specifically, because that is the only reason
+	     FIP opens either one. -->
+	<key>NSCameraUsageDescription</key>
+	<string>FIP uses the camera to photograph fuel receipts so a fill-up can be recorded without typing it in. Photos are used only to read the receipt.</string>
+	<!-- Foreground location only. FIP samples a registered driver device's
+	     position while the app is open, so a fleet operator can see where their
+	     vehicles are. NSLocationAlwaysAndWhenInUseUsageDescription and
+	     UIBackgroundModes are deliberately absent: the app does not track in the
+	     background, and requesting the permission would be asking for a capability
+	     it does not use. See docs/07-security.md, "Location handling". -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FIP uses your location while the app is open to report your vehicle's position to your fleet operator and to show nearby stations. Location is not collected in the background.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FIP needs access to your photos so you can choose an existing picture of a fuel receipt instead of taking a new one.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

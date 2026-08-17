@@ -22,8 +22,14 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 221 83% 53%;
+    /* FIP navy #052F53 and green #3E9A36, the brand marks the logo is drawn
+       from. Green is a brand accent, not a status colour — semantic
+       success/warning/danger stay separate so a healthy vehicle and a brand
+       button never read as the same thing. */
+    --primary: 208 89% 17%;
     --primary-foreground: 210 40% 98%;
+    --brand-green: 115 48% 41%;
+    --brand-green-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
@@ -77,8 +83,12 @@
     --popover: 222 44% 10%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
+    /* Navy at 17% lightness disappears on a dark ground, so the dark theme
+       lifts it while holding the hue. Same brand, still legible. */
+    --primary: 208 62% 62%;
+    --primary-foreground: 208 89% 12%;
+    --brand-green: 115 44% 56%;
+    --brand-green-foreground: 115 60% 10%;
 
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 96%;

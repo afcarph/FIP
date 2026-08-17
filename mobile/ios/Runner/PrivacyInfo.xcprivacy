@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Apple requires a privacy manifest for apps that collect data. The three
+  declarations below are the ones a reviewer checks against observed behaviour,
+  so each is a statement about what the code actually does:
+
+  - Precise location IS linked to the user. A position is stored against a
+    registered device, and a device belongs to a named driver. Declaring it
+    unlinked would be false.
+  - It is NOT used for tracking, in Apple's sense: nothing is combined with
+    third-party data or shared with a data broker.
+  - The purpose is App Functionality — showing a fleet operator where their own
+    vehicle is. Not analytics, not personalisation, not advertising.
+
+  Collection is foreground-only. There is no UIBackgroundModes entry and no
+  NSLocationAlwaysAndWhenInUseUsageDescription, which is what makes the claim
+  in the purpose string verifiable rather than a promise.
+-->
+<plist version="1.0">
+<dict>
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePreciseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+
+    <!--
+      Required-reason APIs. UserDefaults backs shared_preferences, which holds
+      the offline location queue; CA92.1 is the correct reason because the data
+      never leaves the app's own container.
+    -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

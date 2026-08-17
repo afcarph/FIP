@@ -71,6 +71,7 @@ class DemoDataSeeder extends Seeder
                 ['Fleet Manager', 'fleet@fip.ph', self::PASSWORD],
                 ['Company Manager', 'manager@fip.ph', self::PASSWORD],
                 ['Driver', 'driver@fip.ph', self::PASSWORD],
+                ['Fleet Viewer', 'viewer@fip.ph', self::PASSWORD],
                 ['Registered User', 'user@fip.ph', self::PASSWORD],
             ],
         );
@@ -107,6 +108,16 @@ class DemoDataSeeder extends Seeder
         ];
     }
 
+    /*
+     * Re-running this seeder over an already-seeded database fails part-way,
+     * at fuel purchases: vehicles carry odometer readings from the first run,
+     * and the generated purchases fall below them, so
+     * FuelExpenseService::assertOdometerMonotonic rejects them. Users, roles
+     * and companies are seeded before that point and are idempotent, so
+     * re-running to pick up a new account works; a clean demo dataset needs
+     * `migrate:fresh --seed`. Pre-existing, and out of scope to change here.
+     */
+
     /** @return array<string, User> */
     private function seedUsers(array $companies): array
     {
@@ -117,6 +128,11 @@ class DemoDataSeeder extends Seeder
             'fleet_manager' => ['Rafael', 'Cruz', 'fleet@fip.ph', 'logistics', 'QZN'],
             'company_manager' => ['Bianca', 'Reyes', 'manager@fip.ph', 'logistics', 'QZN'],
             'driver' => ['Jomar', 'Dela Cruz', 'driver@fip.ph', 'logistics', 'PSG'],
+            // Read-only oversight of the same company the fleet roles manage,
+            // so acceptance testing can compare a viewer against a manager over
+            // identical data rather than an empty tenant. Permissions come from
+            // the viewer role in RolePermissionSeeder; nothing is granted here.
+            'viewer' => ['Vera', 'Villanueva', 'viewer@fip.ph', 'logistics', 'MKT'],
             'user' => ['Ella', 'Santos', 'user@fip.ph', null, 'TAG'],
         ];
 

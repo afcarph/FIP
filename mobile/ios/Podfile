@@ -1,7 +1,11 @@
-# Uncomment this line to define a global platform for your project
-# 14.0, not the commented-out 13.0 the template ships: google_maps_flutter_ios
-# requires it, and without an explicit line CocoaPods silently assumes 13.0
-# and pod install fails.
+# Stated explicitly rather than left commented out as the template ships it:
+# without a platform line CocoaPods assumes 13.0, which then disagrees with the
+# Runner target's own IPHONEOS_DEPLOYMENT_TARGET and warns on every pod.
+#
+# 14.0 because that is what Runner.xcodeproj targets. It is not driven by any
+# pod: the installed ones ask for 11.0 at most, and maplibre_gl asks for 13.0.
+# An earlier version of this comment credited google_maps_flutter_ios, which
+# has not been a dependency since FIP settled on MapLibre and MapTiler.
 platform :ios, '14.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.

@@ -15,7 +15,7 @@ Ranked by consequence rather than by likelihood:
 | Fleet fuel and route data | a competitor learns a logistics operator's cost base and routes | tenant scoping at query, policy and middleware level |
 | User credentials | account takeover, and reuse elsewhere | bcrypt cost 12, breach checking, MFA, lockout |
 | Price integrity | poisoned prices send drivers to the wrong station; the product's core claim fails | geofence, band check, source precedence, moderation |
-| Personal location history | movement patterns of identifiable people | coarse storage, retention limits, no third-party sharing |
+| Personal location history | movement patterns of identifiable people | foreground-only collection, tenant scoping, a separate permission for history, scheduled pruning, no third-party sharing |
 | Administrative access | total platform compromise | role separation, mandatory MFA, immutable audit log |
 
 The third is unusual and worth dwelling on. Most platforms treat data
@@ -237,6 +237,7 @@ office NAT does not exhaust one budget for everybody behind it.
 | Fill-up records with coordinates | expense tracking, fraud detection | 5 years (financial records) |
 | Report geotags | anti-fraud verification | 90 days, then coarsened |
 | Device identifiers, FCM tokens | push delivery | until the device is removed |
+| Vehicle location history | fleet vehicle monitoring | configurable — **pending approval**, see Location handling |
 
 ### Subject rights
 
@@ -255,13 +256,92 @@ deleting the fill-up rows, so aggregate analytics remain correct.
 ### Location handling
 
 Location is the most sensitive category here, so it is deliberately
-constrained:
+constrained. There are two distinct kinds of location in FIP and conflating
+them would misdescribe both.
 
-- Requested at point of use, never in the background.
-- Report geotags are stored as a *distance from the station*, not as a track.
-- Declining location still yields a usable product — the map falls back to
-  Metro Manila with a visible notice, rather than nagging.
-- No location data is shared with third parties.
+**Point-of-use location (all users).** The map and the nearby-station search
+ask for a position at the moment they need one and keep nothing. Report geotags
+are stored as a *distance from the station*, not as a track. Declining still
+yields a usable product — the map falls back to Metro Manila with a visible
+notice, rather than nagging.
+
+**Fleet vehicle tracking (registered driver devices only).** A device that has
+been registered to a vehicle reports its position periodically **while the FIP
+mobile application is open and in use**, so that a fleet operator can see where
+their vehicles are and associate fuel events with a place.
+
+| Question | Answer |
+|----------|--------|
+| Why is it collected? | To show a fleet operator the current and recent location of their own vehicles, and to give fuel and anomaly records an operating context |
+| Which devices? | Only devices explicitly registered through the app and associated with a vehicle. An unregistered device reports nothing |
+| Whose data? | The vehicle, the registered device, and the driver assigned to that vehicle at the time |
+| Continuous or periodic? | **Periodic.** Sampled on an interval, not streamed. The interval is configuration (`location.sampling_interval_seconds`), not a fixed product promise |
+| While the app is active? | **Yes** — and only then |
+| Background tracking? | **No.** FIP does not request background location. iOS declares `NSLocationWhenInUseUsageDescription` only, with no `UIBackgroundModes`; Android requests only foreground location. When the app is backgrounded or closed, collection stops |
+| If permission is denied? | Tracking is skipped. The app keeps working: everything except vehicle tracking behaves exactly as before, and the app does not re-prompt on a loop |
+| Can it be disabled? | Yes — revoke the OS permission, or revoke the device registration server-side, which stops ingestion for that device immediately |
+| If GPS is unavailable? | Nothing is recorded. No position is invented, and no last-known value is resubmitted as if it were current |
+
+**What is stored.** Latitude, longitude, accuracy, and where the platform
+supplies them altitude, speed and heading; the device's own timestamp
+(`recorded_at`) and the server's receipt time (`received_at`); and the device
+and vehicle it belongs to. The vehicle is stamped at write time, so reassigning
+a device later does not rewrite where it has been.
+
+**Timestamps.** Both `recorded_at` and `received_at` are stored in the
+application timezone, `Asia/Manila` — not UTC. This matches every other
+timestamp in the schema. A device reporting UTC is converted on the way in, so
+that the two columns of a single row are always on one clock: when they were
+not, a replayed position compared as newer than the current one and moved a
+vehicle backwards on the map. Clients reading the API should treat returned
+times as `Asia/Manila` unless an offset says otherwise.
+
+**Access.** Location is tenant-scoped like every other fleet record — an
+operator sees only their own company's vehicles. Two separate permissions
+apply, because they answer different questions: `devices.location.view` for
+where a vehicle *is now*, and `devices.location.history` for where it *has
+been*. The second is deliberately not implied by the first.
+
+**Auditability.** Device registration, vehicle association and revocation are
+written to the immutable audit log. Location rows themselves are not audited
+individually — the volume would drown the log — but every read path that
+exposes history is permission-gated.
+
+**Retention.** Location history is pruned on a schedule. The period is set by
+an administrator under *Admin → Privacy & data retention*, held in the
+`settings` table, and gated on `settings.manage` — a permission only
+`super_admin` and `system_admin` hold. A fleet manager who can see where a
+vehicle has been cannot decide how long that record survives.
+
+The environment variable `FIP_LOCATION_RETENTION_DAYS` remains as an
+installation fallback for a system nobody has configured yet, but it cannot
+override an administrator's value; when the two disagree the setting reports
+`requires_review` so somebody reconciles them. An unset period prunes nothing
+rather than everything: a missing value is not an instruction to erase history.
+
+The setting reports its own provenance, which is the point of holding it in the
+database at all:
+
+| Status | Meaning |
+|---|---|
+| `approved` | An administrator set this deliberately |
+| `provisional` | Nobody has set it; the platform is running on the fallback |
+| `requires_review` | Configured and fallback disagree; the configured value wins |
+
+⚠️ **Until the status reads `approved`, the period is provisional and requires
+business and privacy approval before this feature is operated on real drivers.**
+The nearest approved precedents in this document are 90 days for report geotags
+and 30 days for generated reports, but neither is a movement track of an
+identifiable person, and the correct period for one is a decision for the
+business rather than for this implementation.
+
+Every change is audited with its previous value, the administrator, the time and
+the request context.
+
+No location data is shared with third parties.
+
+The full assessment — lawful basis, subject rights, and the open retention
+decision — is in [12-privacy-impact-assessment.md](12-privacy-impact-assessment.md).
 
 ---
 

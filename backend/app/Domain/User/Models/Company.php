@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -31,6 +32,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $contact_phone
  * @property string|null $logo_path
  * @property string $subscription_tier
+ * @property string $subscription_status
+ * @property Carbon|null $trial_started_at
+ * @property Carbon|null $trial_ends_at
+ * @property array<string, int|null>|null $subscription_limits
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -77,16 +82,79 @@ class Company extends Model
 {
     use Auditable;
     use HasFactory;
+
+    /**
+     * Capacity for this company, when a caller has already worked it out.
+     *
+     * Declared rather than assigned dynamically: an undeclared assignment on a
+     * model becomes an *attribute*, which would put a computed report into the
+     * things Eloquent thinks it should save.
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $subscriptionReport = null;
+
     use SoftDeletes;
 
     protected $fillable = [
         'name', 'legal_name', 'tin', 'industry', 'type', 'address_line', 'city_id',
         'contact_email', 'contact_phone', 'logo_path', 'subscription_tier', 'is_active',
+        'subscription_status', 'trial_started_at', 'trial_ends_at', 'subscription_limits',
     ];
+
+    /** Trialing until it lapses; active once paying; expired when it lapses. */
+    public const STATUS_TRIALING = 'trialing';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_EXPIRED = 'expired';
+
+    /**
+     * Chosen, but not yet honoured.
+     *
+     * Enterprise limits are negotiated, so a stranger selecting that plan at
+     * registration must not be handed them. The company exists and works; it
+     * runs on the default plan's allowance until a platform administrator
+     * confirms what was actually agreed.
+     */
+    public const STATUS_PENDING_SETUP = 'pending_setup';
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'trial_started_at' => 'datetime',
+            'trial_ends_at' => 'datetime',
+            'subscription_limits' => 'array',
+        ];
+    }
+
+    /** A trial that has run out. Says nothing about what should happen next. */
+    public function trialHasExpired(): bool
+    {
+        return $this->trial_ends_at !== null && $this->trial_ends_at->isPast();
+    }
+
+    /**
+     * The plan whose limits actually apply.
+     *
+     * Not always the plan on the record. An enterprise selection awaiting
+     * confirmation cannot simply be granted its negotiated limits — that would
+     * hand unlimited capacity to whoever typed the company name — so it runs
+     * on a bounded interim allowance until somebody confirms what was agreed.
+     *
+     * Deliberately not the default plan. That is the smallest allowance in the
+     * product, and showing a prospect who chose Enterprise a limit of three
+     * vehicles both reads as an insult and blocks a genuine evaluation on its
+     * first afternoon. See `subscription.pending_tier`.
+     */
+    public function effectiveTier(): string
+    {
+        if ($this->subscription_status === self::STATUS_PENDING_SETUP) {
+            return (string) config('fip.subscription.pending_tier', config('fip.subscription.default_tier'));
+        }
+
+        return (string) ($this->subscription_tier ?? config('fip.subscription.default_tier'));
     }
 
     public function city(): BelongsTo
@@ -108,6 +176,18 @@ class Company extends Model
     public function drivers(): HasMany
     {
         return $this->hasMany(Driver::class);
+    }
+
+    /**
+     * Every device registered to somebody in this company.
+     *
+     * Devices hang off users rather than off the company, so counting them
+     * needs the hop. Kept as a relation so the administration listing can
+     * count them in its own query rather than once per row.
+     */
+    public function devices(): HasManyThrough
+    {
+        return $this->hasManyThrough(UserDevice::class, User::class);
     }
 
     public function vehicles(): HasMany

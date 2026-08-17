@@ -22,15 +22,36 @@ class RolePermissionSeeder extends Seeder
     /** @var array<string, list<string>> */
     private const PERMISSIONS = [
         'users' => ['users.view', 'users.create', 'users.update', 'users.delete', 'users.impersonate'],
+        // Tenants themselves. Creating a company and setting what it is
+        // entitled to are platform decisions, not tenant ones, so these are
+        // reached only by super_admin ('*') and system_admin ('all_except:…')
+        // and are deliberately absent from every company-level role below.
+        'companies' => ['companies.view', 'companies.create', 'companies.update'],
         'roles' => ['roles.manage'],
         'stations' => ['stations.view', 'stations.create', 'stations.update', 'stations.delete', 'stations.verify'],
         'prices' => ['prices.view', 'prices.update', 'prices.moderate', 'prices.import'],
         'vehicles' => ['vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete'],
         'fleet' => ['fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers'],
-        'drivers' => ['drivers.view', 'drivers.manage'],
+        /*
+         * `drivers.invite` mints a login for somebody who already has a driver
+         * record, and nothing else: the driver role, inside the caller's own
+         * company, attached to that record. It is deliberately not
+         * `users.create` — that grants any role in any company the caller can
+         * see, and a fleet manager should be able to get their own driver onto
+         * the app without being able to make an administrator.
+         */
+        'drivers' => ['drivers.view', 'drivers.manage', 'drivers.invite'],
+        // Planning work and sending it out are separate grants. A dispatcher
+        // role can later be given the operational half without also being able
+        // to invent trips.
+        'trips' => ['trips.view', 'trips.manage', 'trips.dispatch'],
         'expenses' => ['expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete'],
         'maintenance' => ['maintenance.view', 'maintenance.manage'],
         'fraud' => ['fraud.view', 'fraud.resolve'],
+        // Seeing where a vehicle *is* and reconstructing where it *has been*
+        // are different questions about a person's movements, so history is a
+        // separate grant rather than something implied by the first.
+        'devices' => ['devices.view', 'devices.manage', 'devices.location.view', 'devices.location.history'],
         'reports' => ['reports.view', 'reports.platform', 'station.reports'],
         'analytics' => ['analytics.view', 'analytics.platform'],
         'ai' => ['ai.use', 'ai.manage'],
@@ -65,10 +86,12 @@ class RolePermissionSeeder extends Seeder
             'permissions' => [
                 'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
                 'fleet.view', 'fleet.manage', 'fleet.reports', 'fleet.assign_drivers',
-                'drivers.view', 'drivers.manage',
+                'drivers.view', 'drivers.manage', 'drivers.invite',
+                'trips.view', 'trips.manage', 'trips.dispatch',
                 'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
                 'maintenance.view', 'maintenance.manage',
                 'fraud.view', 'fraud.resolve',
+                'devices.view', 'devices.manage', 'devices.location.view', 'devices.location.history',
                 'reports.view', 'analytics.view', 'prices.view', 'stations.view', 'ai.use',
             ],
         ],
@@ -76,12 +99,21 @@ class RolePermissionSeeder extends Seeder
             'label' => 'Company Manager',
             'level' => 4,
             'permissions' => [
-                'users.view', 'vehicles.view', 'vehicles.create', 'vehicles.update',
+                // Creates and edits people inside their own company. Deleting a
+                // user and minting roles stay with platform administrators:
+                // both are irreversible in ways a tenant admin should not own.
+                'users.view', 'users.create', 'users.update',
+                'vehicles.view', 'vehicles.create', 'vehicles.update',
                 'fleet.view', 'fleet.manage', 'fleet.reports',
-                'drivers.view', 'drivers.manage',
+                'drivers.view', 'drivers.manage', 'drivers.invite',
+                'trips.view', 'trips.manage', 'trips.dispatch',
                 'expenses.view', 'expenses.create', 'expenses.update',
                 'maintenance.view', 'maintenance.manage',
                 'fraud.view', 'reports.view', 'analytics.view',
+                // Current position, deliberately without history: seeing the
+                // fleet on a map now is an operational need; replaying a
+                // driver's week is a different one, and needs granting.
+                'devices.view', 'devices.location.view',
                 'prices.view', 'stations.view', 'ai.use',
             ],
         ],
@@ -90,6 +122,14 @@ class RolePermissionSeeder extends Seeder
             'level' => 6,
             'permissions' => [
                 'vehicles.view', 'expenses.view', 'expenses.create',
+                // Their own trips, and only those: the controller narrows reads
+                // to the driver's own record. Starting and closing them is
+                // granted by holding the trip, not by this permission.
+                'trips.view',
+                // A driver registers and revokes their own handset. They get no
+                // location permission: reporting is authorised by the device
+                // registration, not by a permission to read other people.
+                'devices.view', 'devices.manage',
                 'maintenance.view', 'prices.view', 'stations.view', 'ai.use',
             ],
         ],
@@ -101,6 +141,25 @@ class RolePermissionSeeder extends Seeder
                 'expenses.view', 'expenses.create', 'expenses.update', 'expenses.delete',
                 'maintenance.view', 'maintenance.manage',
                 'prices.view', 'stations.view', 'reports.view', 'analytics.view', 'ai.use',
+            ],
+        ],
+        /*
+         * Read-only oversight. Sees the fleet, its vehicles, its alerts and the
+         * reports; changes nothing.
+         *
+         * Deliberately without drivers.view — a viewer has no reason to read a
+         * staff roster — and without any devices permission, so neither live
+         * positions nor location history are reachable. Read-only here is the
+         * absence of write permissions rather than a flag: no entry in this set
+         * grants a mutation.
+         */
+        'viewer' => [
+            'label' => 'Fleet Viewer',
+            'level' => 8,
+            'permissions' => [
+                'fleet.view', 'vehicles.view', 'fraud.view', 'trips.view',
+                'reports.view', 'analytics.view',
+                'prices.view', 'stations.view',
             ],
         ],
         'guest' => [

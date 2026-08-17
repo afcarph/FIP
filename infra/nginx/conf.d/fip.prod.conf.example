@@ -1,8 +1,22 @@
 # -----------------------------------------------------------------------------
-#  Production server block — TLS termination and HSTS.
+#  Production server block — TLS termination, HSTS, and one domain.
 #
-#  Copy to fip.conf, replace the domain, and obtain certificates with:
-#    certbot --nginx -d fip.ph -d www.fip.ph -d api.fip.ph
+#  Copy to fip.conf, replace the domain, and obtain a certificate with:
+#    certbot --nginx -d fip.nelleeph.com
+#
+#  ONE DOMAIN, BY DESIGN. Web and API share fip.nelleeph.com and are separated
+#  by path, not by subdomain:
+#
+#      https://fip.nelleeph.com/            -> Next.js  (fip_web)
+#      https://fip.nelleeph.com/api/v1/*    -> Laravel  (fip_api)
+#
+#  This replaces the earlier api.fip.ph split. Do not reintroduce an API
+#  subdomain: a second origin means the browser treats every API call as
+#  cross-origin, which costs a CORS preflight on each request and forces
+#  cookies to be SameSite=None. Same-origin removes both problems.
+#
+#  The /api/v1 prefix is passed through untouched. Laravel registers its routes
+#  under that prefix, so rewriting it away here would 404 every endpoint.
 #
 #  Behind Cloudflare, set the SSL mode to "Full (strict)" so the origin
 #  certificate is validated rather than trusted blindly.
@@ -11,7 +25,7 @@
 # Redirect all plaintext traffic, except the ACME challenge.
 server {
     listen 80;
-    server_name fip.ph www.fip.ph api.fip.ph;
+    server_name fip.nelleeph.com;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -22,15 +36,14 @@ server {
     }
 }
 
-# --- API ----------------------------------------------------------------------
 server {
     listen 443 ssl;
     http2 on;
-    server_name api.fip.ph;
+    server_name fip.nelleeph.com;
 
-    ssl_certificate     /etc/letsencrypt/live/api.fip.ph/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.fip.ph/privkey.pem;
-    ssl_trusted_certificate /etc/letsencrypt/live/api.fip.ph/chain.pem;
+    ssl_certificate         /etc/letsencrypt/live/fip.nelleeph.com/fullchain.pem;
+    ssl_certificate_key     /etc/letsencrypt/live/fip.nelleeph.com/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/fip.nelleeph.com/chain.pem;
 
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
@@ -50,6 +63,9 @@ server {
     add_header Referrer-Policy strict-origin-when-cross-origin always;
     add_header X-Request-Id $request_id always;
 
+    # Shared proxy settings. X-Forwarded-Proto is pinned to https rather than
+    # $scheme: this block only ever terminates TLS, and Laravel builds absolute
+    # URLs from it.
     proxy_http_version 1.1;
     proxy_set_header Host              $host;
     proxy_set_header X-Real-IP         $remote_addr;
@@ -58,55 +74,60 @@ server {
     proxy_set_header X-Request-Id      $request_id;
     proxy_set_header Connection        "";
 
-    client_max_body_size 12M;
     limit_conn conn 30;
 
+    # -------------------------------------------------------------------------
+    #  API — most specific locations first, because nginx matches regex
+    #  locations in order and the generic /api/ prefix would otherwise swallow
+    #  the endpoints that need their own limits.
+    # -------------------------------------------------------------------------
+
+    # Authentication: the tightest limit, because it is the one worth guessing.
     location ~ ^/api/v1/auth/(login|register|reset-password|biometric) {
         limit_req zone=auth burst=5 nodelay;
         proxy_pass http://fip_api;
     }
 
+    # OCR: expensive, so it gets its own bucket and a body limit large enough
+    # for a phone photo. A multi-pass Tesseract run can take tens of seconds.
     location = /api/v1/ocr/scan {
         limit_req zone=ocr burst=3 nodelay;
+        client_max_body_size 12M;
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
+        proxy_pass http://fip_api;
+    }
+
+    # Receipt reading shares the OCR pipeline and its cost profile.
+    location = /api/v1/expenses/scan-receipt {
+        limit_req zone=ocr burst=3 nodelay;
+        client_max_body_size 12M;
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
+        proxy_pass http://fip_api;
+    }
+
+    # AI endpoints: model latency, not web latency.
+    location ~ ^/api/v1/(assistant|routes/optimize) {
+        limit_req zone=api burst=10 nodelay;
         proxy_read_timeout 90s;
         proxy_pass http://fip_api;
     }
 
-    location / {
+    # Everything else under /api/ — including /api/health and the whole of
+    # /api/v1 — goes to Laravel with the path intact.
+    location /api/ {
         limit_req zone=api burst=40 nodelay;
+        client_max_body_size 12M;
+        proxy_read_timeout 60s;
         proxy_pass http://fip_api;
     }
-}
 
-# --- Web app ------------------------------------------------------------------
-server {
-    listen 443 ssl;
-    http2 on;
-    server_name fip.ph www.fip.ph;
+    # -------------------------------------------------------------------------
+    #  Web
+    # -------------------------------------------------------------------------
 
-    ssl_certificate     /etc/letsencrypt/live/fip.ph/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/fip.ph/privkey.pem;
-
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_session_cache   shared:SSL:20m;
-    ssl_session_tickets off;
-
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-Frame-Options DENY always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
-
-    # The web app loads Google Maps, so the CSP must allow it explicitly —
-    # a blanket 'unsafe-inline' would defeat the point.
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.amazonaws.com; connect-src 'self' https://api.fip.ph https://maps.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
-
-    proxy_http_version 1.1;
-    proxy_set_header Host              $host;
-    proxy_set_header X-Real-IP         $remote_addr;
-    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header Connection        "";
-
+    # Next.js build output is content-hashed, so it can be cached indefinitely.
     location /_next/static/ {
         proxy_pass http://fip_web;
         add_header Cache-Control "public, max-age=31536000, immutable";
@@ -114,5 +135,30 @@ server {
 
     location / {
         proxy_pass http://fip_web;
+        proxy_read_timeout 60s;
     }
+
+    # Edge health probe. Distinct from /api/health, which reaches Laravel and
+    # therefore also proves the database is answering.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # -------------------------------------------------------------------------
+    #  Content Security Policy
+    #
+    #  connect-src is 'self' because the API now shares this origin — that is
+    #  the whole point of the single-domain move, and an api.* entry here would
+    #  quietly re-enable the cross-origin setup.
+    #
+    #  ⚠️ The map sources below are inherited from the Google Maps era. The web
+    #  client renders with MapLibre against MapTiler, so a deployment that
+    #  actually uses MapTiler needs https://api.maptiler.com in connect-src and
+    #  img-src. Left unchanged here deliberately: the basemap provider is a
+    #  separate decision from routing, and this file should not silently make
+    #  it. Confirm before copying to fip.conf.
+    # -------------------------------------------------------------------------
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.amazonaws.com; connect-src 'self' https://maps.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
 }

@@ -3,19 +3,30 @@
 import {
   Bell,
   Bot,
+  Building2,
   Car,
   ChevronLeft,
+  ClipboardList,
+  FileText,
   Fuel,
+  IdCard,
   LayoutDashboard,
   LogOut,
+  History,
   Map,
   Menu,
   Moon,
   Receipt,
+  Route,
   Settings,
   Shield,
+  ShieldCheck,
+  Smartphone,
   Sun,
+  TriangleAlert,
   TrendingUp,
+  Users,
+  Wrench,
   Truck,
   X,
 } from 'lucide-react';
@@ -25,7 +36,7 @@ import { usePathname } from 'next/navigation';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
+import { landingFor, useAuth } from '@/hooks/use-auth';
 import { cn, initials } from '@/lib/utils';
 import type { Role } from '@/types/api';
 
@@ -35,31 +46,107 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   /** Omit to show for everyone signed in. */
   roles?: Role[];
+  /**
+   * Show this only to accounts whose home it actually is.
+   *
+   * Roles alone cannot express it: a fleet manager also holds `user`, so any
+   * list naming the personal roles would still match them. `landingFor` already
+   * decides where each account lands at sign-in, and reusing it means the
+   * sidebar cannot drift from that answer.
+   */
+  onlyWhenHome?: boolean;
+  /**
+   * Gate on a permission instead of a role. Needed where a role does not
+   * settle it: a company manager is a fleet role but deliberately holds no
+   * location history, so a role list here would offer a page the API refuses.
+   */
+  permission?: string;
 }
 
+/**
+ * The dashboard, whichever one the signed-in user's role opens onto. Fleet
+ * roles land on /fleet; a private motorist keeps the personal summary.
+ */
 const PRIMARY_NAV: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/map', label: 'Map', icon: Map },
-  { href: '/stations', label: 'Stations', icon: Fuel },
-  { href: '/forecasts', label: 'Forecasts', icon: TrendingUp },
-  { href: '/vehicles', label: 'Vehicles', icon: Car },
-  { href: '/expenses', label: 'Expenses', icon: Receipt },
-  { href: '/assistant', label: 'AI Advisor', icon: Bot },
+  /*
+   * The private motorist's home, and only theirs. /dashboard is built from
+   * `$user->fuelPurchases()` and `$user->vehicles()` — what one person logged
+   * and owns, not what their company runs — so for a fleet account it is a
+   * page that stays empty however busy the fleet is, sitting directly above
+   * the Fleet overview they actually want and wearing almost the same heading.
+   *
+   * A driver is hidden from it for a sharper reason than emptiness: their
+   * fill-ups do carry their user_id, so the page renders their employer's
+   * fuel spend under "your savings" beside a vehicle list that is blank
+   * because they own none. Half wrong reads worse than empty.
+   */
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, onlyWhenHome: true },
 ];
 
+/**
+ * Fleet Management: the operational work the product exists for, grouped so it
+ * reads as one module rather than scattered top-level links.
+ *
+ * Vehicles and Expenses moved here from the flat primary list. They were always
+ * fleet work; sitting beside Stations and Forecasts made the product read as a
+ * fuel-price browser with fleet features bolted on.
+ */
 const FLEET_NAV: NavItem[] = [
-  {
-    href: '/fleet',
-    label: 'Fleet',
-    icon: Truck,
-    roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'],
-  },
-  // A Reports item pointed at /reports, which does not exist — a fleet
-  // manager would have had a sidebar entry that 404s.
+  { href: '/fleet', label: 'Fleet overview', icon: Truck, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/vehicles', label: 'Vehicles', icon: Car },
+  { href: '/fleet/drivers', label: 'Drivers', icon: IdCard, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/fleet/devices', label: 'Device health', icon: Smartphone, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  // Deliberately not offered to viewers. Everything else on this list describes
+  // the fleet; this one describes where identifiable people currently are, and
+  // the API guards it with its own permission rather than with a role.
+  { href: '/fleet/map', label: 'Fleet map', icon: Map, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  // Guarded by permission, not role: fleet managers hold location history and
+  // company managers deliberately do not.
+  { href: '/fleet/history', label: 'Location history', icon: History, permission: 'devices.location.history' },
+  { href: '/fleet/maintenance', label: 'Maintenance', icon: Wrench, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/expenses', label: 'Fuel & expenses', icon: Receipt },
+  { href: '/fleet/alerts', label: 'Fuel alerts', icon: TriangleAlert, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  { href: '/fleet/assignments', label: 'Assignments', icon: ClipboardList, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+  // Viewer included: read-only oversight extends to what the fleet is
+  // committed to, the same way it already covers vehicles and alerts.
+  { href: '/fleet/trips', label: 'Trips & dispatch', icon: Route, roles: ['fleet_manager', 'company_manager', 'viewer', 'super_admin', 'system_admin'] },
+  { href: '/fleet/reports', label: 'Reports', icon: FileText, roles: ['fleet_manager', 'company_manager', 'super_admin', 'system_admin'] },
+];
+
+/**
+ * Fuel intelligence: the market-facing side. Kept, because it is working
+ * functionality people use, but no longer competing with fleet operations for
+ * the top of the sidebar.
+ */
+const INSIGHT_NAV: NavItem[] = [
+  { href: '/map', label: 'Station map', icon: Map },
+  { href: '/stations', label: 'Stations', icon: Fuel },
+  { href: '/forecasts', label: 'Price forecasts', icon: TrendingUp },
+  { href: '/assistant', label: 'AI Advisor', icon: Bot },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Admin console', icon: Shield, roles: ['super_admin', 'system_admin'] },
+  {
+    href: '/admin/companies',
+    label: 'Companies',
+    icon: Building2,
+    roles: ['super_admin', 'system_admin'],
+  },
+  {
+    href: '/admin/users',
+    label: 'Users',
+    icon: Users,
+    // Wider than the rest of this group: a company manager administers their
+    // own people, and the listing is tenant-scoped by the API.
+    roles: ['company_manager', 'super_admin', 'system_admin'],
+  },
+  {
+    href: '/admin/settings',
+    label: 'Privacy & retention',
+    icon: ShieldCheck,
+    roles: ['super_admin', 'system_admin'],
+  },
 ];
 
 /**
@@ -69,7 +156,7 @@ const ADMIN_NAV: NavItem[] = [
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, hasRole, logout, isLoading } = useAuth();
+  const { user, roles, hasRole, can, logout, isLoading } = useAuth();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -78,13 +165,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => setMobileOpen(false), [pathname]);
 
   const visible = React.useCallback(
-    (items: NavItem[]) => items.filter((item) => !item.roles || hasRole(...item.roles)),
-    [hasRole],
+    (items: NavItem[]) =>
+      items.filter(
+        (item) =>
+          (!item.roles || hasRole(...item.roles)) &&
+          (!item.permission || can(item.permission)) &&
+          (!item.onlyWhenHome || landingFor(roles) === item.href),
+      ),
+    [hasRole, can, roles],
   );
 
   const sections = [
     { items: visible(PRIMARY_NAV), label: null },
-    { items: visible(FLEET_NAV), label: 'Organisation' },
+    { items: visible(FLEET_NAV), label: 'Fleet Management' },
+    { items: visible(INSIGHT_NAV), label: 'Fuel Intelligence' },
     { items: visible(ADMIN_NAV), label: 'Administration' },
   ].filter((section) => section.items.length > 0);
 
@@ -108,7 +202,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="Main navigation"
       >
         <div className="flex h-16 items-center justify-between border-b px-4">
-          <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
+          {/*
+            Home, for whoever is reading it. Hardcoding /dashboard sent a fleet
+            manager clicking the logo to the private motorist's page — their
+            own fill-ups, not their fleet — which is the same fault the
+            Dashboard nav entry had. Same source of truth as sign-in, so the
+            three cannot disagree.
+          */}
+          <Link href={landingFor(roles)} className="flex items-center gap-2 overflow-hidden">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Fuel className="size-4" aria-hidden="true" />
             </div>

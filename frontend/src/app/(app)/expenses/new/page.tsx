@@ -10,11 +10,12 @@ import { z } from 'zod';
 
 import { FormError } from '@/components/auth/form-error';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ReceiptScanner } from '@/components/fleet/receipt-scanner';
 import { useLogFillUp, useVehicles } from '@/hooks/use-api';
 import { ApiError } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/utils';
@@ -50,6 +51,7 @@ export default function NewFillUpPage() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -105,7 +107,7 @@ export default function NewFillUpPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Log a fill-up</CardTitle>
+          <h1 className="text-lg font-semibold leading-none tracking-tight">Log a fill-up</h1>
           <p className="text-sm text-muted-foreground">
             The odometer is optional, but without it efficiency cannot be worked out.
           </p>
@@ -124,6 +126,22 @@ export default function NewFillUpPage() {
             })}
           >
             {error ? <FormError>{error.message}</FormError> : null}
+
+            {/* Above the fields on purpose: scanning is the fast path, and a
+                control offered after the work is done gets used by nobody. */}
+            <ReceiptScanner
+              vehicleId={Number(watch('vehicle_id')) || undefined}
+              onScanned={(result) => {
+                const { draft } = result;
+
+                // Only fields the scan actually read are written, so a partial
+                // read never blanks something the user already typed.
+                if (draft.litres != null) setValue('litres', draft.litres);
+                if (draft.price_per_litre != null) setValue('price_per_litre', draft.price_per_litre);
+                if (draft.odometer != null) setValue('odometer', draft.odometer);
+                if (draft.station_hint) setValue('notes', draft.station_hint);
+              }}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="vehicle_id">Vehicle</Label>

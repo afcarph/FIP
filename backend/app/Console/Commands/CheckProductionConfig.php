@@ -45,6 +45,7 @@ class CheckProductionConfig extends Command
         $this->checkDatabase();
         $this->checkCors($production);
         $this->checkSessionAndCookies($production);
+        $this->checkMail($production);
         $this->checkDoeIngest();
 
         return $this->report();
@@ -176,6 +177,118 @@ class CheckProductionConfig extends Command
         if (config('session.http_only') !== true) {
             $this->caution('session.http_only', 'Off. Session cookies are readable from JavaScript.');
         }
+    }
+
+    /**
+     * Whether mail will actually leave the building.
+     *
+     * config/mail.php defaults the host to `mailhog`, which is right for local
+     * development and silently wrong everywhere else: a deployment that never
+     * sets MAIL_HOST keeps sending to a container nobody reads, and password
+     * resets, alerts and notifications all vanish without an error anywhere.
+     * Production ran that way, and nothing complained — which is exactly the
+     * kind of fault this command exists to catch.
+     */
+    private function checkMail(bool $production): void
+    {
+        $mailer = (string) config('mail.default');
+        $host = (string) config('mail.mailers.smtp.host');
+
+        $this->checkSender($production);
+
+        // Catchers, not transports. Anything here accepts mail and keeps it.
+        $catchers = ['mailhog', 'mailpit', 'maildev', 'localhost', '127.0.0.1'];
+
+        if ($mailer === 'log' || $mailer === 'array') {
+            $production
+                ? $this->bad('mail', "MAIL_MAILER is `{$mailer}`, so nothing is ever sent.")
+                : $this->ok('mail', "{$mailer} (nothing is sent, which is fine locally)");
+
+            return;
+        }
+
+        if ($mailer === 'smtp' && in_array(mb_strtolower($host), $catchers, true)) {
+            $production
+                ? $this->bad('mail', "MAIL_HOST is `{$host}`, a development mail catcher. Password resets and notifications are captured and never delivered.")
+                : $this->ok('mail', "{$host} (development catcher)");
+
+            return;
+        }
+
+        if ($mailer === 'smtp' && $host === '') {
+            $this->bad('mail', 'MAIL_HOST is empty, so mail has nowhere to go.');
+
+            return;
+        }
+
+        // A real host with no credentials usually means a half-finished
+        // configuration rather than a deliberately open relay.
+        if ($production && $mailer === 'smtp' && ! config('mail.mailers.smtp.username')) {
+            $this->caution('mail', "{$host} is set but MAIL_USERNAME is empty; most providers will refuse to relay.");
+
+            return;
+        }
+
+        $this->ok('mail', $mailer === 'smtp' ? $host : $mailer);
+    }
+
+    /**
+     * Whether the address mail claims to come from is one we can send as.
+     *
+     * Production sent as `no-reply@fip.ph`, a domain belonging to somebody
+     * else — it resolves to a parking host and publishes no SPF at all. Two
+     * separate problems live in that one value. Every receiver would treat the
+     * mail as unauthenticated and bin it, and the platform was putting a third
+     * party's domain on its own outgoing post.
+     *
+     * The rule is deliberately about the sending domain rather than about DNS:
+     * a pre-deploy check must give the same answer on a laptop with no network
+     * as it does on the host. If the links in the mail point at
+     * fip.nelleeph.com, the envelope should say nelleeph.com too — that is
+     * both what a recipient expects to see and what DKIM alignment requires.
+     */
+    private function checkSender(bool $production): void
+    {
+        $from = (string) config('mail.from.address');
+        $appUrl = (string) config('app.url');
+
+        if ($from === '') {
+            $this->bad('mail from', 'MAIL_FROM_ADDRESS is empty; mail would be sent with no sender.');
+
+            return;
+        }
+
+        $sender = mb_strtolower((string) mb_strstr($from, '@', false));
+        $sender = ltrim($sender, '@');
+        $site = mb_strtolower((string) parse_url($appUrl, PHP_URL_HOST));
+
+        if ($sender === '' || $site === '') {
+            $this->caution('mail from', "Could not compare {$from} against APP_URL.");
+
+            return;
+        }
+
+        // Same registrable domain, so mail from a subdomain sender or a site
+        // on a subdomain both pass: fip.nelleeph.com and nelleeph.com align.
+        if ($this->registrable($sender) === $this->registrable($site)) {
+            $this->ok('mail from', $from);
+
+            return;
+        }
+
+        $message = "MAIL_FROM_ADDRESS is {$from}, but this deployment is {$site}. "
+            .'Mail sent as a domain you do not control fails SPF and DKIM, and puts somebody '
+            ."else's name on your post.";
+
+        $production ? $this->bad('mail from', $message) : $this->caution('mail from', $message);
+    }
+
+    /** The last two labels — enough to align a subdomain with its parent. */
+    private function registrable(string $host): string
+    {
+        $labels = explode('.', trim($host, '.'));
+
+        return implode('.', array_slice($labels, -2));
     }
 
     private function checkDoeIngest(): void

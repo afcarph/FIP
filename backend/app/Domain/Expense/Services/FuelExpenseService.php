@@ -9,6 +9,7 @@ use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\OdometerReading;
 use App\Domain\Vehicle\Models\Vehicle;
+use App\Support\Database\SqlDate;
 use App\Support\Exceptions\DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -154,13 +155,13 @@ final readonly class FuelExpenseService
     {
         return (clone $scope)
             ->where('purchased_at', '>=', now()->subMonths($months)->startOfMonth())
-            ->selectRaw("
-                DATE_FORMAT(purchased_at, '%Y-%m') AS period,
+            ->selectRaw(SqlDate::yearMonth('purchased_at').'
+                AS period,
                 SUM(total_cost) AS total_cost,
                 SUM(litres) AS total_litres,
                 AVG(price_per_litre) AS avg_price,
                 COUNT(*) AS fill_ups
-            ")
+            ')
             ->groupBy('period')
             ->orderBy('period')
             ->get()

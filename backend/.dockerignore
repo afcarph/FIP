@@ -1,0 +1,65 @@
+# =============================================================================
+#  Docker build context exclusions
+#
+#  Both `COPY . .` stages in infra/docker/backend.Dockerfile read this file.
+#
+#  One rule governs everything below: the directories the Dockerfile operates on
+#  must survive. Line 107 runs `chown -R www-data:www-data storage bootstrap/cache`
+#  with no `|| true`, so excluding either directory outright would break the
+#  build rather than fix it. Every pattern here therefore removes *files* and
+#  leaves the tree — the tracked .gitkeep files keep each directory present.
+# =============================================================================
+
+# --- the build breaker -------------------------------------------------------
+# Laravel writes the discovered-package manifest here when artisan runs locally.
+# It is git-ignored, so it never matches the image it is copied into: a manifest
+# generated with dev dependencies present lists Barryvdh\LaravelIdeHelper, and
+# the vendor stage installs --no-dev, so `composer dump-autoload` fails on
+# package:discover with "Class ... not found". The container regenerates both
+# files at build time, so shipping the host's copies can only ever be wrong.
+#
+# Note the trailing `*.php` rather than the directory: bootstrap/cache itself
+# must remain for the chown above.
+bootstrap/cache/*.php
+
+# --- secrets -----------------------------------------------------------------
+# Without this, backend/.env is baked into the production image, where it
+# outlives any credential rotation and is readable by anyone who can pull it.
+# The runtime gets its configuration from the environment, not from a file.
+.env
+.env.*
+!.env.example
+
+# --- dependencies rebuilt inside the image -----------------------------------
+# The vendor stage runs its own `composer install --no-dev` from the lock file.
+# Copying the host's tree in would both slow the build and risk shipping dev
+# packages that the install deliberately excluded.
+vendor/
+node_modules/
+
+# --- generated at runtime ----------------------------------------------------
+storage/logs/*.log
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/public/*
+!storage/**/.gitkeep
+
+# --- local development artefacts ---------------------------------------------
+.git/
+.gitignore
+.phpunit.cache/
+.phpunit.result.cache
+coverage/
+*.sqlite
+*.sqlite3
+
+# A stray SQLite database that the test suite used to write into the repository
+# root (see phpunit.xml). It is tracked, so it would otherwise be copied into
+# every image; a development database has no business in a production build.
+fip
+
+# --- documentation and tooling not needed at runtime -------------------------
+README.md
+phpstan.neon
+pint.json

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'fip_brand.dart';
+
 /// The app's visual language, mirroring the web design tokens so the two
 /// clients feel like one product.
 ///
@@ -12,8 +14,10 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   const AppTheme._();
 
-  static const Color _primaryLight = Color(0xFF2563EB);
-  static const Color _primaryDark = Color(0xFF3B82F6);
+  // The brand's own navy, not a generic Material blue. Everything else in the
+  // scheme is derived from it, so the app reads as FIP at a glance.
+  static const Color _primaryLight = FipBrand.navy;
+  static const Color _primaryDark = FipBrand.navyLight;
 
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
@@ -28,6 +32,8 @@ class AppTheme {
       surface: isDark ? const Color(0xFF0F1729) : const Color(0xFFF8FAFC),
       surfaceContainerHighest: isDark ? const Color(0xFF1A2437) : Colors.white,
       outlineVariant: isDark ? const Color(0xFF2A3A52) : const Color(0xFFE2E8F0),
+      secondary: isDark ? FipBrand.greenLight : FipBrand.green,
+      tertiary: isDark ? FipBrand.greenLight : FipBrand.green,
     );
 
     final textTheme = GoogleFonts.interTextTheme(

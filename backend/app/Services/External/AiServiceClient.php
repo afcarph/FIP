@@ -87,6 +87,28 @@ class AiServiceClient
         return $this->unwrap($response, '/api/v1/ocr/price-board');
     }
 
+    /**
+     * Run OCR over a fill-up receipt.
+     *
+     * Returns a draft with per-field confidence; it records nothing. Creating
+     * the purchase stays with FuelExpenseService, which knows the vehicle and
+     * the odometer the receipt must not contradict.
+     *
+     * @param string $contents raw image bytes
+     */
+    public function scanReceipt(string $contents, string $filename): array
+    {
+        try {
+            $response = $this->request(timeout: 45)
+                ->attach('file', $contents, $filename)
+                ->post($this->url('/api/v1/ocr/receipt'));
+        } catch (ConnectionException $e) {
+            throw AiServiceException::unavailable('/api/v1/ocr/receipt', $e->getMessage());
+        }
+
+        return $this->unwrap($response, '/api/v1/ocr/receipt');
+    }
+
     public function health(): bool
     {
         try {

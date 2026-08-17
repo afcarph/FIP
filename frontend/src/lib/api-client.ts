@@ -233,4 +233,48 @@ export const api = {
   /** Multipart upload — used by the OCR scanner. */
   upload: <T>(path: string, formData: FormData, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'POST', body: formData }),
+
+  /**
+   * Fetch a file rather than JSON.
+   *
+   * Generated reports are streamed by the API behind the bearer token, so a
+   * plain link cannot reach them — the browser would send no Authorization
+   * header and get a 401. This does the fetch, and hands back the bytes plus
+   * the filename the server chose in Content-Disposition.
+   *
+   * Errors still arrive as the usual JSON envelope, so they are unwrapped into
+   * an ApiError like any other call. Token refresh is deliberately not retried
+   * here: a download is always user-initiated, and clicking again is clearer
+   * than a silent retry of a large transfer.
+   */
+  download: async (path: string): Promise<{ blob: Blob; filename: string | null }> => {
+    const token = tokenStore.get();
+
+    const response = await fetch(buildUrl(path), {
+      headers: {
+        Accept: 'application/octet-stream',
+        'X-Device-Id': deviceUuid(),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+
+      throw new ApiError(
+        payload?.error?.code ?? 'download_failed',
+        payload?.error?.message ?? `Download failed with status ${response.status}.`,
+        response.status,
+        payload?.error?.details ?? {},
+        payload?.meta?.request_id,
+      );
+    }
+
+    const disposition = response.headers.get('Content-Disposition');
+
+    return {
+      blob: await response.blob(),
+      filename: disposition?.match(/filename="?([^";]+)"?/)?.[1] ?? null,
+    };
+  },
 };

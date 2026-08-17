@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Fleet\Services\FuelLevelService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -13,6 +14,8 @@ class VehicleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // See DriverResource: the assignment screen matches the two.
+            'company_id' => $this->company_id,
             'nickname' => $this->nickname,
             'display_name' => $this->display_name,
             'plate_number' => $this->plate_number,
@@ -31,6 +34,19 @@ class VehicleResource extends JsonResource
             'fleet' => $this->whenLoaded('fleet', fn () => $this->fleet ? ['id' => $this->fleet->id, 'name' => $this->fleet->name] : null),
             'tank_capacity' => $this->tank_capacity,
             'current_odometer' => $this->current_odometer,
+            // Additive: existing clients ignore the block, and every field is
+            // null on a vehicle nobody has reported a level for. `status` is
+            // null rather than NORMAL in that case — no reading is not the same
+            // as a healthy reading, and a dashboard that conflates them shows a
+            // reassuring green for a vehicle it knows nothing about.
+            'fuel' => [
+                'current_percentage' => $this->current_fuel_pct,
+                'current_litres' => $this->current_fuel_litres,
+                'recorded_at' => $this->fuel_level_at?->toIso8601String(),
+                'status' => app(FuelLevelService::class)->statusFor($this->current_fuel_pct),
+                'is_stale' => $this->current_fuel_pct !== null
+                    && app(FuelLevelService::class)->isStale($this->fuel_level_at),
+            ],
             'efficiency' => [
                 'baseline_km_per_litre' => $this->baseline_km_per_litre,
                 'avg_km_per_litre' => $this->avg_km_per_litre,
@@ -52,8 +68,17 @@ class VehicleResource extends JsonResource
                     ? $this->insurance_expiry->diffInDays(now(), false) * -1
                     : null,
             ],
+            // `id` is the drivers-table key. `user_id` is added alongside it
+            // because a client only ever knows who is signed in, and without
+            // it there is no reliable way to answer "is this my vehicle?" —
+            // matching on name would break on two drivers sharing one.
+            // Additive: nothing that reads `id` or `name` is affected.
             'assigned_driver' => $this->whenLoaded('currentAssignment', fn () => $this->currentAssignment?->driver
-                ? ['id' => $this->currentAssignment->driver->id, 'name' => $this->currentAssignment->driver->full_name]
+                ? [
+                    'id' => $this->currentAssignment->driver->id,
+                    'user_id' => $this->currentAssignment->driver->user_id,
+                    'name' => $this->currentAssignment->driver->full_name,
+                ]
                 : null),
             'maintenance' => $this->whenLoaded('maintenanceSchedules', fn () => $this->maintenanceSchedules
                 ->whereIn('status', ['due_soon', 'overdue'])

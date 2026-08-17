@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/config/map_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/providers/app_providers.dart';
@@ -20,15 +21,9 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  GoogleMapController? _controller;
+  MapLibreMapController? _controller;
   double _radiusKm = 5;
   int? _fuelTypeId;
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,16 +61,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         if (position.isFallback) const _FallbackNotice(),
                         SizedBox(
                           height: mapHeight,
-                          child: GoogleMap(
+                          child: MapLibreMap(
+                            styleString: MapConfig.styleUrl(),
                             initialCameraPosition: CameraPosition(
                               target: LatLng(position.latitude, position.longitude),
                               zoom: 13.5,
                             ),
                             onMapCreated: (controller) => _controller = controller,
+                            onStyleLoadedCallback: () =>
+                                _plot(stations.valueOrNull ?? const []),
                             myLocationEnabled: !position.isFallback,
-                            myLocationButtonEnabled: true,
-                            zoomControlsEnabled: false,
-                            markers: _markers(stations.valueOrNull ?? const []),
+                            compassEnabled: false,
                           ),
                         ),
                         Expanded(
@@ -104,25 +100,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  Set<Marker> _markers(List<Map<String, dynamic>> stations) {
-    return stations.map((station) {
-      final price = _priceOf(station, _fuelTypeId);
+  /// Draw one circle per station.
+  ///
+  /// MapLibre has no info window, and the ranked list below already carries
+  /// the price and distance far more legibly than a tap-to-reveal bubble on a
+  /// phone — the map orients, the list decides.
+  Future<void> _plot(List<Map<String, dynamic>> stations) async {
+    final controller = _controller;
+    if (controller == null) return;
 
-      return Marker(
-        markerId: MarkerId('${station['id']}'),
-        position: LatLng(
-          (station['latitude'] as num).toDouble(),
-          (station['longitude'] as num).toDouble(),
-        ),
-        infoWindow: InfoWindow(
-          title: station['name'] as String? ?? 'Station',
-          snippet:
-              price != null
-                  ? '${Formatters.currency(price)}/L · ${Formatters.distance(station['distance_km'] as num?)}'
-                  : 'No price reported',
+    await controller.clearCircles();
+
+    for (final station in stations) {
+      final latitude = (station['latitude'] as num?)?.toDouble();
+      final longitude = (station['longitude'] as num?)?.toDouble();
+
+      if (!MapConfig.hasPlottableCoordinates(latitude, longitude)) continue;
+
+      await controller.addCircle(
+        CircleOptions(
+          geometry: LatLng(latitude!, longitude!),
+          circleRadius: 7,
+          // Priced stations are the ones worth comparing, so they carry the
+          // brand colour; unpriced ones stay grey rather than being hidden.
+          circleColor: _priceOf(station, _fuelTypeId) == null ? '#94A3B8' : '#052F53',
+          circleStrokeColor: '#FFFFFF',
+          circleStrokeWidth: 2,
         ),
       );
-    }).toSet();
+    }
   }
 
   /// Cheapest first, with unpriced stations last — a station with no price

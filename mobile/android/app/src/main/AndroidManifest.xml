@@ -1,4 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Foreground location only. Declared explicitly rather than inherited
+         from geolocator_android's manifest merge, so what the app asks for is
+         visible in the app's own manifest and reviewable in a diff.
+
+         ACCESS_BACKGROUND_LOCATION is deliberately absent: FIP samples position
+         only while the app is in use. Adding it would trigger a second runtime
+         prompt and a Play Store declaration for a capability the app does not
+         exercise. See docs/07-security.md, "Location handling". -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <application
         android:label="fip_mobile"
         android:name="${applicationName}"
@@ -26,13 +37,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- google_maps_flutter needs this or the map renders blank. The value
-             is a Gradle manifest placeholder, never a literal: this file is
-             tracked and the repository is public. Set MAPS_API_KEY in
-             android/local.properties (git-ignored) or the environment. -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="${MAPS_API_KEY}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../driver/data/build_identity.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -69,12 +70,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // is unsafe, since the widget may have been disposed by then.
       final platform = Theme.of(context).platform == TargetPlatform.iOS ? 'ios' : 'android';
 
+      // Signing in registers the device too, and it was the path leaving rows
+      // unnamed: only the driver setup flow ever sent a name, so every handset
+      // whose owner had simply logged in appeared as a blank row in their own
+      // device list. Best-effort — a null name never blocks a sign-in.
+      final build = await BuildIdentity.resolve();
+
       final session = await api.post<Map<String, dynamic>>(
         '/auth/login',
         body: {
           'email': _emailController.text.trim(),
           'password': _passwordController.text,
-          'device': {'device_uuid': await api.deviceUuid(), 'platform': platform},
+          'device': {
+            'device_uuid': await api.deviceUuid(),
+            'platform': platform,
+            if (build.deviceName != null) 'device_name': build.deviceName,
+          },
         },
         skipAuth: true,
       );
@@ -132,31 +143,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(LucideIcons.fuel, color: scheme.onPrimary, size: 26),
+                    // The actual FIP mark, not a generic fuel glyph. The
+                    // artwork carries its own colour, so it sits on the
+                    // surface rather than inside a tinted tile that would
+                    // fight it.
+                    Image.asset(
+                      'assets/images/fip-mark.png',
+                      width: 72,
+                      height: 72,
+                      semanticLabel: 'Fuel Intelligence Platform',
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Welcome back',
+                      'Fuel Intelligence Platform',
                       textAlign: TextAlign.center,
                       style: Theme.of(
                         context,
-                      ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+                      ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
+                    // The product's own promise rather than a generic greeting.
+                    // It is the first thing a new operator reads, and it sets
+                    // the expectation that this is a fleet tool.
                     Text(
-                      'Sign in to track prices and your fuel spend',
+                      'See your fleet. Understand your fuel.\nAct with confidence.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.45,
+                      ),
                     ),
                     const SizedBox(height: 28),
                     if (_error != null) ...[

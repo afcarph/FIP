@@ -10,6 +10,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../data/picker_failure.dart';
 
 /// OCR price-board scanner — the app's signature interaction.
 ///
@@ -52,8 +53,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       });
 
       await _scan();
-    } on Exception catch (error) {
-      setState(() => _error = 'Could not open the camera: $error');
+    } catch (error) {
+      // A PlatformException's toString is developer text — a driver was being
+      // shown `PlatformException(camera_access_denied, …)`, which reads like a
+      // crash. Denial is a choice they made, so the message says what it costs
+      // and how to undo it.
+      setState(() => _error = PickerFailure.describe(error));
     }
   }
 

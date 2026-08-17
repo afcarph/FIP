@@ -7,6 +7,7 @@ namespace App\Domain\Ai\Models;
 use App\Domain\Expense\Models\FuelPurchase;
 use App\Domain\Fleet\Models\Driver;
 use App\Domain\Fleet\Models\Fleet;
+use App\Domain\Fleet\Models\VehicleFuelReading;
 use App\Domain\User\Models\Company;
 use App\Domain\User\Models\User;
 use App\Domain\Vehicle\Models\Vehicle;
@@ -85,6 +86,7 @@ class FraudAlert extends Model
 
     protected $fillable = [
         'company_id', 'fleet_id', 'vehicle_id', 'driver_id', 'fuel_purchase_id',
+        'vehicle_fuel_reading_id',
         'alert_type', 'severity', 'score', 'evidence', 'status',
         'resolved_by', 'resolved_at', 'resolution_note', 'detected_at',
     ];
@@ -144,6 +146,12 @@ class FraudAlert extends Model
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(FuelPurchase::class, 'fuel_purchase_id');
+    }
+
+    /** The level reading that raised this alert, when one did. */
+    public function reading(): BelongsTo
+    {
+        return $this->belongsTo(VehicleFuelReading::class, 'vehicle_fuel_reading_id');
     }
 
     public function resolver(): BelongsTo

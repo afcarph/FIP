@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\User\Repositories;
 
 use App\Domain\User\Models\User;
+use App\Support\Database\SqlDate;
 use App\Support\Repositories\BaseRepository;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 
 /** @extends BaseRepository<User> */
@@ -20,6 +22,33 @@ class UserRepository extends BaseRepository
     protected function model(): string
     {
         return User::class;
+    }
+
+    /**
+     * Users the actor is entitled to see.
+     *
+     * The defect this replaces: the admin listing applied a company_id *filter*
+     * and no boundary, and User was the one company-owning model that had never
+     * taken the tenancy scope. A company manager holding users.view therefore
+     * read every user on the platform. A filter narrows what you may already
+     * see; it is not what decides what you may see.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function paginateForActor(
+        ?User $actor,
+        int $perPage = 25,
+        array $filters = [],
+        ?string $role = null,
+    ): LengthAwarePaginator {
+        $query = $this->applyFilters($this->query()->forUser($actor), $filters)
+            ->with('company:id,name', 'roles:id,name,label');
+
+        if ($role !== null) {
+            $query->whereHas('roles', fn ($q) => $q->where('name', $role));
+        }
+
+        return $query->paginate(min($perPage, 100))->withQueryString();
     }
 
     public function findByEmail(string $email): ?User
@@ -68,7 +97,7 @@ class UserRepository extends BaseRepository
     public function growthByMonth(int $months = 12): array
     {
         return $this->query()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') AS period, COUNT(*) AS total")
+            ->selectRaw(SqlDate::yearMonth('created_at').' AS period, COUNT(*) AS total')
             ->where('created_at', '>=', now()->subMonths($months)->startOfMonth())
             ->groupBy('period')
             ->orderBy('period')

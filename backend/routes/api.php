@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Admin\AiModelController;
 use App\Http\Controllers\Api\V1\Admin\AuditController;
+use App\Http\Controllers\Api\V1\Admin\CompanyAdminController;
 use App\Http\Controllers\Api\V1\Admin\ModerationController;
+use App\Http\Controllers\Api\V1\Admin\SettingsController;
 use App\Http\Controllers\Api\V1\Admin\UserAdminController;
 use App\Http\Controllers\Api\V1\AssistantController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\MfaController;
 use App\Http\Controllers\Api\V1\CrowdReportController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DeviceController;
+use App\Http\Controllers\Api\V1\DeviceHealthController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\FleetController;
 use App\Http\Controllers\Api\V1\ForecastController;
@@ -19,11 +23,13 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MaintenanceController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OcrController;
+use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\PriceController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RouteController;
 use App\Http\Controllers\Api\V1\StationController;
+use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,6 +52,13 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('throttle:auth')->group(function (): void {
         Route::post('auth/register', [AuthController::class, 'register']);
+        // Registering a client rather than a person: company, subscription and
+        // the administrator who will run it, in one transaction.
+        Route::post('auth/register-company', [AuthController::class, 'registerCompany']);
+        // The plans a prospective client may choose between. Public because
+        // the page that shows them is reached before anybody has an account,
+        // and it carries limits and their provisional status — never pricing.
+        Route::get('plans', [PlanController::class, 'index']);
         Route::post('auth/login', [AuthController::class, 'login']);
         Route::post('auth/mfa/verify', [AuthController::class, 'verifyMfa']);
         Route::post('auth/biometric/challenge', [AuthController::class, 'biometricChallenge']);
@@ -134,6 +147,10 @@ Route::prefix('v1')->group(function (): void {
         // Vehicles
         Route::apiResource('vehicles', VehicleController::class);
         Route::post('vehicles/{vehicle}/odometer', [VehicleController::class, 'recordOdometer']);
+        Route::get('vehicles/{vehicle}/alerts', [VehicleController::class, 'alerts']);
+        Route::get('vehicles/{vehicle}/location', [VehicleController::class, 'location']);
+        Route::get('vehicles/{vehicle}/fuel-readings', [VehicleController::class, 'fuelReadings']);
+        Route::post('vehicles/{vehicle}/fuel-readings', [VehicleController::class, 'recordFuelReading']);
         Route::get('vehicles/{vehicle}/efficiency', [VehicleController::class, 'efficiency']);
 
         // Maintenance
@@ -144,6 +161,11 @@ Route::prefix('v1')->group(function (): void {
 
         // Expenses
         Route::get('expenses/summary', [ExpenseController::class, 'summary']);
+        // Reading a receipt is as expensive as any other OCR call, so it takes
+        // the same tighter budget rather than the general authenticated one.
+        Route::middleware('throttle:ocr')->group(function (): void {
+            Route::post('expenses/scan-receipt', [ExpenseController::class, 'scanReceipt']);
+        });
         Route::apiResource('expenses', ExpenseController::class)->except(['show']);
 
         // Station management
@@ -176,14 +198,80 @@ Route::prefix('v1')->group(function (): void {
         Route::get('assistant/sessions/{session}', [AssistantController::class, 'transcript']);
         Route::get('routes', [RouteController::class, 'index']);
 
+        // Devices — registration and location reporting from the driver app.
+        Route::get('devices', [DeviceController::class, 'index']);
+        Route::post('devices', [DeviceController::class, 'store']);
+        Route::get('devices/{device}', [DeviceController::class, 'show']);
+        Route::patch('devices/{device}', [DeviceController::class, 'update']);
+        Route::delete('devices/{device}', [DeviceController::class, 'destroy']);
+
+        // Location ingestion carries its own budget: a fleet flushing offline
+        // queues is a different traffic shape from someone browsing the app,
+        // and sharing a limiter would let one starve the other.
+        Route::middleware('throttle:location')->group(function (): void {
+            Route::post('devices/location', [DeviceController::class, 'storeLocation']);
+
+            // Health rides the same budget as location. It is sent from the
+            // same timer by the same devices, so a separate limiter would only
+            // let one starve the other.
+            Route::post('devices/health', [DeviceController::class, 'reportHealth']);
+        });
+
         // Fleet
         Route::prefix('fleet')->group(function (): void {
             Route::get('/', [FleetController::class, 'index']);
             Route::get('dashboard', [FleetController::class, 'dashboard']);
+            // A tenant reading its own capacity. The admin console has the
+            // same figures for any company; this one is scoped to the caller's
+            // and needs no admin rights, because a fleet manager who cannot
+            // see the limit only meets it as a refusal.
+            Route::get('subscription', [FleetController::class, 'subscription']);
+            // First-setup progress, derived from the tenant's own records.
+            Route::get('onboarding', [FleetController::class, 'onboarding']);
             Route::get('drivers', [FleetController::class, 'drivers']);
+            // Adding a driver used to require a direct database insert; the
+            // drivers.manage permission existed but no route consumed it.
+            Route::post('drivers', [FleetController::class, 'storeDriver']);
+            Route::patch('drivers/{driver}', [FleetController::class, 'updateDriver']);
+            // A login for a driver who has none, so they can open the app.
+            // Narrower than user administration: see DriverAccountService.
+            Route::post('drivers/{driver}/account', [FleetController::class, 'createDriverAccount']);
+            // One driver's handsets, read through drivers.user_id. Distinct
+            // from fleet device health below, which lists devices already
+            // attached to a vehicle and so cannot answer "have they installed
+            // it yet" for a driver who has not been assigned one.
+            Route::get('drivers/{driver}/devices', [FleetController::class, 'driverDevices']);
             Route::post('assignments', [FleetController::class, 'assign']);
+            // Releasing is its own verb rather than assigning to nobody: the
+            // row is kept and dated, because fuel and fraud reporting read who
+            // drove what between which dates.
+            Route::delete('vehicles/{vehicle}/assignment', [FleetController::class, 'releaseAssignment']);
+
+            // Trips. The lifecycle verbs are POSTs on the trip rather than a
+            // PATCH of `status`, so an invalid move is a route that refuses
+            // rather than a field that silently accepts anything.
+            Route::get('trips', [TripController::class, 'index']);
+            Route::get('trips/summary', [TripController::class, 'summary']);
+            Route::post('trips', [TripController::class, 'store']);
+            Route::get('trips/{trip}', [TripController::class, 'show']);
+            // Amending is a PATCH; the lifecycle verbs stay POSTs on their own
+            // paths so an invalid move is a route that refuses rather than a
+            // status field that accepts anything.
+            Route::patch('trips/{trip}', [TripController::class, 'update']);
+            Route::post('trips/{trip}/dispatch', [TripController::class, 'dispatchTrip']);
+            Route::post('trips/{trip}/start', [TripController::class, 'start']);
+            Route::post('trips/{trip}/complete', [TripController::class, 'complete']);
+            Route::post('trips/{trip}/cancel', [TripController::class, 'cancel']);
+            Route::get('locations', [FleetController::class, 'vehicleLocations']);
+            Route::get('vehicles/{vehicle}/locations', [FleetController::class, 'vehicleLocationHistory']);
             Route::get('fraud-alerts', [FleetController::class, 'fraudAlerts']);
             Route::patch('fraud-alerts/{alert}', [FleetController::class, 'resolveFraudAlert']);
+
+            // Device health. Read-only, and authorised in the controller by
+            // UserDevicePolicy rather than by this prefix — sitting under
+            // /fleet is routing, not permission.
+            Route::get('devices', [DeviceHealthController::class, 'index']);
+            Route::get('devices/{device}', [DeviceHealthController::class, 'show']);
         });
 
         // Notifications
@@ -199,6 +287,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('reports/definitions', [ReportController::class, 'definitions']);
         Route::get('reports/runs', [ReportController::class, 'runs']);
         Route::get('reports/runs/{run}', [ReportController::class, 'show']);
+        // Streamed through the app so the file is reachable from a browser and
+        // stays behind authorization. See ReportController::download().
+        Route::get('reports/runs/{run}/download', [ReportController::class, 'download']);
         Route::middleware('throttle:reports')->group(function (): void {
             Route::post('reports/generate', [ReportController::class, 'generate']);
         });
@@ -218,6 +309,18 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::middleware('role_or_permission:super_admin|system_admin|users.view')->group(function (): void {
+            // Tenants. No destroy: deleting a company would orphan its
+            // users, vehicles and devices, and is_active already expresses
+            // "stop using this one" without destroying what it owns.
+            // Served rather than duplicated in the client: the console used to
+            // hardcode the tier list, so adding one in config would not appear
+            // and renaming one would offer a value the API refuses.
+            Route::get('subscription-tiers', [CompanyAdminController::class, 'tiers']);
+            Route::get('companies', [CompanyAdminController::class, 'index']);
+            Route::post('companies', [CompanyAdminController::class, 'store']);
+            Route::get('companies/{company}', [CompanyAdminController::class, 'show']);
+            Route::patch('companies/{company}', [CompanyAdminController::class, 'update']);
+
             Route::apiResource('users', UserAdminController::class)->except(['show']);
             Route::get('roles', [UserAdminController::class, 'roles']);
             Route::put('roles/{role}/permissions', [UserAdminController::class, 'syncRolePermissions']);
@@ -231,6 +334,13 @@ Route::prefix('v1')->group(function (): void {
             Route::get('audit-logs', [AuditController::class, 'index']);
             Route::get('login-attempts', [AuditController::class, 'loginAttempts']);
             Route::get('api-metrics', [AuditController::class, 'apiMetrics']);
+        });
+
+        // Retention decides what the platform deletes, so it sits behind the
+        // same permission that guards every other persisted setting.
+        Route::middleware('role_or_permission:super_admin|system_admin|settings.manage')->group(function (): void {
+            Route::get('settings/privacy', [SettingsController::class, 'privacy']);
+            Route::put('settings/privacy/location-retention', [SettingsController::class, 'updateLocationRetention']);
         });
 
         Route::middleware('role_or_permission:super_admin|system_admin|ai.manage')->group(function (): void {

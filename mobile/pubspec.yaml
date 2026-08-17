@@ -32,17 +32,36 @@ dependencies:
   local_auth: ^2.3.0
 
   # --- Maps & location ----------------------------------------------------
-  google_maps_flutter: ^2.10.0
   geolocator: ^13.0.2
   geocoding: ^3.0.0
+
+  # Device health. Needs no permission on either platform and starts no
+  # background work — it reads a value the OS already publishes.
+  battery_plus: ^6.2.1
+
+  # What the handset is, for the owner's device list. Registrations were
+  # arriving named "FIP mobile" or not at all, so a person looking at their own
+  # devices to revoke one could not tell two phones apart. Needs no permission
+  # and reads only the model — since iOS 16 the user-assigned device name is
+  # not available to an app without an entitlement, which suits us: the model
+  # is what belongs in that list, not somebody's name for their phone.
+  device_info_plus: ^11.2.0
 
   # --- Camera & OCR upload ------------------------------------------------
   image_picker: ^1.1.2
   image_cropper: ^8.0.2
 
   # --- Notifications ------------------------------------------------------
-  firebase_core: ^3.9.0
-  firebase_messaging: ^15.1.6
+  # firebase_core and firebase_messaging were removed. Nothing in lib/ ever
+  # imported them, but Flutter registers every plugin before the first frame,
+  # so FLTFirebaseMessagingPlugin reached FirebaseCore at launch, found no
+  # GoogleService-Info.plist, and raised — killing the app on iOS the moment
+  # its icon was tapped. Android carried the same missing config and only
+  # degraded quietly, which is why the crash looked iOS-specific.
+  #
+  # The backend still has fcm_token and a device-registration endpoint waiting.
+  # Restoring push means adding both packages back *with* the platform config
+  # files and an explicit Firebase.initializeApp(), not just the dependency.
   flutter_local_notifications: ^18.0.1
 
   # --- UI -----------------------------------------------------------------
@@ -60,6 +79,8 @@ dependencies:
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
   equatable: ^2.0.7
+  maplibre_gl: ^0.26.2
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:

@@ -36,7 +36,11 @@ class UserPolicy
             return $user->hasRole(config('fip.roles.super_admin'));
         }
 
-        return $user->isPlatformAdministrator() || $user->can('users.update');
+        if ($user->isPlatformAdministrator()) {
+            return true;
+        }
+
+        return $user->can('users.update') && $this->sharesTenant($user, $target);
     }
 
     public function delete(User $user, User $target): bool
@@ -45,7 +49,29 @@ class UserPolicy
             return false;
         }
 
-        return $user->isPlatformAdministrator() || $user->can('users.delete');
+        if ($user->isPlatformAdministrator()) {
+            return true;
+        }
+
+        return $user->can('users.delete') && $this->sharesTenant($user, $target);
+    }
+
+    /**
+     * Whether both people belong to the same tenant.
+     *
+     * The users.* permissions say what a role may do, never to whom. Without
+     * this, company_manager — which holds users.view, users.create and
+     * users.update — reached every user on the platform, so a tenant admin
+     * could rename, suspend or reassign somebody in a company they have no
+     * relationship with.
+     *
+     * A null company fails closed on both sides: someone outside any tenant
+     * shares a tenant with nobody, and two companyless users are not
+     * colleagues just because both fields are null.
+     */
+    private function sharesTenant(User $user, User $target): bool
+    {
+        return $user->company_id !== null && $user->company_id === $target->company_id;
     }
 
     // ------------------------------------------------- platform abilities ---
