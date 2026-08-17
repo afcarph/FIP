@@ -36,7 +36,7 @@ import { usePathname } from 'next/navigation';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
+import { landingFor, useAuth } from '@/hooks/use-auth';
 import { cn, initials } from '@/lib/utils';
 import type { Role } from '@/types/api';
 
@@ -46,6 +46,15 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   /** Omit to show for everyone signed in. */
   roles?: Role[];
+  /**
+   * Show this only to accounts whose home it actually is.
+   *
+   * Roles alone cannot express it: a fleet manager also holds `user`, so any
+   * list naming the personal roles would still match them. `landingFor` already
+   * decides where each account lands at sign-in, and reusing it means the
+   * sidebar cannot drift from that answer.
+   */
+  onlyWhenHome?: boolean;
   /**
    * Gate on a permission instead of a role. Needed where a role does not
    * settle it: a company manager is a fleet role but deliberately holds no
@@ -59,7 +68,14 @@ interface NavItem {
  * roles land on /fleet; a private motorist keeps the personal summary.
  */
 const PRIMARY_NAV: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  /*
+   * The private motorist's home, and only theirs. /dashboard is built from
+   * `$user->fuelPurchases()` and `$user->vehicles()` — what one person logged
+   * and owns, not what their company runs — so for a fleet account it is a
+   * page that stays empty however busy the fleet is, sitting directly above
+   * the Fleet overview they actually want and wearing almost the same heading.
+   */
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, onlyWhenHome: true },
 ];
 
 /**
@@ -135,7 +151,7 @@ const ADMIN_NAV: NavItem[] = [
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, hasRole, can, logout, isLoading } = useAuth();
+  const { user, roles, hasRole, can, logout, isLoading } = useAuth();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -147,9 +163,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     (items: NavItem[]) =>
       items.filter(
         (item) =>
-          (!item.roles || hasRole(...item.roles)) && (!item.permission || can(item.permission)),
+          (!item.roles || hasRole(...item.roles)) &&
+          (!item.permission || can(item.permission)) &&
+          (!item.onlyWhenHome || landingFor(roles) === item.href),
       ),
-    [hasRole, can],
+    [hasRole, can, roles],
   );
 
   const sections = [
