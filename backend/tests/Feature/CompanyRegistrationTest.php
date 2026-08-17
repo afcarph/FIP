@@ -34,6 +34,7 @@ class CompanyRegistrationTest extends TestCase
         config([
             'fip.subscription.trial_days' => 14,
             'fip.subscription.default_tier' => 'free',
+            'fip.subscription.pending_tier' => 'business',
             'fip.subscription.tiers' => [
                 'free_trial' => ['vehicles' => 3, 'seats' => 2, 'devices' => 3],
                 'free' => ['vehicles' => 3, 'seats' => 2, 'devices' => 3],
@@ -100,11 +101,32 @@ class CompanyRegistrationTest extends TestCase
 
         $this->assertSame('enterprise', $company->subscription_tier);
         $this->assertSame(Company::STATUS_PENDING_SETUP, $company->subscription_status);
-        $this->assertSame('free', $company->effectiveTier());
 
-        // The plan says unlimited; what actually applies is the default.
-        $this->assertSame(3, app(SubscriptionLimitService::class)
+        // The interim is the largest *bounded* plan, not the smallest one.
+        // Falling back to the default meant a prospect who chose Enterprise
+        // was offered three vehicles, which blocks a real evaluation on its
+        // first afternoon and reads as an insult.
+        $this->assertSame('business', $company->effectiveTier());
+        $this->assertSame(25, app(SubscriptionLimitService::class)
             ->limitForCompany($company, SubscriptionLimitService::VEHICLES));
+    }
+
+    public function test_the_interim_allowance_is_never_the_negotiated_one(): void
+    {
+        // The security property the interim exists for: whatever it is set to,
+        // an unconfirmed enterprise selection must not receive the unlimited
+        // capacity that is still only an intention.
+        $this->postJson('/api/v1/auth/register-company', $this->payload('enterprise'))->assertStatus(201);
+
+        $company = Company::firstWhere('name', 'Haulers Inc');
+        $limits = app(SubscriptionLimitService::class);
+
+        foreach ([SubscriptionLimitService::VEHICLES, SubscriptionLimitService::SEATS, SubscriptionLimitService::DEVICES] as $resource) {
+            $this->assertNotNull(
+                $limits->limitForCompany($company, $resource),
+                "an unconfirmed enterprise company was granted unlimited {$resource}",
+            );
+        }
     }
 
     // ------------------------------------------------------- what is built ---

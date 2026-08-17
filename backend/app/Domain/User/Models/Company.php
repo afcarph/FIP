@@ -126,15 +126,19 @@ class Company extends Model
      * The plan whose limits actually apply.
      *
      * Not always the plan on the record. An enterprise selection awaiting
-     * confirmation runs on the default allowance, because the alternative is
-     * granting negotiated capacity to whoever typed the company name — and the
-     * safe direction is the smaller number, exactly as it is for a tier nobody
-     * recognises.
+     * confirmation cannot simply be granted its negotiated limits — that would
+     * hand unlimited capacity to whoever typed the company name — so it runs
+     * on a bounded interim allowance until somebody confirms what was agreed.
+     *
+     * Deliberately not the default plan. That is the smallest allowance in the
+     * product, and showing a prospect who chose Enterprise a limit of three
+     * vehicles both reads as an insult and blocks a genuine evaluation on its
+     * first afternoon. See `subscription.pending_tier`.
      */
     public function effectiveTier(): string
     {
         if ($this->subscription_status === self::STATUS_PENDING_SETUP) {
-            return (string) config('fip.subscription.default_tier');
+            return (string) config('fip.subscription.pending_tier', config('fip.subscription.default_tier'));
         }
 
         return (string) ($this->subscription_tier ?? config('fip.subscription.default_tier'));

@@ -251,6 +251,23 @@ return [
         'trial_days' => (int) env('FIP_TRIAL_DAYS', 14),
 
         /*
+         * What an enterprise selection runs on until somebody confirms it.
+         *
+         * Enterprise limits are negotiated, so a registration cannot simply be
+         * granted them — that would hand unlimited capacity to whoever typed a
+         * company name. But the first version of this fell back to the default
+         * plan, which is the *smallest* allowance in the product: a prospect
+         * who chose Enterprise was shown three vehicles and would hit that wall
+         * on their first afternoon.
+         *
+         * So the interim is the largest bounded plan instead. Big enough that
+         * a real enterprise evaluation is not blocked while the agreement is
+         * settled, bounded so nothing is given away, and configuration rather
+         * than a constant because it is a commercial judgement.
+         */
+        'pending_tier' => env('FIP_PENDING_ENTERPRISE_TIER', 'business'),
+
+        /*
          * What happens when a trial runs out.
          *
          * ⚠️ PROVISIONAL — REQUIRES BUSINESS APPROVAL.

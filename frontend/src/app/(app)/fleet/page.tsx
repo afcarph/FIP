@@ -74,7 +74,16 @@ function Capacity() {
       <CardHeader>
         <CardTitle className="text-base">Plan capacity</CardTitle>
         <CardDescription>
-          {data.tier ? `On the ${planLabel(data.tier)} plan` : 'Current usage'}
+          {/*
+            While a plan is being set up the headline must not claim the
+            chosen plan's numbers are in force — "On the Enterprise plan"
+            above a limit of three reads as Enterprise meaning three.
+          */}
+          {awaitingConfirmation
+            ? `${planLabel(data.tier)} plan · being set up`
+            : data.tier
+              ? `On the ${planLabel(data.tier)} plan`
+              : 'Current usage'}
           {data.is_provisional ? ' · limits are provisional and not yet approved' : ''}
         </CardDescription>
 
@@ -86,8 +95,9 @@ function Capacity() {
         */}
         {awaitingConfirmation ? (
           <p className="text-sm text-amber-700 dark:text-amber-500">
-            Your {planLabel(data.tier)} plan is being set up. The figures below are the standard allowance and
-            apply until we confirm the limits agreed with you.
+            We are confirming the limits agreed with you. Until then your account runs on the{' '}
+            {planLabel(data.effective_tier)} allowance shown below — nothing you add now is affected
+            when your own limits take effect.
           </p>
         ) : null}
 
