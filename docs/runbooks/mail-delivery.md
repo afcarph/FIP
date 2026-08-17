@@ -78,16 +78,24 @@ MAIL_FROM_ADDRESS=no-reply@nelleeph.com
 MAIL_FROM_NAME="Fuel Intelligence Platform"
 ```
 
-Then, because config is cached:
+Then — and this is the step that looks unnecessary and is not:
 
 ```bash
 DC="docker compose -f infra/docker-compose.yml -f infra/docker-compose.staging.yml --env-file .env"
+$DC up -d --force-recreate api queue scheduler
 $DC exec -T api php artisan config:cache
-$DC restart queue
+docker exec fip-api-1 printenv MAIL_FROM_ADDRESS    # must show the new value
 ```
 
-`queue` matters: mail is sent from the worker, which holds its own copy of the
-configuration until it is restarted.
+`config:cache` on its own is not enough and gives no hint that it failed. The
+services declare `env_file: [../.env]`, so Docker copies those values into each
+container's environment at creation time, and Laravel prefers a real
+environment variable over the file — so re-caching after editing `.env` simply
+re-caches the old value. This was observed doing exactly that: the sender was
+corrected in `.env`, `config:cache` reported success, and the check still read
+the old address until the containers were recreated.
+
+The queue worker matters as much as the API: mail is sent from there.
 
 ## Proving it works
 

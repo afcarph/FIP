@@ -107,8 +107,24 @@ kinds of change invisible until a cache is rebuilt:
 | Changed | Rebuild | Symptom if skipped |
 |---|---|---|
 | A route (new endpoint, changed path or verb) | `php artisan route:cache` | The endpoint 404s with `not_found`, while the code plainly defines it |
-| `.env` | `php artisan config:cache` | The file is read and ignored |
+| `.env` | **recreate the containers**, then `php artisan config:cache` | The old value stays live, and `config:cache` re-caches it |
 | Blade views | `php artisan view:cache` | Stale markup |
+
+`.env` is the one that catches people, because `config:cache` alone looks like
+it worked. The PHP services declare `env_file: [../.env]`, so Docker copies
+those values into each container's environment when the container is
+**created** — and Laravel's `env()` prefers a real environment variable over
+the file. Editing `.env` and re-caching therefore re-caches the old value, with
+no error and no clue:
+
+```bash
+$DC up -d --force-recreate api queue scheduler
+$DC exec -T api php artisan config:cache
+docker exec fip-api-1 printenv MAIL_FROM_ADDRESS   # confirm the new value is in
+```
+
+The queue worker needs it as much as the API: mail and reports are sent from
+there, and it holds its own copy of the configuration until it is restarted.
 
 A new route 404ing after a deploy is not a routing bug and not a bad merge. It
 is the route cache, every time.
